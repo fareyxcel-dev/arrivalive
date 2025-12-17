@@ -341,6 +341,20 @@
     }
   }
 
+  /* Soft pulse for notification bell */
+  .animate-pulse-soft {
+    animation: pulse-soft 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-soft {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
+  }
+
   /* Rotate animation for orb */
   .animate-rotate-45 {
     animation: rotate45 0.3s ease forwards;
