@@ -35,7 +35,7 @@ const groupFlightsByDate = (flights: Flight[]) => {
 };
 
 const formatDateDisplay = (dateStr: string) => {
-  const date = new Date(dateStr);
+  const date = new Date(dateStr + 'T00:00:00+05:00');
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -46,10 +46,10 @@ const formatDateDisplay = (dateStr: string) => {
   if (isToday) return 'Today';
   if (isTomorrow) return 'Tomorrow';
   
-  return date.toLocaleDateString('en-US', {
-    weekday: 'short',
+  return date.toLocaleDateString('en-GB', {
+    weekday: 'long',
     day: 'numeric',
-    month: 'short',
+    month: 'long',
   });
 };
 
@@ -122,29 +122,35 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
               No flights scheduled
             </p>
           ) : (
-            dates.map(date => (
-              <div key={date} className="space-y-3">
-                {/* Date Pill */}
-                <button
-                  onClick={() => toggleDate(date)}
-                  className={cn(
-                    "date-pill flex items-center justify-between w-full",
-                    expandedDates.has(date) && "active-selection"
-                  )}
-                >
-                  <span className="font-medium">{formatDateDisplay(date)}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {groupedFlights[date].length} flights
-                    </span>
-                    <ChevronDown
-                      className={cn(
-                        "w-4 h-4 transition-transform duration-300",
-                        expandedDates.has(date) && "rotate-180"
-                      )}
-                    />
-                  </div>
-                </button>
+            dates.map(date => {
+              const dateFlights = groupedFlights[date];
+              const totalCount = dateFlights.length;
+              const landedCount = dateFlights.filter(f => f.status.toUpperCase() === 'LANDED').length;
+              const remainingCount = totalCount - landedCount;
+              
+              return (
+                <div key={date} className="space-y-3">
+                  {/* Date Pill */}
+                  <button
+                    onClick={() => toggleDate(date)}
+                    className={cn(
+                      "date-pill flex items-center justify-between w-full",
+                      expandedDates.has(date) && "active-selection"
+                    )}
+                  >
+                    <span className="font-medium">{formatDateDisplay(date)}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {totalCount} flights, {landedCount} landed, {remainingCount} remaining
+                      </span>
+                      <ChevronDown
+                        className={cn(
+                          "w-4 h-4 transition-transform duration-300",
+                          expandedDates.has(date) && "rotate-180"
+                        )}
+                      />
+                    </div>
+                  </button>
 
                 {/* Flights for this date */}
                 {expandedDates.has(date) && (
@@ -160,7 +166,8 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
                   </div>
                 )}
               </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
