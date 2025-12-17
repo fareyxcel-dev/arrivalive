@@ -36,16 +36,6 @@ const groupFlightsByDate = (flights: Flight[]) => {
 
 const formatDateDisplay = (dateStr: string) => {
   const date = new Date(dateStr + 'T00:00:00+05:00');
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  
-  const isToday = date.toDateString() === today.toDateString();
-  const isTomorrow = date.toDateString() === tomorrow.toDateString();
-  
-  if (isToday) return 'Today';
-  if (isTomorrow) return 'Tomorrow';
-  
   return date.toLocaleDateString('en-GB', {
     weekday: 'long',
     day: 'numeric',

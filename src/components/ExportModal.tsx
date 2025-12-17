@@ -1,33 +1,93 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Download, FileSpreadsheet } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Flight } from './FlightCard';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  flights: Flight[];
 }
 
-const ExportModal = ({ isOpen, onClose, flights }: Props) => {
+interface FlightRecord {
+  id: string;
+  flight_id: string;
+  origin: string;
+  scheduled_time: string;
+  estimated_time: string | null;
+  terminal: string;
+  status: string;
+  flight_date: string;
+  airline_code: string;
+}
+
+const ExportModal = ({ isOpen, onClose }: Props) => {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTerminal, setSelectedTerminal] = useState<'all' | 'T1' | 'T2' | 'DOM'>('all');
+  const [historyFlights, setHistoryFlights] = useState<FlightRecord[]>([]);
+  const [dates, setDates] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch 7 days of flight history when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const fetchHistoryFlights = async () => {
+      setIsLoading(true);
+      try {
+        const today = new Date();
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const weekAhead = new Date(today);
+        weekAhead.setDate(weekAhead.getDate() + 7);
+
+        const { data, error } = await supabase
+          .from('flights')
+          .select('*')
+          .gte('flight_date', sevenDaysAgo.toISOString().split('T')[0])
+          .lte('flight_date', weekAhead.toISOString().split('T')[0])
+          .order('flight_date', { ascending: false })
+          .order('scheduled_time', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching history:', error);
+          return;
+        }
+
+        if (data) {
+          setHistoryFlights(data);
+          const uniqueDates = [...new Set(data.map(f => f.flight_date))].sort().reverse();
+          setDates(uniqueDates);
+          if (uniqueDates.length > 0 && !selectedDate) {
+            setSelectedDate(uniqueDates[0]);
+          }
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchHistoryFlights();
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  // Get unique dates
-  const dates = [...new Set(flights.map(f => f.date))];
-  
-  // Set default date to today if available
-  if (!selectedDate && dates.length > 0) {
-    setSelectedDate(dates[0]);
-  }
+  const formatDateLabel = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00+05:00');
+    return date.toLocaleDateString('en-GB', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  };
 
   const handleExport = () => {
-    let filteredFlights = flights;
+    let filteredFlights = historyFlights;
 
     if (selectedDate) {
-      filteredFlights = filteredFlights.filter(f => f.date === selectedDate);
+      filteredFlights = filteredFlights.filter(f => f.flight_date === selectedDate);
     }
 
     if (selectedTerminal !== 'all') {
@@ -37,13 +97,13 @@ const ExportModal = ({ isOpen, onClose, flights }: Props) => {
     // Create CSV content
     const headers = ['Flight ID', 'Origin', 'Scheduled', 'Estimated', 'Terminal', 'Status', 'Date'];
     const rows = filteredFlights.map(f => [
-      f.flightId,
+      f.flight_id,
       f.origin,
-      f.scheduledTime,
-      f.estimatedTime,
+      f.scheduled_time,
+      f.estimated_time || f.scheduled_time,
       f.terminal,
       f.status,
-      f.date,
+      f.flight_date,
     ]);
 
     const csvContent = [
@@ -87,46 +147,53 @@ const ExportModal = ({ isOpen, onClose, flights }: Props) => {
 
         {/* Content */}
         <div className="p-4 space-y-4">
-          <div>
-            <label className="text-xs text-muted-foreground uppercase tracking-wide">Date</label>
-            <select
-              value={selectedDate}
-              onChange={e => setSelectedDate(e.target.value)}
-              className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-primary outline-none"
-            >
-              {dates.map(date => (
-                <option key={date} value={date} className="bg-popover">
-                  {date}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-xs text-muted-foreground uppercase tracking-wide">Terminal</label>
-            <div className="flex gap-2 mt-2">
-              {(['all', 'T1', 'T2', 'DOM'] as const).map(terminal => (
-                <button
-                  key={terminal}
-                  onClick={() => setSelectedTerminal(terminal)}
-                  className={cn(
-                    "flex-1 py-2 rounded-lg text-sm transition-colors",
-                    selectedTerminal === terminal ? "active-selection" : "glass hover:bg-white/10"
-                  )}
+          {isLoading ? (
+            <div className="text-center text-muted-foreground py-4">Loading history...</div>
+          ) : (
+            <>
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide">Date</label>
+                <select
+                  value={selectedDate}
+                  onChange={e => setSelectedDate(e.target.value)}
+                  className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-primary outline-none"
                 >
-                  {terminal === 'all' ? 'All' : terminal}
-                </button>
-              ))}
-            </div>
-          </div>
+                  {dates.map(date => (
+                    <option key={date} value={date} className="bg-popover">
+                      {formatDateLabel(date)}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <button
-            onClick={handleExport}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-primary text-primary-foreground font-medium transition-all hover:bg-primary/90 active:scale-[0.98]"
-          >
-            <Download className="w-4 h-4" />
-            Download CSV
-          </button>
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide">Terminal</label>
+                <div className="flex gap-2 mt-2">
+                  {(['all', 'T1', 'T2', 'DOM'] as const).map(terminal => (
+                    <button
+                      key={terminal}
+                      onClick={() => setSelectedTerminal(terminal)}
+                      className={cn(
+                        "flex-1 py-2 rounded-lg text-sm transition-colors",
+                        selectedTerminal === terminal ? "active-selection" : "glass hover:bg-white/10"
+                      )}
+                    >
+                      {terminal === 'all' ? 'All' : terminal}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={handleExport}
+                disabled={dates.length === 0}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-primary text-primary-foreground font-medium transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
+              >
+                <Download className="w-4 h-4" />
+                Download CSV
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
