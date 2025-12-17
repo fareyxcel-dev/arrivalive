@@ -74,23 +74,33 @@ const getLogoColor = (status: string) => {
 
 const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Props) => {
   const logoColor = getLogoColor(flight.status);
+  // Airline logo URL from fis.com.mv
+  const airlineLogoUrl = `https://fis.com.mv/webfids/images/${flight.airlineCode.toLowerCase()}.gif`;
 
   return (
     <div className={cn("flight-card", getStatusClass(flight.status))}>
       <div className="flex items-start justify-between gap-4">
         {/* Airline Logo & Info */}
         <div className="flex items-center gap-3 flex-1">
-          {/* Airline Logo Placeholder */}
+          {/* Airline Logo */}
           <div 
-            className="w-12 h-12 rounded-lg flex items-center justify-center"
+            className="w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden"
             style={{ 
               backgroundColor: `${logoColor}20`,
               border: `1px solid ${logoColor}40`
             }}
           >
-            <Plane 
-              className="w-6 h-6 -rotate-45" 
-              style={{ color: logoColor }}
+            <img 
+              src={airlineLogoUrl}
+              alt={`${flight.airlineCode} logo`}
+              className="w-10 h-10 object-contain"
+              style={{ filter: `drop-shadow(0 0 1px ${logoColor})` }}
+              onError={(e) => {
+                // Fallback to plane icon if logo fails to load
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                target.parentElement!.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${logoColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 -rotate-45"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>`;
+              }}
             />
           </div>
 
