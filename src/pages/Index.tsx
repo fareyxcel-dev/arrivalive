@@ -107,12 +107,19 @@ const Index = () => {
         console.error('Scrape error:', error);
       }
 
-      // Then fetch from database
-      const today = new Date().toISOString().split('T')[0];
+      // Fetch from database - today and upcoming days
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      const weekAhead = new Date(today);
+      weekAhead.setDate(weekAhead.getDate() + 7);
+      const weekAheadStr = weekAhead.toISOString().split('T')[0];
+      
       const { data: dbFlights, error: dbError } = await supabase
         .from('flights')
         .select('*')
-        .eq('flight_date', today)
+        .gte('flight_date', todayStr)
+        .lte('flight_date', weekAheadStr)
+        .order('flight_date', { ascending: true })
         .order('scheduled_time', { ascending: true });
 
       if (dbError) {

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Bell, BellRing, Plane } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSettings } from '@/contexts/SettingsContext';
 
 export interface Flight {
   id: string;
@@ -21,34 +22,72 @@ interface Props {
   onToggleNotification: (flightId: string) => void;
 }
 
-// Airline name mapping
+// Airline name mapping (extracted from ImageKit filenames)
 const AIRLINE_NAMES: Record<string, string> = {
   '6E': 'IndiGo',
-  'G9': 'Air Arabia',
-  'Q2': 'Maldivian',
-  'EY': 'Etihad Airways',
-  'AK': 'AirAsia',
-  'UL': 'SriLankan Airlines',
-  'QR': 'Qatar Airways',
-  'EK': 'Emirates',
-  'FZ': 'Flydubai',
-  'NR': 'Manta Air',
-  'GF': 'Gulf Air',
-  'SQ': 'Singapore Airlines',
-  'MH': 'Malaysia Airlines',
-  'VP': 'Villa Air',
-  'TK': 'Turkish Airlines',
-  'SU': 'Aeroflot',
-  'BA': 'British Airways',
-  'J2': 'Azerbaijan Airlines',
-  'DE': 'Condor',
-  'ZF': 'Azur Air',
-  'VS': 'Virgin Atlantic',
-  'KC': 'Air Astana',
-  'FD': 'Thai AirAsia',
-  'OS': 'Austrian Airlines',
-  'WK': 'Edelweiss',
   '8D': 'FitsAir',
+  'A3': 'Aegean Airlines',
+  'AC': 'Air Canada',
+  'AF': 'Air France',
+  'AI': 'Air India',
+  'AK': 'AirAsia',
+  'AT': 'Royal Air Maroc',
+  'AY': 'Finnair',
+  'AZ': 'ITA Airways',
+  'BA': 'British Airways',
+  'BS': 'US-Bangla Airlines',
+  'CA': 'Air China',
+  'CX': 'Cathay Pacific',
+  'DE': 'Condor',
+  'DL': 'Delta',
+  'EK': 'Emirates',
+  'ET': 'Ethiopian Airlines',
+  'EY': 'Etihad Airways',
+  'FD': 'Thai AirAsia',
+  'FZ': 'Flydubai',
+  'G9': 'Air Arabia',
+  'GF': 'Gulf Air',
+  'HA': 'Hawaiian Airlines',
+  'HU': 'Hainan Airlines',
+  'IB': 'Iberia',
+  'J2': 'Azerbaijan Airlines',
+  'JL': 'Japan Airlines',
+  'KC': 'Air Astana',
+  'KE': 'Korean Air',
+  'KL': 'KLM',
+  'KQ': 'Kenya Airways',
+  'LH': 'Lufthansa',
+  'LO': 'LOT Polish',
+  'LX': 'Swiss',
+  'MH': 'Malaysia Airlines',
+  'MS': 'EgyptAir',
+  'MU': 'China Eastern',
+  'NH': 'ANA',
+  'NR': 'Manta Air',
+  'OS': 'Austrian Airlines',
+  'OZ': 'Asiana Airlines',
+  'PR': 'Philippine Airlines',
+  'Q2': 'Maldivian',
+  'QF': 'Qantas',
+  'QR': 'Qatar Airways',
+  'QZ': 'Indonesia AirAsia',
+  'RJ': 'Royal Jordanian',
+  'SA': 'South African Airways',
+  'SK': 'SAS',
+  'SQ': 'Singapore Airlines',
+  'SU': 'Aeroflot',
+  'SV': 'Saudia',
+  'TG': 'Thai Airways',
+  'TK': 'Turkish Airlines',
+  'UA': 'United Airlines',
+  'UL': 'SriLankan Airlines',
+  'VA': 'Virgin Australia',
+  'VN': 'Vietnam Airlines',
+  'VP': 'Villa Air',
+  'VS': 'Virgin Atlantic',
+  'WK': 'Edelweiss Air',
+  'WY': 'Oman Air',
+  'ZF': 'Azur Air',
 };
 
 const getStatusClass = (status: string) => {
@@ -103,14 +142,66 @@ const getLogoColor = (status: string) => {
   }
 };
 
+// Convert 24h time to 12h format
+const formatTime = (time: string, format: '12h' | '24h') => {
+  if (format === '24h' || !time) return time;
+  
+  const [hours, minutes] = time.split(':').map(Number);
+  if (isNaN(hours) || isNaN(minutes)) return time;
+  
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours % 12 || 12;
+  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+};
+
 const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Props) => {
+  const { settings } = useSettings();
   const [showAirlineName, setShowAirlineName] = useState(false);
+  const [isFadingOut, setIsFadingOut] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const logoColor = getLogoColor(flight.status);
   const airlineName = AIRLINE_NAMES[flight.airlineCode] || flight.airlineCode;
   
-  // ImageKit airline logo URL - fallback to fis.com.mv
-  const airlineLogoUrl = `https://fis.com.mv/webfids/images/${flight.airlineCode.toLowerCase()}.gif`;
+  // ImageKit SVG logo URL
+  const airlineLogoUrl = `https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/${flight.airlineCode.toLowerCase()}.svg`;
+
+  // Handle logo click with auto-fadeout
+  const handleLogoClick = () => {
+    if (showAirlineName) return;
+    
+    setShowAirlineName(true);
+    setIsFadingOut(false);
+    
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    
+    // Start fadeout after 2 seconds
+    timeoutRef.current = setTimeout(() => {
+      setIsFadingOut(true);
+      
+      // Complete fadeout after animation
+      timeoutRef.current = setTimeout(() => {
+        setShowAirlineName(false);
+        setIsFadingOut(false);
+      }, 500);
+    }, 2000);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const scheduledTimeFormatted = formatTime(flight.scheduledTime, settings.timeFormat);
+  const estimatedTimeFormatted = formatTime(flight.estimatedTime, settings.timeFormat);
 
   return (
     <div className={cn("flight-card", getStatusClass(flight.status))}>
@@ -120,10 +211,9 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
         <div className="flex flex-col items-start gap-2 flex-1">
           {/* Clickable Logo */}
           <button
-            onClick={() => setShowAirlineName(!showAirlineName)}
+            onClick={handleLogoClick}
             className={cn(
-              "w-14 h-14 rounded-xl flex items-center justify-center overflow-hidden transition-all duration-300 relative",
-              showAirlineName && "backdrop-blur-xl"
+              "w-14 h-14 rounded-xl flex items-center justify-center overflow-hidden transition-all duration-300 relative"
             )}
             style={{ 
               backgroundColor: `${logoColor}15`,
@@ -132,7 +222,10 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           >
             {showAirlineName ? (
               <span 
-                className="text-[10px] font-medium text-center px-1 leading-tight"
+                className={cn(
+                  "text-[10px] font-medium text-center px-1 leading-tight transition-all duration-500",
+                  isFadingOut && "opacity-0 blur-sm"
+                )}
                 style={{ color: logoColor }}
               >
                 {airlineName}
@@ -146,9 +239,12 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
               <img 
                 src={airlineLogoUrl}
                 alt={`${flight.airlineCode} logo`}
-                className="w-10 h-10 object-contain transition-all duration-300"
+                className={cn(
+                  "w-10 h-10 object-contain transition-all duration-500",
+                  showAirlineName && "blur-sm opacity-0"
+                )}
                 style={{ 
-                  filter: `drop-shadow(0 0 1px ${logoColor})`,
+                  filter: `brightness(0) invert(1) drop-shadow(0 0 2px ${logoColor})`,
                 }}
                 onError={() => setLogoError(true)}
               />
@@ -197,7 +293,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
         <div>
           <p className="text-muted-foreground text-xs">Scheduled</p>
           <p className={cn("font-display font-semibold", getTextColorClass(flight.status))}>
-            {flight.scheduledTime}
+            {scheduledTimeFormatted}
           </p>
         </div>
         <div className="flex-1 flex items-center justify-center px-4">
@@ -208,7 +304,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
         <div className="text-right">
           <p className="text-muted-foreground text-xs">Estimated</p>
           <p className={cn("font-display font-semibold", getTextColorClass(flight.status))}>
-            {flight.estimatedTime}
+            {estimatedTimeFormatted}
           </p>
         </div>
       </div>
