@@ -22,71 +22,109 @@ interface Props {
   onToggleNotification: (flightId: string) => void;
 }
 
-// Airline name mapping (extracted from ImageKit filenames)
+// ImageKit logo filenames (IATA code → exact filename)
+const AIRLINE_LOGO_FILES: Record<string, string> = {
+  '3U': '3U (Sichuan Airlines).png',
+  '4Y': '4Y (Discover Airlines).png',
+  '6E': '6E (IndiGo).png',
+  '8D': '8D (FitsAir).png',
+  'AF': 'AF (Air France).png',
+  'AI': 'AI (Air India).png',
+  'AK': 'AK (AirAsia).png',
+  'AZ': 'AZ (ITA Airways).png',
+  'B4': 'B4 (beOnd).png',
+  'BA': 'BA (British Airways).png',
+  'BS': 'BS (US-Bangla Airlines).png',
+  'DE': 'DE (Condor).png',
+  'EK': 'EK (Emirates).png',
+  'EY': 'EY (Etihad Airways).png',
+  'FD': 'FD (Thai AirAsia).png',
+  'FZ': 'FZ (FlyDubai).png',
+  'G9': 'G9 (Air Arabia).png',
+  'GF': 'GF (Gulf Air).png',
+  'HX': 'HX (Hong Kong Airlines).png',
+  'HY': 'HY (Uzbekistan Airways).png',
+  'IB': 'IB (Iberia).png',
+  'J2': 'J2 (Azerbaijan Airlines).png',
+  'J9': 'J9 (Jazeera Airways).png',
+  'JD': 'JD (Beijing Capital Airlines).png',
+  'KC': 'KC (Air Astana).png',
+  'KU': 'KU (Kuwait Airways).png',
+  'LO': 'LO (LOT Polish Airlines).png',
+  'MH': 'MH (Malaysia Airlines).png',
+  'MU': 'MU (China Eastern Airlines).png',
+  'NO': 'NO (Neos).png',
+  'NR': 'NR (MantaAir).png',
+  'OD': 'OD (Batik Air Malaysia).png',
+  'OS': 'OS (Austrian Airlines).png',
+  'PG': 'PG (Bangkok Airways).png',
+  'Q2': 'Q2 (Maldivian).png',
+  'QR': 'QR (Qatar Airways).png',
+  'SH': 'SH (FlyMe).png',
+  'SQ': 'SQ (Singapore Airlines).png',
+  'SU': 'SU (Aeroflot).png',
+  'SV': 'SV (Saudia).png',
+  'TK': 'TK (Turkish Airlines).png',
+  'UL': 'UL (SriLankan Airlines).png',
+  'VP': 'VP (VillaAir).png',
+  'VS': 'VS (Virgin Atlantic).png',
+  'W6': 'W6 (Wizz Air).png',
+  'WK': 'WK (Edelweiss Air).png',
+  'WY': 'WY (Oman Air).png',
+  'XY': 'XY (Flynas).png',
+  'ZF': 'ZF (Azur Air).png',
+};
+
+// Airline name mapping (corrected)
 const AIRLINE_NAMES: Record<string, string> = {
+  '3U': 'Sichuan Airlines',
+  '4Y': 'Discover Airlines',
   '6E': 'IndiGo',
   '8D': 'FitsAir',
-  'A3': 'Aegean Airlines',
-  'AC': 'Air Canada',
   'AF': 'Air France',
   'AI': 'Air India',
   'AK': 'AirAsia',
-  'AT': 'Royal Air Maroc',
-  'AY': 'Finnair',
   'AZ': 'ITA Airways',
+  'B4': 'beOnd',
   'BA': 'British Airways',
   'BS': 'US-Bangla Airlines',
-  'CA': 'Air China',
-  'CX': 'Cathay Pacific',
   'DE': 'Condor',
-  'DL': 'Delta',
   'EK': 'Emirates',
-  'ET': 'Ethiopian Airlines',
   'EY': 'Etihad Airways',
   'FD': 'Thai AirAsia',
-  'FZ': 'Flydubai',
+  'FZ': 'FlyDubai',
   'G9': 'Air Arabia',
   'GF': 'Gulf Air',
-  'HA': 'Hawaiian Airlines',
-  'HU': 'Hainan Airlines',
+  'HX': 'Hong Kong Airlines',
+  'HY': 'Uzbekistan Airways',
   'IB': 'Iberia',
   'J2': 'Azerbaijan Airlines',
-  'JL': 'Japan Airlines',
+  'J9': 'Jazeera Airways',
+  'JD': 'Beijing Capital Airlines',
   'KC': 'Air Astana',
-  'KE': 'Korean Air',
-  'KL': 'KLM',
-  'KQ': 'Kenya Airways',
-  'LH': 'Lufthansa',
-  'LO': 'LOT Polish',
-  'LX': 'Swiss',
+  'KU': 'Kuwait Airways',
+  'LO': 'LOT Polish Airlines',
   'MH': 'Malaysia Airlines',
-  'MS': 'EgyptAir',
-  'MU': 'China Eastern',
-  'NH': 'ANA',
-  'NR': 'Manta Air',
+  'MU': 'China Eastern Airlines',
+  'NO': 'Neos',
+  'NR': 'MantaAir',
+  'OD': 'Batik Air Malaysia',
   'OS': 'Austrian Airlines',
-  'OZ': 'Asiana Airlines',
-  'PR': 'Philippine Airlines',
+  'PG': 'Bangkok Airways',
   'Q2': 'Maldivian',
-  'QF': 'Qantas',
   'QR': 'Qatar Airways',
-  'QZ': 'Indonesia AirAsia',
-  'RJ': 'Royal Jordanian',
-  'SA': 'South African Airways',
-  'SK': 'SAS',
+  'SH': 'FlyMe',
   'SQ': 'Singapore Airlines',
   'SU': 'Aeroflot',
   'SV': 'Saudia',
-  'TG': 'Thai Airways',
   'TK': 'Turkish Airlines',
-  'UA': 'United Airlines',
   'UL': 'SriLankan Airlines',
-  'VA': 'Virgin Australia',
-  'VN': 'Vietnam Airlines',
-  'VP': 'Villa Air',
+  'VP': 'VillaAir',
   'VS': 'Virgin Atlantic',
+  'W6': 'Wizz Air',
   'WK': 'Edelweiss Air',
   'WY': 'Oman Air',
+  'XY': 'Flynas',
   'ZF': 'Azur Air',
 };
 
@@ -154,6 +192,15 @@ const formatTime = (time: string, format: '12h' | '24h') => {
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
 };
 
+// Get logo URL from ImageKit
+const getAirlineLogoUrl = (airlineCode: string) => {
+  const filename = AIRLINE_LOGO_FILES[airlineCode];
+  if (filename) {
+    return `https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/${encodeURIComponent(filename)}`;
+  }
+  return null;
+};
+
 const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Props) => {
   const { settings } = useSettings();
   const [showAirlineName, setShowAirlineName] = useState(false);
@@ -163,9 +210,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   
   const logoColor = getLogoColor(flight.status);
   const airlineName = AIRLINE_NAMES[flight.airlineCode] || flight.airlineCode;
-  
-  // ImageKit SVG logo URL
-  const airlineLogoUrl = `https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/${flight.airlineCode.toLowerCase()}.svg`;
+  const airlineLogoUrl = getAirlineLogoUrl(flight.airlineCode);
 
   // Handle logo click with auto-fadeout
   const handleLogoClick = () => {
@@ -230,7 +275,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
               >
                 {airlineName}
               </span>
-            ) : logoError ? (
+            ) : logoError || !airlineLogoUrl ? (
               <Plane 
                 className="w-6 h-6 -rotate-45" 
                 style={{ color: logoColor }}
