@@ -250,70 +250,70 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
 
   return (
     <div className={cn("flight-card", getStatusClass(flight.status))}>
-      {/* Top Row: Logo, Flight ID, Status, Bell */}
-      <div className="flex items-start justify-between gap-3">
-        {/* Logo & Flight Info */}
-        <div className="flex flex-col items-start gap-2 flex-1">
-          {/* Clickable Logo */}
-          <button
-            onClick={handleLogoClick}
-            className={cn(
-              "w-14 h-14 rounded-xl flex items-center justify-center overflow-hidden transition-all duration-300 relative"
-            )}
-            style={{ 
-              backgroundColor: `${logoColor}15`,
-              border: `1px solid ${logoColor}30`
-            }}
-          >
-            {showAirlineName ? (
-              <span 
-                className={cn(
-                  "text-[10px] font-medium text-center px-1 leading-tight transition-all duration-500",
-                  isFadingOut && "opacity-0 blur-sm"
-                )}
-                style={{ color: logoColor }}
-              >
-                {airlineName}
-              </span>
-            ) : logoError || !airlineLogoUrl ? (
-              <Plane 
-                className="w-6 h-6 -rotate-45" 
-                style={{ color: logoColor }}
-              />
-            ) : (
-              <img 
-                src={airlineLogoUrl}
-                alt={`${flight.airlineCode} logo`}
-                className={cn(
-                  "w-10 h-10 object-contain transition-all duration-500",
-                  showAirlineName && "blur-sm opacity-0"
-                )}
-                style={{ 
-                  filter: `brightness(0) invert(1) drop-shadow(0 0 2px ${logoColor})`,
-                }}
-                onError={() => setLogoError(true)}
-              />
-            )}
-          </button>
-          
-          {/* Flight ID & Status */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={cn("font-display font-bold text-lg", getTextColorClass(flight.status))}>
+      {/* Top Row: Logo, Flight Info, Bell */}
+      <div className="flex items-center gap-3">
+        {/* Compact Logo (2 text rows height) */}
+        <button
+          onClick={handleLogoClick}
+          className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden transition-all duration-300 relative"
+          style={{ 
+            backgroundColor: `${logoColor}15`,
+            border: `1px solid ${logoColor}30`
+          }}
+        >
+          {showAirlineName ? (
+            <span 
+              className={cn(
+                "text-[8px] font-medium text-center px-0.5 leading-tight transition-all duration-500",
+                isFadingOut && "opacity-0 blur-sm"
+              )}
+              style={{ color: logoColor }}
+            >
+              {airlineName}
+            </span>
+          ) : logoError || !airlineLogoUrl ? (
+            <Plane 
+              className="w-5 h-5 -rotate-45" 
+              style={{ color: logoColor }}
+            />
+          ) : (
+            <img 
+              src={airlineLogoUrl}
+              alt={`${flight.airlineCode} logo`}
+              className={cn(
+                "w-8 h-8 object-contain transition-all duration-500",
+                showAirlineName && "blur-sm opacity-0"
+              )}
+              style={{ 
+                filter: `brightness(0) invert(1) drop-shadow(0 0 2px ${logoColor})`,
+              }}
+              onError={() => setLogoError(true)}
+            />
+          )}
+        </button>
+
+        {/* Flight ID & Origin - 2 rows */}
+        <div className="flex flex-col flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className={cn("font-display font-bold text-base", getTextColorClass(flight.status))}>
               {flight.flightId}
             </span>
             {flight.status !== '-' && (
-              <span className={cn("status-badge", getStatusBadgeClass(flight.status))}>
+              <span className={cn("status-badge text-xs", getStatusBadgeClass(flight.status))}>
                 {flight.status}
               </span>
             )}
           </div>
+          <span className={cn("text-sm truncate", getTextColorClass(flight.status))}>
+            {flight.origin}
+          </span>
         </div>
 
         {/* Notification Bell */}
         <button
           onClick={() => onToggleNotification(flight.id)}
           className={cn(
-            "p-2 rounded-full transition-all duration-300",
+            "p-2 rounded-full transition-all duration-300 flex-shrink-0",
             isNotificationEnabled 
               ? "active-selection" 
               : "hover:bg-white/10"
@@ -327,11 +327,6 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           )}
         </button>
       </div>
-
-      {/* Origin */}
-      <p className="text-sm text-muted-foreground mt-2">
-        From <span className={cn("font-medium", getTextColorClass(flight.status))}>{flight.origin}</span>
-      </p>
 
       {/* Time Info */}
       <div className="mt-3 flex items-center justify-between text-sm">
