@@ -14,7 +14,155 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      flights: {
+        Row: {
+          actual_time: string | null
+          airline_code: string
+          created_at: string
+          estimated_time: string | null
+          flight_date: string
+          flight_id: string
+          id: string
+          origin: string
+          scheduled_time: string
+          status: string
+          terminal: string
+          updated_at: string
+        }
+        Insert: {
+          actual_time?: string | null
+          airline_code: string
+          created_at?: string
+          estimated_time?: string | null
+          flight_date: string
+          flight_id: string
+          id?: string
+          origin: string
+          scheduled_time: string
+          status?: string
+          terminal: string
+          updated_at?: string
+        }
+        Update: {
+          actual_time?: string | null
+          airline_code?: string
+          created_at?: string
+          estimated_time?: string | null
+          flight_date?: string
+          flight_id?: string
+          id?: string
+          origin?: string
+          scheduled_time?: string
+          status?: string
+          terminal?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      notification_log: {
+        Row: {
+          error_message: string | null
+          id: string
+          notification_type: string
+          sent_at: string
+          status_change: string
+          subscription_id: string
+          success: boolean
+        }
+        Insert: {
+          error_message?: string | null
+          id?: string
+          notification_type: string
+          sent_at?: string
+          status_change: string
+          subscription_id: string
+          success?: boolean
+        }
+        Update: {
+          error_message?: string | null
+          id?: string
+          notification_type?: string
+          sent_at?: string
+          status_change?: string
+          subscription_id?: string
+          success?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_log_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "notification_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_subscriptions: {
+        Row: {
+          created_at: string
+          flight_date: string
+          flight_id: string
+          id: string
+          notify_email: boolean | null
+          notify_push: boolean | null
+          notify_sms: boolean | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          flight_date: string
+          flight_id: string
+          id?: string
+          notify_email?: boolean | null
+          notify_push?: boolean | null
+          notify_sms?: boolean | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          flight_date?: string
+          flight_id?: string
+          id?: string
+          notify_email?: boolean | null
+          notify_push?: boolean | null
+          notify_sms?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          fcm_token: string | null
+          id: string
+          notification_email: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          fcm_token?: string | null
+          id?: string
+          notification_email?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          fcm_token?: string | null
+          id?: string
+          notification_email?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

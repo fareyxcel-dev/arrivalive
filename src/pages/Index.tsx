@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AnimatedBackground from '@/components/AnimatedBackground';
 import Header from '@/components/Header';
 import WeatherBar from '@/components/WeatherBar';
@@ -7,29 +8,48 @@ import SettingsModal from '@/components/SettingsModal';
 import ExportModal from '@/components/ExportModal';
 import { Flight } from '@/components/FlightCard';
 import { toast } from 'sonner';
-
-// Mock flight data - will be replaced with real API data
-const MOCK_FLIGHTS: Flight[] = [
-  { id: '1', flightId: 'G9 093', origin: 'Sharjah', scheduledTime: '08:10', estimatedTime: '07:57', terminal: 'T1', status: 'LANDED', date: 'Wednesday 18 Dec, 2024', airlineCode: 'G9' },
-  { id: '2', flightId: 'EK 652', origin: 'Dubai', scheduledTime: '09:30', estimatedTime: '09:45', terminal: 'T1', status: 'DELAYED', date: 'Wednesday 18 Dec, 2024', airlineCode: 'EK' },
-  { id: '3', flightId: 'SQ 452', origin: 'Singapore', scheduledTime: '10:15', estimatedTime: '10:15', terminal: 'T1', status: '-', date: 'Wednesday 18 Dec, 2024', airlineCode: 'SQ' },
-  { id: '4', flightId: 'QR 674', origin: 'Doha', scheduledTime: '11:00', estimatedTime: '11:00', terminal: 'T2', status: '-', date: 'Wednesday 18 Dec, 2024', airlineCode: 'QR' },
-  { id: '5', flightId: 'TK 730', origin: 'Istanbul', scheduledTime: '12:30', estimatedTime: '12:30', terminal: 'T2', status: '-', date: 'Wednesday 18 Dec, 2024', airlineCode: 'TK' },
-  { id: '6', flightId: 'Q2 401', origin: 'Gan Island', scheduledTime: '14:00', estimatedTime: '14:00', terminal: 'DOM', status: '-', date: 'Wednesday 18 Dec, 2024', airlineCode: 'Q2' },
-  { id: '7', flightId: 'Q2 501', origin: 'Kaadedhdhoo', scheduledTime: '15:30', estimatedTime: '15:30', terminal: 'DOM', status: 'CANCELLED', date: 'Wednesday 18 Dec, 2024', airlineCode: 'Q2' },
-];
+import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
 
 const OPENWEATHER_API_KEY = '78aaad585d417afad796fd6c0aaea73b';
 
 const Index = () => {
+  const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [weather, setWeather] = useState<{ temp: number; condition: string; humidity: number; windSpeed: number } | null>(null);
-  const [flights, setFlights] = useState<Flight[]>(MOCK_FLIGHTS);
+  const [flights, setFlights] = useState<Flight[]>([]);
   const [notificationIds, setNotificationIds] = useState<Set<string>>(new Set());
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Auth state
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        setTimeout(() => {
+          loadUserSubscriptions(session.user.id);
+        }, 0);
+      }
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        loadUserSubscriptions(session.user.id);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Update time every second
   useEffect(() => {
@@ -56,8 +76,51 @@ const Index = () => {
       }
     };
     fetchWeather();
-    const interval = setInterval(fetchWeather, 600000); // Every 10 min
+    const interval = setInterval(fetchWeather, 600000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Fetch flights and subscribe to realtime
+  useEffect(() => {
+    fetchFlights();
+
+    const channel = supabase
+      .channel('flights-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'flights' },
+        (payload) => {
+          console.log('Realtime update:', payload);
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            setFlights(prev => {
+              const newFlight = payload.new as any;
+              const existing = prev.findIndex(f => f.id === newFlight.id);
+              const converted: Flight = {
+                id: newFlight.id,
+                flightId: newFlight.flight_id,
+                origin: newFlight.origin,
+                scheduledTime: newFlight.scheduled_time,
+                estimatedTime: newFlight.estimated_time || newFlight.scheduled_time,
+                terminal: newFlight.terminal,
+                status: newFlight.status,
+                date: newFlight.flight_date,
+                airlineCode: newFlight.airline_code,
+              };
+              if (existing >= 0) {
+                const updated = [...prev];
+                updated[existing] = converted;
+                return updated;
+              }
+              return [...prev, converted];
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // PWA install prompt
@@ -69,6 +132,75 @@ const Index = () => {
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
+
+  const fetchFlights = async () => {
+    setIsLoading(true);
+    try {
+      // First try to get from edge function (which scrapes and updates DB)
+      const { data, error } = await supabase.functions.invoke('scrape-flights');
+      
+      if (error) {
+        console.error('Scrape error:', error);
+      }
+
+      // Then fetch from database
+      const today = new Date().toISOString().split('T')[0];
+      const { data: dbFlights, error: dbError } = await supabase
+        .from('flights')
+        .select('*')
+        .eq('flight_date', today)
+        .order('scheduled_time', { ascending: true });
+
+      if (dbError) {
+        console.error('DB error:', dbError);
+        return;
+      }
+
+      if (dbFlights && dbFlights.length > 0) {
+        setFlights(dbFlights.map(f => ({
+          id: f.id,
+          flightId: f.flight_id,
+          origin: f.origin,
+          scheduledTime: f.scheduled_time,
+          estimatedTime: f.estimated_time || f.scheduled_time,
+          terminal: f.terminal,
+          status: f.status,
+          date: f.flight_date,
+          airlineCode: f.airline_code,
+        })));
+      } else if (data?.flights) {
+        // Use scraped data if DB empty
+        setFlights(data.flights.map((f: any) => ({
+          id: f.flight_id + f.flight_date,
+          flightId: f.flight_id,
+          origin: f.origin,
+          scheduledTime: f.scheduled_time,
+          estimatedTime: f.estimated_time || f.scheduled_time,
+          terminal: f.terminal,
+          status: f.status,
+          date: f.flight_date,
+          airlineCode: f.airline_code,
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching flights:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadUserSubscriptions = async (userId: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    const { data } = await supabase
+      .from('notification_subscriptions')
+      .select('flight_id')
+      .eq('user_id', userId)
+      .eq('flight_date', today);
+
+    if (data) {
+      setNotificationIds(new Set(data.map(s => s.flight_id)));
+    }
+  };
 
   const handleInstallPWA = async () => {
     if (deferredPrompt) {
@@ -84,22 +216,62 @@ const Index = () => {
   };
 
   const handleForceRefresh = () => {
-    toast.success('Schedule refreshed');
-    // Will trigger real API refresh
+    toast.success('Refreshing schedule...');
+    fetchFlights();
   };
 
-  const handleToggleNotification = (flightId: string) => {
-    setNotificationIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(flightId)) {
-        newSet.delete(flightId);
+  const handleToggleNotification = async (flightId: string) => {
+    if (!user) {
+      toast.info('Please sign in to enable notifications');
+      navigate('/auth');
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const isSubscribed = notificationIds.has(flightId);
+
+    if (isSubscribed) {
+      const { error } = await supabase
+        .from('notification_subscriptions')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('flight_id', flightId)
+        .eq('flight_date', today);
+
+      if (!error) {
+        setNotificationIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(flightId);
+          return newSet;
+        });
         toast.info('Notifications disabled');
-      } else {
-        newSet.add(flightId);
+      }
+    } else {
+      const { error } = await supabase
+        .from('notification_subscriptions')
+        .insert({
+          user_id: user.id,
+          flight_id: flightId,
+          flight_date: today,
+          notify_push: true,
+          notify_email: true,
+        });
+
+      if (!error) {
+        setNotificationIds(prev => new Set(prev).add(flightId));
         toast.success('Notifications enabled');
       }
-      return newSet;
-    });
+    }
+  };
+
+  const handleAuthAction = async () => {
+    if (user) {
+      await supabase.auth.signOut();
+      setNotificationIds(new Set());
+      toast.success('Signed out');
+    } else {
+      navigate('/auth');
+    }
   };
 
   const t1Flights = flights.filter(f => f.terminal === 'T1');
@@ -115,8 +287,8 @@ const Index = () => {
           onForceRefresh={handleForceRefresh}
           onExportSchedule={() => setIsExportOpen(true)}
           onOpenSettings={() => setIsSettingsOpen(true)}
-          isLoggedIn={isLoggedIn}
-          onAuthAction={() => setIsLoggedIn(!isLoggedIn)}
+          isLoggedIn={!!user}
+          onAuthAction={handleAuthAction}
           onInstallPWA={handleInstallPWA}
         />
 
@@ -124,30 +296,42 @@ const Index = () => {
           <WeatherBar weather={weather} currentTime={currentTime} />
 
           <div className="px-4 space-y-4">
-            <div className="glass rounded-xl p-3 text-center text-sm text-muted-foreground animate-pulse-soft">
-              Loading flight data...
-            </div>
+            {isLoading ? (
+              <div className="glass rounded-xl p-3 text-center text-sm text-muted-foreground animate-pulse-soft">
+                Loading flight data...
+              </div>
+            ) : flights.length === 0 ? (
+              <div className="glass rounded-xl p-3 text-center text-sm text-muted-foreground">
+                No flights found for today
+              </div>
+            ) : null}
 
-            <TerminalGroup
-              terminal="T1"
-              flights={t1Flights}
-              notificationIds={notificationIds}
-              onToggleNotification={handleToggleNotification}
-            />
+            {t1Flights.length > 0 && (
+              <TerminalGroup
+                terminal="T1"
+                flights={t1Flights}
+                notificationIds={notificationIds}
+                onToggleNotification={handleToggleNotification}
+              />
+            )}
 
-            <TerminalGroup
-              terminal="T2"
-              flights={t2Flights}
-              notificationIds={notificationIds}
-              onToggleNotification={handleToggleNotification}
-            />
+            {t2Flights.length > 0 && (
+              <TerminalGroup
+                terminal="T2"
+                flights={t2Flights}
+                notificationIds={notificationIds}
+                onToggleNotification={handleToggleNotification}
+              />
+            )}
 
-            <TerminalGroup
-              terminal="DOM"
-              flights={domFlights}
-              notificationIds={notificationIds}
-              onToggleNotification={handleToggleNotification}
-            />
+            {domFlights.length > 0 && (
+              <TerminalGroup
+                terminal="DOM"
+                flights={domFlights}
+                notificationIds={notificationIds}
+                onToggleNotification={handleToggleNotification}
+              />
+            )}
           </div>
         </main>
       </div>

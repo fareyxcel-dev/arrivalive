@@ -74,7 +74,7 @@ export default {
         },
       },
       fontFamily: {
-        display: ['Orbitron', 'sans-serif'],
+        display: ['Bebas Neue', 'sans-serif'],
         body: ['Inter', 'sans-serif'],
       },
       borderRadius: {

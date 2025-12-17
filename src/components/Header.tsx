@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, X, RefreshCw, Download, Settings, LogIn, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import headerLogo from '@/assets/header-logo.png';
 
 interface Props {
   onForceRefresh: () => void;
@@ -36,35 +37,11 @@ const Header = ({
           onClick={onInstallPWA}
           className="flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
         >
-          <div className="flex items-center">
-            {/* Palm tree icon */}
-            <svg
-              viewBox="0 0 40 40"
-              className="w-10 h-10 text-foreground"
-              fill="currentColor"
-            >
-              <path d="M20 38V22M20 22C20 22 12 18 8 12C8 12 14 14 20 14C26 14 32 12 32 12C28 18 20 22 20 22Z" 
-                    stroke="currentColor" 
-                    strokeWidth="2" 
-                    fill="none" />
-              <path d="M20 14C20 14 22 8 28 6C28 6 26 10 24 12" 
-                    stroke="currentColor" 
-                    strokeWidth="1.5" 
-                    fill="none" />
-              <path d="M20 14C20 14 18 8 12 6C12 6 14 10 16 12" 
-                    stroke="currentColor" 
-                    strokeWidth="1.5" 
-                    fill="none" />
-            </svg>
-            <div className="ml-2">
-              <h1 className="font-display text-2xl font-bold tracking-wider text-foreground">
-                ARRIVA<span className="text-primary">.</span>MV
-              </h1>
-              <p className="text-[8px] uppercase tracking-[0.3em] text-muted-foreground -mt-1">
-                Maldives Flight Tracker
-              </p>
-            </div>
-          </div>
+          <img
+            src={headerLogo}
+            alt="ARRIVA.MV"
+            className="h-10 w-auto"
+          />
         </button>
 
         {/* Orb Menu Button */}
