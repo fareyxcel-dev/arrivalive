@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, User, Palette, Bell, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface Props {
   isOpen: boolean;
@@ -9,25 +10,17 @@ interface Props {
 
 type Tab = 'profile' | 'appearance' | 'notifications' | 'security';
 
-const FONT_OPTIONS = [
-  { value: 'Inter', label: 'Inter' },
-  { value: 'Orbitron', label: 'Orbitron' },
-  { value: 'Roboto', label: 'Roboto' },
-  { value: 'Open Sans', label: 'Open Sans' },
-  { value: 'Poppins', label: 'Poppins' },
-];
-
 const SettingsModal = ({ isOpen, onClose }: Props) => {
+  const { 
+    settings, 
+    availableFonts, 
+    setFontFamily, 
+    setFontSize, 
+    setTextCase,
+    setNotification 
+  } = useSettings();
+  
   const [activeTab, setActiveTab] = useState<Tab>('profile');
-  const [fontSize, setFontSize] = useState(16);
-  const [fontFamily, setFontFamily] = useState('Inter');
-  const [textCase, setTextCase] = useState<'default' | 'uppercase' | 'lowercase'>('default');
-  const [notifications, setNotifications] = useState({
-    sms: false,
-    email: false,
-    push: true,
-    repeat: false,
-  });
 
   if (!isOpen) return null;
 
@@ -106,26 +99,27 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
               <div>
                 <label className="text-xs text-muted-foreground uppercase tracking-wide">Font Family</label>
                 <select
-                  value={fontFamily}
+                  value={settings.fontFamily}
                   onChange={e => setFontFamily(e.target.value)}
                   className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-primary outline-none"
+                  style={{ fontFamily: settings.fontFamily }}
                 >
-                  {FONT_OPTIONS.map(font => (
-                    <option key={font.value} value={font.value} className="bg-popover">
-                      {font.label}
+                  {availableFonts.map(font => (
+                    <option key={font} value={font} className="bg-popover" style={{ fontFamily: font }}>
+                      {font}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
                 <label className="text-xs text-muted-foreground uppercase tracking-wide">
-                  Font Size: {fontSize}px
+                  Font Size: {settings.fontSize}px
                 </label>
                 <input
                   type="range"
                   min="12"
                   max="24"
-                  value={fontSize}
+                  value={settings.fontSize}
                   onChange={e => setFontSize(Number(e.target.value))}
                   className="w-full mt-2"
                 />
@@ -139,7 +133,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                       onClick={() => setTextCase(option)}
                       className={cn(
                         "flex-1 py-2 rounded-lg text-sm transition-colors",
-                        textCase === option ? "active-selection" : "glass hover:bg-white/10"
+                        settings.textCase === option ? "active-selection" : "glass hover:bg-white/10"
                       )}
                     >
                       {option.charAt(0).toUpperCase() + option.slice(1)}
@@ -147,28 +141,27 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                   ))}
                 </div>
               </div>
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide">Time Format</label>
+                <p className="text-xs text-muted-foreground mt-2">Click the clock to toggle 12/24 hour format</p>
+              </div>
             </div>
           )}
 
           {activeTab === 'notifications' && (
             <div className="space-y-3 animate-fade-in">
               {[
-                { key: 'sms', label: 'SMS Notifications' },
-                { key: 'email', label: 'Email Notifications' },
-                { key: 'push', label: 'Push Notifications' },
-                { key: 'repeat', label: 'Repeat Notifications' },
+                { key: 'sms' as const, label: 'SMS Notifications' },
+                { key: 'email' as const, label: 'Email Notifications' },
+                { key: 'push' as const, label: 'Push Notifications' },
+                { key: 'repeat' as const, label: 'Repeat Notifications' },
               ].map(item => (
                 <button
                   key={item.key}
-                  onClick={() =>
-                    setNotifications(prev => ({
-                      ...prev,
-                      [item.key]: !prev[item.key as keyof typeof prev],
-                    }))
-                  }
+                  onClick={() => setNotification(item.key, !settings.notifications[item.key])}
                   className={cn(
                     "w-full flex items-center justify-between p-3 rounded-lg transition-colors",
-                    notifications[item.key as keyof typeof notifications]
+                    settings.notifications[item.key]
                       ? "active-selection"
                       : "glass hover:bg-white/10"
                   )}
@@ -177,7 +170,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                   <div
                     className={cn(
                       "w-10 h-6 rounded-full transition-colors relative",
-                      notifications[item.key as keyof typeof notifications]
+                      settings.notifications[item.key]
                         ? "bg-primary"
                         : "bg-muted"
                     )}
@@ -185,7 +178,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                     <div
                       className={cn(
                         "absolute top-1 w-4 h-4 rounded-full bg-white transition-transform",
-                        notifications[item.key as keyof typeof notifications]
+                        settings.notifications[item.key]
                           ? "translate-x-5"
                           : "translate-x-1"
                       )}
@@ -209,7 +202,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
               <button className="w-full py-3 rounded-lg glass hover:bg-white/10 transition-colors text-left px-4">
                 Change Password
               </button>
-              <button className="w-full py-3 rounded-lg glass hover:bg-white/10 transition-colors text-left px-4 text-status-delayed">
+              <button className="w-full py-3 rounded-lg glass hover:bg-white/10 transition-colors text-left px-4 text-delayed">
                 Deactivate Account
               </button>
               <button className="w-full py-3 rounded-lg bg-destructive/20 hover:bg-destructive/30 transition-colors text-left px-4 text-destructive border border-destructive/30">

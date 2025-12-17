@@ -1,10 +1,11 @@
-import { Moon, Sun, Cloud, CloudRain, CloudSnow, Wind } from 'lucide-react';
+import { Moon, Sun, Cloud, CloudRain, CloudSnow } from 'lucide-react';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface WeatherData {
   temp: number;
   condition: string;
-  humidity: number;
-  windSpeed: number;
+  humidity?: number;
+  windSpeed?: number;
 }
 
 interface Props {
@@ -19,6 +20,9 @@ const getWeatherIcon = (condition: string, isDay: boolean) => {
     case 'clear':
       return isDay ? <Sun className={iconClass} /> : <Moon className={iconClass} />;
     case 'clouds':
+    case 'haze':
+    case 'mist':
+    case 'fog':
       return <Cloud className={iconClass} />;
     case 'rain':
     case 'drizzle':
@@ -31,10 +35,18 @@ const getWeatherIcon = (condition: string, isDay: boolean) => {
 };
 
 const WeatherBar = ({ weather, currentTime }: Props) => {
+  const { settings, toggleTimeFormat } = useSettings();
   const hours = currentTime.getHours();
   const isDay = hours >= 6 && hours < 18;
   
   const formatTime = (date: Date) => {
+    if (settings.timeFormat === '12h') {
+      return date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+    }
     return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
@@ -54,14 +66,17 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
   return (
     <div className="glass rounded-2xl p-4 mx-4 mb-4">
       <div className="flex items-center justify-between">
-        {/* Time Section */}
-        <div className="flex items-center gap-3">
+        {/* Time Section - Clickable to toggle format */}
+        <button 
+          onClick={toggleTimeFormat}
+          className="flex items-center gap-3 hover:bg-white/5 rounded-lg p-1 -m-1 transition-colors"
+        >
           {isDay ? (
             <Sun className="w-6 h-6 text-primary animate-pulse-soft" />
           ) : (
             <Moon className="w-6 h-6 text-accent animate-pulse-soft" />
           )}
-          <div>
+          <div className="text-left">
             <p className="font-display text-xl font-bold text-foreground">
               {formatTime(currentTime)}
             </p>
@@ -69,7 +84,7 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
               {formatDate(currentTime)}
             </p>
           </div>
-        </div>
+        </button>
 
         {/* Weather Section */}
         {weather && (
