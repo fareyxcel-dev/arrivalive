@@ -1,96 +1,73 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Sky gradient colors based on time of day */
+    --sky-midnight: 300 20% 6%;
+    --sky-dawn: 180 1% 19%;
+    --sky-sunrise: 240 1% 29%;
+    --sky-early-morning: 0 0% 41%;
+    --sky-morning: 0 0% 46%;
+    --sky-daytime: 240 2% 52%;
+    --sky-noon: 0 0% 50%;
+    --sky-evening: 0 0% 40%;
+    --sky-sunset: 0 0% 43%;
+    --sky-dusk: 0 1% 22%;
+    --sky-night: 0 0% 13%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* Status colors */
+    --status-delayed: 28 98% 49%;
+    --status-landed: 175 97% 57%;
+    --status-cancelled: 351 81% 53%;
+    --status-default: 0 0% 75%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    /* Core theme */
+    --background: 0 0% 8%;
+    --foreground: 150 6% 87%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --card: 0 0% 10%;
+    --card-foreground: 150 6% 87%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 150 6% 87%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --primary: 28 98% 49%;
+    --primary-foreground: 0 0% 100%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 150 6% 87%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 55%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --accent: 175 97% 57%;
+    --accent-foreground: 0 0% 8%;
 
-    --radius: 0.5rem;
+    --destructive: 351 81% 53%;
+    --destructive-foreground: 0 0% 100%;
 
-    --sidebar-background: 0 0% 98%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 28 98% 49%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --radius: 1rem;
 
-    --sidebar-primary: 240 5.9% 10%;
+    /* Glass effects */
+    --glass-bg: 0 0% 50%;
+    --glass-border: 0 0% 30%;
+    --glass-blur: 20px;
 
-    --sidebar-primary-foreground: 0 0% 98%;
+    /* Active selection */
+    --active-bg: 0 0% 38%;
+    --active-text: 150 6% 87%;
 
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Fonts */
+    --font-display: 'Orbitron', sans-serif;
+    --font-body: 'Inter', sans-serif;
   }
 }
 
@@ -99,7 +76,289 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    font-family: var(--font-body);
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer components {
+  /* Glass morphism effect */
+  .glass {
+    @apply backdrop-blur-xl border border-white/10;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--glass-bg) / 0.1) 0%,
+      hsl(var(--glass-bg) / 0.05) 100%
+    );
+  }
+
+  .glass-strong {
+    @apply backdrop-blur-2xl border border-white/15;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--glass-bg) / 0.2) 0%,
+      hsl(var(--glass-bg) / 0.1) 100%
+    );
+  }
+
+  /* Status-tinted glass effects */
+  .glass-delayed {
+    @apply backdrop-blur-xl border;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--status-delayed) / 0.15) 0%,
+      hsl(var(--status-delayed) / 0.05) 100%
+    );
+    border-color: hsl(var(--status-delayed) / 0.3);
+  }
+
+  .glass-landed {
+    @apply backdrop-blur-xl border;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--status-landed) / 0.15) 0%,
+      hsl(var(--status-landed) / 0.05) 100%
+    );
+    border-color: hsl(var(--status-landed) / 0.3);
+  }
+
+  .glass-cancelled {
+    @apply backdrop-blur-xl border;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--status-cancelled) / 0.15) 0%,
+      hsl(var(--status-cancelled) / 0.05) 100%
+    );
+    border-color: hsl(var(--status-cancelled) / 0.3);
+  }
+
+  /* Active selection states */
+  .active-selection {
+    @apply backdrop-blur-xl;
+    background: hsl(var(--active-bg) / 0.4);
+    color: hsl(var(--active-text));
+  }
+
+  /* Animated sky gradient */
+  .sky-gradient {
+    background: linear-gradient(
+      180deg,
+      var(--current-sky-top) 0%,
+      var(--current-sky-mid) 50%,
+      var(--current-sky-bottom) 100%
+    );
+    transition: background 60s linear;
+  }
+
+  /* Monochrome filter */
+  .monochrome {
+    filter: grayscale(100%) contrast(1.1);
+  }
+
+  /* Glass reflection animation */
+  .glass-reflect {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glass-reflect::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      45deg,
+      transparent 40%,
+      rgba(255, 255, 255, 0.03) 45%,
+      rgba(255, 255, 255, 0.08) 50%,
+      rgba(255, 255, 255, 0.03) 55%,
+      transparent 60%
+    );
+    animation: glass-shine 8s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes glass-shine {
+    0%, 100% {
+      transform: translateX(-100%) translateY(-100%) rotate(45deg);
+    }
+    50% {
+      transform: translateX(100%) translateY(100%) rotate(45deg);
+    }
+  }
+
+  /* Orb button styles */
+  .orb-button {
+    @apply w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300;
+    background: hsl(var(--glass-bg) / 0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid hsl(0 0% 100% / 0.1);
+  }
+
+  .orb-button:hover {
+    background: hsl(var(--glass-bg) / 0.3);
+    border-color: hsl(0 0% 100% / 0.2);
+  }
+
+  /* Flight card base */
+  .flight-card {
+    @apply glass rounded-xl p-4 transition-all duration-300 glass-reflect;
+  }
+
+  .flight-card:hover {
+    @apply scale-[1.02];
+    box-shadow: 0 8px 32px hsl(0 0% 0% / 0.3);
+  }
+
+  /* Terminal group */
+  .terminal-group {
+    @apply glass rounded-2xl overflow-hidden transition-all duration-500;
+  }
+
+  /* Date pill */
+  .date-pill {
+    @apply px-4 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-300;
+    background: hsl(var(--glass-bg) / 0.15);
+    border: 1px solid hsl(0 0% 100% / 0.1);
+  }
+
+  .date-pill:hover {
+    background: hsl(var(--glass-bg) / 0.25);
+  }
+
+  /* Status badge */
+  .status-badge {
+    @apply px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider;
+  }
+
+  .status-badge-delayed {
+    background: hsl(var(--status-delayed) / 0.2);
+    color: hsl(var(--status-delayed));
+    border: 1px solid hsl(var(--status-delayed) / 0.4);
+  }
+
+  .status-badge-landed {
+    background: hsl(var(--status-landed) / 0.2);
+    color: hsl(var(--status-landed));
+    border: 1px solid hsl(var(--status-landed) / 0.4);
+  }
+
+  .status-badge-cancelled {
+    background: hsl(var(--status-cancelled) / 0.2);
+    color: hsl(var(--status-cancelled));
+    border: 1px solid hsl(var(--status-cancelled) / 0.4);
+  }
+
+  /* Modal overlay */
+  .modal-overlay {
+    @apply fixed inset-0 z-50;
+    background: hsl(0 0% 0% / 0.7);
+    backdrop-filter: blur(8px);
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+}
+
+@layer utilities {
+  /* Text colors for flight statuses */
+  .text-delayed {
+    color: hsl(var(--status-delayed));
+  }
+
+  .text-landed {
+    color: hsl(var(--status-landed));
+  }
+
+  .text-cancelled {
+    color: hsl(var(--status-cancelled));
+  }
+
+  /* Background colors for flight statuses */
+  .bg-delayed {
+    background-color: hsl(var(--status-delayed));
+  }
+
+  .bg-landed {
+    background-color: hsl(var(--status-landed));
+  }
+
+  .bg-cancelled {
+    background-color: hsl(var(--status-cancelled));
+  }
+
+  /* Floating animation */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  /* Pulse glow */
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+    }
+    50% {
+      box-shadow: 0 0 40px hsl(var(--primary) / 0.5);
+    }
+  }
+
+  /* Rotate animation for orb */
+  .animate-rotate-45 {
+    animation: rotate45 0.3s ease forwards;
+  }
+
+  @keyframes rotate45 {
+    to {
+      transform: rotate(45deg);
+    }
+  }
+
+  .animate-rotate-0 {
+    animation: rotate0 0.3s ease forwards;
+  }
+
+  @keyframes rotate0 {
+    to {
+      transform: rotate(0deg);
+    }
   }
 }
