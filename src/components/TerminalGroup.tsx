@@ -58,10 +58,26 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
 
   const groupedFlights = useMemo(() => groupFlightsByDate(flights), [flights]);
-  const dates = Object.keys(groupedFlights).sort(); // Sort dates chronologically (YYYY-MM-DD format)
+  const dates = Object.keys(groupedFlights).sort();
 
-  const upcomingCount = flights.filter(f => f.status === '-').length;
-  const landedCount = flights.filter(f => f.status.toUpperCase() === 'LANDED').length;
+  // Calculate terminal stats from date groups (ensures consistency with date-level counts)
+  const terminalStats = useMemo(() => {
+    let total = 0;
+    let landed = 0;
+    
+    Object.values(groupedFlights).forEach(dateFlights => {
+      total += dateFlights.length;
+      landed += dateFlights.filter(f => 
+        f.status.toUpperCase().includes('LANDED')
+      ).length;
+    });
+    
+    return {
+      total,
+      landed,
+      remaining: total - landed
+    };
+  }, [groupedFlights]);
 
   const toggleDate = (date: string) => {
     const newExpandedDates = new Set(expandedDates);
@@ -102,7 +118,7 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
               {getTerminalName(terminal)}
             </h2>
             <p className="text-xs text-muted-foreground">
-              {flights.length} FLIGHTS · {upcomingCount} UPCOMING · {landedCount} LANDED
+              {terminalStats.total} FLIGHTS · {terminalStats.remaining} REMAINING · {terminalStats.landed} LANDED
             </p>
           </div>
         </div>
@@ -125,8 +141,8 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
             dates.map(date => {
               const dateFlights = groupedFlights[date];
               const totalCount = dateFlights.length;
-              const landedCount = dateFlights.filter(f => f.status.toUpperCase() === 'LANDED').length;
-              const remainingCount = totalCount - landedCount;
+              const dateLandedCount = dateFlights.filter(f => f.status.toUpperCase().includes('LANDED')).length;
+              const remainingCount = totalCount - dateLandedCount;
               
               return (
                 <div key={date} className="space-y-3">
@@ -141,7 +157,7 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
                     <span className="font-medium">{formatDateDisplay(date)}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">
-                        {totalCount} flights, {landedCount} landed, {remainingCount} remaining
+                        {totalCount} flights, {dateLandedCount} landed, {remainingCount} remaining
                       </span>
                       <ChevronDown
                         className={cn(
