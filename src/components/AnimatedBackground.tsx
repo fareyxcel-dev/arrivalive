@@ -5,7 +5,8 @@ import weatherAssets from '@/assets/weather-assets.png';
 interface WeatherData {
   temp: number;
   condition: string;
-  icon: string;
+  humidity?: number;
+  windSpeed?: number;
 }
 
 const SKY_COLORS = [
