@@ -148,6 +148,89 @@
     color: hsl(var(--active-text));
   }
 
+  /* Brightened glass interactive elements (buttons, toggles) */
+  .glass-interactive {
+    @apply backdrop-blur-xl border border-white/20;
+    background: linear-gradient(
+      135deg,
+      hsl(0 0% 60% / 0.3) 0%,
+      hsl(0 0% 50% / 0.2) 100%
+    );
+    transition: all 0.2s ease;
+  }
+
+  .glass-interactive:hover {
+    background: linear-gradient(
+      135deg,
+      hsl(0 0% 70% / 0.4) 0%,
+      hsl(0 0% 60% / 0.3) 100%
+    );
+  }
+
+  .glass-interactive:active {
+    background: linear-gradient(
+      135deg,
+      hsl(0 0% 80% / 0.5) 0%,
+      hsl(0 0% 70% / 0.4) 100%
+    );
+  }
+
+  /* Toggle switch - brightened glass fill */
+  .toggle-on {
+    background: linear-gradient(
+      135deg,
+      hsl(0 0% 70% / 0.5) 0%,
+      hsl(0 0% 60% / 0.4) 100%
+    );
+    backdrop-filter: blur(8px);
+  }
+
+  .toggle-off {
+    background: hsl(0 0% 30% / 0.4);
+  }
+
+  /* Custom range slider - remove blue, use glass theme */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  input[type="range"]::-webkit-slider-runnable-track {
+    background: hsl(0 0% 40% / 0.4);
+    height: 6px;
+    border-radius: 3px;
+    backdrop-filter: blur(4px);
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    background: hsl(0 0% 85%);
+    height: 18px;
+    width: 18px;
+    border-radius: 50%;
+    margin-top: -6px;
+    box-shadow: 0 2px 8px hsl(0 0% 0% / 0.3);
+  }
+
+  input[type="range"]::-moz-range-track {
+    background: hsl(0 0% 40% / 0.4);
+    height: 6px;
+    border-radius: 3px;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    background: hsl(0 0% 85%);
+    height: 18px;
+    width: 18px;
+    border-radius: 50%;
+    border: none;
+    box-shadow: 0 2px 8px hsl(0 0% 0% / 0.3);
+  }
+
   /* Animated sky gradient */
   .sky-gradient {
     background: linear-gradient(

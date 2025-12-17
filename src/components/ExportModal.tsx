@@ -134,7 +134,7 @@ const ExportModal = ({ isOpen, onClose }: Props) => {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <FileSpreadsheet className="w-5 h-5 text-primary" />
+            <FileSpreadsheet className="w-5 h-5 text-foreground/70" />
             <h2 className="font-display text-lg font-bold text-foreground">Export Schedule</h2>
           </div>
           <button
@@ -156,7 +156,7 @@ const ExportModal = ({ isOpen, onClose }: Props) => {
                 <select
                   value={selectedDate}
                   onChange={e => setSelectedDate(e.target.value)}
-                  className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-primary outline-none"
+                  className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-foreground/50 outline-none"
                 >
                   {dates.map(date => (
                     <option key={date} value={date} className="bg-popover">
@@ -187,7 +187,7 @@ const ExportModal = ({ isOpen, onClose }: Props) => {
               <button
                 onClick={handleExport}
                 disabled={dates.length === 0}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-primary text-primary-foreground font-medium transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-lg glass-interactive text-foreground font-medium transition-all hover:bg-white/30 active:scale-[0.98] disabled:opacity-50"
               >
                 <Download className="w-4 h-4" />
                 Download CSV

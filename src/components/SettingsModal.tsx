@@ -57,7 +57,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
               className={cn(
                 "flex-1 flex items-center justify-center gap-2 py-3 text-sm transition-colors",
                 activeTab === tab.id
-                  ? "text-foreground border-b-2 border-primary"
+                  ? "text-foreground border-b-2 border-foreground/50"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -84,7 +84,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                 <input
                   type="text"
                   placeholder="Guest"
-                  className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-primary outline-none"
+                  className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-foreground/50 outline-none"
                 />
               </div>
               <div className="glass rounded-lg p-4">
@@ -101,7 +101,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                 <select
                   value={settings.fontFamily}
                   onChange={e => setFontFamily(e.target.value)}
-                  className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-primary outline-none"
+                  className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-foreground/50 outline-none"
                   style={{ fontFamily: settings.fontFamily }}
                 >
                   {availableFonts.map(font => (
@@ -171,8 +171,8 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                     className={cn(
                       "w-10 h-6 rounded-full transition-colors relative",
                       settings.notifications[item.key]
-                        ? "bg-primary"
-                        : "bg-muted"
+                        ? "toggle-on"
+                        : "toggle-off"
                     )}
                   >
                     <div
@@ -196,7 +196,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                 <input
                   type="tel"
                   placeholder="+960 XXXXXXX"
-                  className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-primary outline-none"
+                  className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-foreground/50 outline-none"
                 />
               </div>
               <button className="w-full py-3 rounded-lg glass hover:bg-white/10 transition-colors text-left px-4">

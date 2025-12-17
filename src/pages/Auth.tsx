@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import AnimatedBackground from '@/components/AnimatedBackground';
-import { Plane, Mail, Lock, User, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, User, ArrowLeft } from 'lucide-react';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -108,12 +108,11 @@ const Auth = () => {
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full glass mb-4">
-              <Plane className="w-8 h-8 text-primary" />
-            </div>
-            <h1 className="font-display text-3xl font-bold text-foreground">
-              ARRIVA<span className="text-primary">.</span>MV
-            </h1>
+            <img
+              src="/splash-logo.png"
+              alt="ARRIVA.MV"
+              className="h-28 w-auto mx-auto mb-4"
+            />
             <p className="text-sm text-muted-foreground mt-1">
               {isLogin ? 'Sign in to track your flights' : 'Create an account to get started'}
             </p>
@@ -176,7 +175,7 @@ const Auth = () => {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                className="w-full glass-interactive hover:bg-white/25 text-foreground border-0"
               >
                 {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
               </Button>
