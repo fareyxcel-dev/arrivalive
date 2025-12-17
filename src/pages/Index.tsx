@@ -311,9 +311,24 @@ const Index = () => {
     }
   };
 
-  const t1Flights = flights.filter(f => f.terminal === 'T1');
-  const t2Flights = flights.filter(f => f.terminal === 'T2');
-  const domFlights = flights.filter(f => f.terminal === 'DOM');
+  // Filter today's flights: remove flights that are more than 1 hour before current time
+  const filteredFlights = flights.filter(flight => {
+    const today = new Date().toISOString().split('T')[0];
+    if (flight.date !== today) return true; // Keep all future dates
+    
+    // For today's flights, only show if scheduled time is within 1 hour of now or later
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+    const [hours, minutes] = flight.scheduledTime.split(':').map(Number);
+    const flightTime = new Date(now);
+    flightTime.setHours(hours, minutes, 0, 0);
+    
+    return flightTime >= oneHourAgo;
+  });
+
+  const t1Flights = filteredFlights.filter(f => f.terminal === 'T1');
+  const t2Flights = filteredFlights.filter(f => f.terminal === 'T2');
+  const domFlights = filteredFlights.filter(f => f.terminal === 'DOM');
 
   return (
     <div className="relative min-h-screen">
@@ -374,7 +389,7 @@ const Index = () => {
       </div>
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-      <ExportModal isOpen={isExportOpen} onClose={() => setIsExportOpen(false)} flights={flights} />
+      <ExportModal isOpen={isExportOpen} onClose={() => setIsExportOpen(false)} />
     </div>
   );
 };
