@@ -62,12 +62,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check for status changes before upsert
-    const today = new Date().toISOString().split("T")[0];
+    // Check for status changes before upsert - get all recent flight dates
+    const today = new Date();
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 1);
+    const weekAhead = new Date(today);
+    weekAhead.setDate(weekAhead.getDate() + 7);
+    
     const { data: existingFlights } = await supabase
       .from("flights")
       .select("*")
-      .eq("flight_date", today);
+      .gte("flight_date", weekAgo.toISOString().split("T")[0])
+      .lte("flight_date", weekAhead.toISOString().split("T")[0]);
 
     const statusChanges: Array<{ flight: FlightData; oldStatus: string; newStatus: string }> = [];
 
@@ -147,18 +153,44 @@ Deno.serve(async (req) => {
 
 function parseFlightData(html: string): FlightData[] {
   const flights: FlightData[] = [];
-  const today = new Date().toISOString().split("T")[0];
-
-  // Parse using the actual HTML structure from fis.com.mv
-  // The HTML has rows with class "schedulerow" or "schedulerowtwo"
-  // Each row contains: airline img, flight number, city, time, estimated, terminal, status
   
+  // Parse date headers from HTML - they appear as "Thursday 18 Dec, 2025" in sumheadtop class
+  const dateHeaderPattern = /<tr[^>]*class="sumheadtop"[^>]*>[\s\S]*?<td[^>]*>([^<]+)<\/td>/gi;
+  const dateHeaders: { index: number; date: string }[] = [];
+  
+  let dateMatch;
+  while ((dateMatch = dateHeaderPattern.exec(html)) !== null) {
+    const dateText = dateMatch[1].trim();
+    // Parse date like "Thursday 18 Dec, 2025" or "Wednesday 17 Dec, 2025"
+    const parsedDate = parseDateHeader(dateText);
+    if (parsedDate) {
+      dateHeaders.push({ index: dateMatch.index, date: parsedDate });
+    }
+  }
+  
+  // If no date headers found, use today
+  if (dateHeaders.length === 0) {
+    dateHeaders.push({ index: 0, date: new Date().toISOString().split("T")[0] });
+  }
+  
+  console.log(`Found ${dateHeaders.length} date headers:`, dateHeaders.map(d => d.date));
+
   // Match rows with schedulerow or schedulerowtwo class
-  const rowPattern = /<tr[^>]*class="schedule(?:row|rowtwo)"[^>]*valign="top"[^>]*>([\s\S]*?)(?=<tr[^>]*class="schedule|<\/table)/gi;
+  const rowPattern = /<tr[^>]*class="schedule(?:row|rowtwo)"[^>]*valign="top"[^>]*>([\s\S]*?)(?=<tr[^>]*class="schedule|<tr[^>]*class="sumhead|<\/table)/gi;
   
   let rowMatch;
   while ((rowMatch = rowPattern.exec(html)) !== null) {
     const rowHtml = rowMatch[1];
+    const rowIndex = rowMatch.index;
+    
+    // Determine which date this row belongs to
+    let flightDate = dateHeaders[0].date;
+    for (let i = dateHeaders.length - 1; i >= 0; i--) {
+      if (rowIndex > dateHeaders[i].index) {
+        flightDate = dateHeaders[i].date;
+        break;
+      }
+    }
     
     // Extract airline code from logo URL (e.g., /webfids/images/q2.gif -> Q2)
     const logoMatch = rowHtml.match(/src="[^"]*\/([a-z0-9]+)\.gif"/i);
@@ -200,7 +232,7 @@ function parseFlightData(html: string): FlightData[] {
         actual_time: null,
         terminal: terminal || "T1",
         status: status || "-",
-        flight_date: today,
+        flight_date: flightDate,
       });
     }
   }
@@ -208,6 +240,7 @@ function parseFlightData(html: string): FlightData[] {
   // Alternative simpler parsing if the above doesn't work
   if (flights.length === 0) {
     console.log("Trying alternative parsing...");
+    const today = new Date().toISOString().split("T")[0];
     
     // Look for pattern: flight class with flight number
     const simplePattern = /<td[^>]*class="flight"[^>]*nowrap[^>]*>([^<]+)<\/td>\s*<td[^>]*class="city"[^>]*>([^<]+)<\/td>\s*<td[^>]*class="time"[^>]*>([^<]+)<\/td>\s*<td[^>]*class="estimated"[^>]*>([^<]+)<\/td>\s*<td[^>]*class="terminal"[^>]*>([^<]+)<\/td>\s*<td[^>]*>[^<]*<div[^>]*class="status"[^>]*>([^<]*)<\/div>/gi;
@@ -229,67 +262,30 @@ function parseFlightData(html: string): FlightData[] {
     }
   }
 
-  // Final fallback - parse line by line looking for flight patterns
-  if (flights.length === 0) {
-    console.log("Trying line-by-line parsing...");
-    
-    // Match flight numbers followed by city data
-    const lines = html.split('\n');
-    let currentFlight: Partial<FlightData> = {};
-    
-    for (const line of lines) {
-      const flightMatch = line.match(/class="flight"[^>]*>([A-Z0-9]{2}\s?\d+)/i);
-      if (flightMatch) {
-        if (currentFlight.flight_id) {
-          flights.push({
-            flight_id: currentFlight.flight_id,
-            airline_code: currentFlight.airline_code || currentFlight.flight_id.substring(0, 2),
-            origin: currentFlight.origin || "Unknown",
-            scheduled_time: currentFlight.scheduled_time || "00:00",
-            estimated_time: currentFlight.estimated_time || null,
-            actual_time: null,
-            terminal: currentFlight.terminal || "T1",
-            status: currentFlight.status || "-",
-            flight_date: today,
-          });
-        }
-        currentFlight = { flight_id: flightMatch[1].trim(), airline_code: flightMatch[1].substring(0, 2).toUpperCase() };
-      }
-      
-      const cityMatch = line.match(/class="city">([^<]+)/i);
-      if (cityMatch && currentFlight.flight_id) currentFlight.origin = cityMatch[1].trim();
-      
-      const timeMatch = line.match(/class="time">([^<]+)/i);
-      if (timeMatch && currentFlight.flight_id) currentFlight.scheduled_time = timeMatch[1].trim();
-      
-      const estMatch = line.match(/class="estimated">([^<]+)/i);
-      if (estMatch && currentFlight.flight_id) currentFlight.estimated_time = estMatch[1].trim();
-      
-      const termMatch = line.match(/class="terminal">([^<]+)/i);
-      if (termMatch && currentFlight.flight_id) currentFlight.terminal = termMatch[1].trim();
-      
-      const statusMatch = line.match(/class="status">([^<]+)/i);
-      if (statusMatch && currentFlight.flight_id) {
-        currentFlight.status = statusMatch[1].trim();
-        // Push completed flight
-        flights.push({
-          flight_id: currentFlight.flight_id,
-          airline_code: currentFlight.airline_code || currentFlight.flight_id.substring(0, 2),
-          origin: currentFlight.origin || "Unknown",
-          scheduled_time: currentFlight.scheduled_time || "00:00",
-          estimated_time: currentFlight.estimated_time || null,
-          actual_time: null,
-          terminal: currentFlight.terminal || "T1",
-          status: currentFlight.status || "-",
-          flight_date: today,
-        });
-        currentFlight = {};
-      }
-    }
-  }
-
   console.log(`Parsed flights: ${JSON.stringify(flights.slice(0, 3))}...`);
   return flights;
+}
+
+function parseDateHeader(dateText: string): string | null {
+  // Parse "Thursday 18 Dec, 2025" format
+  const match = dateText.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*,?\s*(\d{4})/i);
+  if (match) {
+    const day = parseInt(match[1], 10);
+    const monthStr = match[2].toLowerCase();
+    const year = parseInt(match[3], 10);
+    
+    const months: Record<string, number> = {
+      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+    };
+    
+    const month = months[monthStr];
+    if (month !== undefined) {
+      const date = new Date(year, month, day);
+      return date.toISOString().split("T")[0];
+    }
+  }
+  return null;
 }
 
 function getMockFlights(): FlightData[] {

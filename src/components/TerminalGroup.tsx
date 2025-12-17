@@ -10,35 +10,25 @@ interface Props {
   onToggleNotification: (flightId: string) => void;
 }
 
-// Smart grouping: group flights by date, handling flights past midnight
-const groupFlightsByDateSmart = (flights: Flight[]) => {
+// Group flights by their actual date field from the database
+const groupFlightsByDate = (flights: Flight[]) => {
   const grouped: Record<string, Flight[]> = {};
   
-  // Sort flights by scheduled time
-  const sorted = [...flights].sort((a, b) => {
-    const timeA = a.scheduledTime.replace(':', '');
-    const timeB = b.scheduledTime.replace(':', '');
-    return parseInt(timeA) - parseInt(timeB);
+  flights.forEach(flight => {
+    const date = flight.date;
+    if (!grouped[date]) {
+      grouped[date] = [];
+    }
+    grouped[date].push(flight);
   });
   
-  let currentDate = '';
-  let lastTime = -1;
-  
-  sorted.forEach(flight => {
-    const flightTime = parseInt(flight.scheduledTime.replace(':', ''));
-    
-    // Determine if we need a new date group
-    // If time goes backwards significantly (like from 23:xx to 00:xx), it's a new day
-    if (currentDate === '' || (lastTime > 2000 && flightTime < 600)) {
-      // Parse the date or use flight.date
-      currentDate = flight.date;
-    }
-    
-    if (!grouped[currentDate]) {
-      grouped[currentDate] = [];
-    }
-    grouped[currentDate].push(flight);
-    lastTime = flightTime;
+  // Sort flights within each date by scheduled time
+  Object.keys(grouped).forEach(date => {
+    grouped[date].sort((a, b) => {
+      const timeA = a.scheduledTime.replace(':', '');
+      const timeB = b.scheduledTime.replace(':', '');
+      return parseInt(timeA) - parseInt(timeB);
+    });
   });
 
   return grouped;
@@ -67,8 +57,8 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
 
-  const groupedFlights = useMemo(() => groupFlightsByDateSmart(flights), [flights]);
-  const dates = Object.keys(groupedFlights).sort();
+  const groupedFlights = useMemo(() => groupFlightsByDate(flights), [flights]);
+  const dates = Object.keys(groupedFlights).sort(); // Sort dates chronologically (YYYY-MM-DD format)
 
   const upcomingCount = flights.filter(f => f.status === '-').length;
   const landedCount = flights.filter(f => f.status.toUpperCase() === 'LANDED').length;
