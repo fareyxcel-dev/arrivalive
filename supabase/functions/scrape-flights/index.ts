@@ -117,60 +117,109 @@ Deno.serve(async (req) => {
   }
 });
 
+// Parse date text like "Wednesday 17 Dec, 2025" → "2025-12-17"
+function parseDateText(dateText: string): string | null {
+  const months: Record<string, string> = {
+    'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+    'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+    'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+  };
+  
+  // Match patterns like "17 Dec, 2025" or "17 Dec 2025"
+  const match = dateText.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec),?\s*(\d{4})/i);
+  if (!match) return null;
+  
+  const day = match[1].padStart(2, '0');
+  const month = months[match[2]];
+  const year = match[3];
+  
+  if (!month) return null;
+  return `${year}-${month}-${day}`;
+}
+
 function parseFlightData(html: string): FlightData[] {
   const flights: FlightData[] = [];
   
-  // Find all table rows
-  const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-  let rowMatch;
+  // Track current date as we walk through the HTML
+  let currentDateISO: string | null = null;
   
-  while ((rowMatch = rowPattern.exec(html)) !== null) {
+  // First, find all date headers with class="sumheadtop"
+  // Pattern: <td colspan="7" class="sumheadtop">Wednesday 17 Dec, 2025&nbsp;</td>
+  const dateHeaderPattern = /<td[^>]*class="sumheadtop"[^>]*>([\s\S]*?)<\/td>/gi;
+  const datePositions: Array<{position: number, date: string}> = [];
+  
+  let dateMatch;
+  while ((dateMatch = dateHeaderPattern.exec(html)) !== null) {
+    const headerText = dateMatch[1].replace(/&nbsp;/g, ' ').replace(/<[^>]+>/g, '').trim();
+    const parsedDate = parseDateText(headerText);
+    if (parsedDate) {
+      datePositions.push({ position: dateMatch.index, date: parsedDate });
+      console.log(`Found date header at position ${dateMatch.index}: "${headerText}" → ${parsedDate}`);
+    }
+  }
+  
+  if (datePositions.length === 0) {
+    console.log("No date headers found!");
+    return [];
+  }
+  
+  // Now find all flight rows
+  // Pattern: <tr class="schedulerow" valign="top"> or <tr class="schedulerowtwo" valign="top">
+  const flightRowPattern = /<tr[^>]*class="(?:schedulerow|schedulerowtwo)"[^>]*valign="top"[^>]*>([\s\S]*?)<\/tr>/gi;
+  
+  let rowMatch;
+  while ((rowMatch = flightRowPattern.exec(html)) !== null) {
     const rowHtml = rowMatch[1];
+    const rowPosition = rowMatch.index;
     
-    // Extract all td elements
-    const tdPattern = /<td[^>]*>([\s\S]*?)<\/td>/gi;
-    const tds: string[] = [];
-    let tdMatch;
-    while ((tdMatch = tdPattern.exec(rowHtml)) !== null) {
-      // Strip HTML tags and clean text
-      const text = tdMatch[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
-      tds.push(text);
+    // Determine which date this row belongs to (find the most recent date header before this row)
+    let flightDate = datePositions[0].date; // Default to first date
+    for (const dp of datePositions) {
+      if (dp.position < rowPosition) {
+        flightDate = dp.date;
+      } else {
+        break;
+      }
     }
     
-    // Skip rows that don't have 7+ columns (flight data rows)
-    if (tds.length < 7) continue;
+    // Extract cells by class name
+    const getCellContent = (className: string): string => {
+      const cellPattern = new RegExp(`<td[^>]*class="${className}"[^>]*>([\\s\\S]*?)<\\/td>`, 'i');
+      const match = rowHtml.match(cellPattern);
+      if (!match) return '';
+      return match[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
+    };
     
-    const flightId = tds[0].trim();
-    const origin = tds[1].trim();
-    const dateStr = tds[2].trim();           // DD/MM/YYYY
-    const scheduledTime = tds[3].trim();     // HH:mm
-    const estimatedTime = tds[4].trim();     // HH:mm or empty
-    const terminal = tds[5].trim() || 'T1';
-    const status = tds[6].trim() || '-';
+    // Extract status from div.status inside the last td
+    const getStatus = (): string => {
+      const statusMatch = rowHtml.match(/<div[^>]*class="status"[^>]*>([\s\S]*?)<\/div>/i);
+      if (!statusMatch) return '-';
+      const status = statusMatch[1].replace(/&nbsp;/g, ' ').trim();
+      return status || '-';
+    };
     
-    // Validate this is a flight row (flight ID should match pattern like "Q2 123")
+    const flightId = getCellContent('flight');
+    const origin = getCellContent('city');
+    const scheduledTime = getCellContent('time');
+    const estimatedTime = getCellContent('estimated');
+    const terminal = getCellContent('terminal').replace(/\s+/g, '') || 'T1';
+    const status = getStatus();
+    
+    // Validate flight ID
     if (!flightId || !/^[A-Z0-9]{2}\s?\d+/i.test(flightId)) continue;
+    if (!scheduledTime) continue;
     
-    // Validate and parse date (DD/MM/YYYY)
-    if (!dateStr || !scheduledTime) continue;
-    const dateParts = dateStr.split('/');
-    if (dateParts.length !== 3) continue;
-    
-    const [day, month, year] = dateParts;
-    const flightDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-    
-    // Extract airline code from flight ID
     const airlineCode = flightId.substring(0, 2).toUpperCase();
     
     flights.push({
       flight_id: flightId,
       airline_code: airlineCode,
-      origin: origin || "Unknown",
+      origin: origin || 'Unknown',
       scheduled_time: scheduledTime,
       estimated_time: estimatedTime || null,
       actual_time: null,
-      terminal: terminal.replace(/\s+/g, '') || "T1",
-      status: status || "-",
+      terminal: terminal,
+      status: status,
       flight_date: flightDate,
     });
   }
@@ -182,8 +231,6 @@ function parseFlightData(html: string): FlightData[] {
   }
   return flights;
 }
-
-// Removed - no longer needed since we parse dates directly from table cells
 
 function getMockFlights(): FlightData[] {
   const today = new Date().toISOString().split("T")[0];
