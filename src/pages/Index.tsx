@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AnimatedBackground from '@/components/AnimatedBackground';
 import Header from '@/components/Header';
@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 
 const OPENWEATHER_API_KEY = '78aaad585d417afad796fd6c0aaea73b';
+const POLLING_INTERVAL = 30000; // 30 seconds
 
 const Index = () => {
   const navigate = useNavigate();
@@ -25,6 +26,19 @@ const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Register service worker
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(registration => {
+          console.log('SW registered:', registration);
+        })
+        .catch(error => {
+          console.error('SW registration failed:', error);
+        });
+    }
+  }, []);
 
   // Auth state
   useEffect(() => {
@@ -80,9 +94,72 @@ const Index = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch flights and subscribe to realtime
+  const fetchFlights = useCallback(async (showToast = false) => {
+    if (!isLoading && showToast) {
+      toast.info('Refreshing...');
+    }
+    
+    try {
+      // First try to get from edge function (which scrapes and updates DB)
+      const { data, error } = await supabase.functions.invoke('scrape-flights');
+      
+      if (error) {
+        console.error('Scrape error:', error);
+      }
+
+      // Then fetch from database
+      const today = new Date().toISOString().split('T')[0];
+      const { data: dbFlights, error: dbError } = await supabase
+        .from('flights')
+        .select('*')
+        .eq('flight_date', today)
+        .order('scheduled_time', { ascending: true });
+
+      if (dbError) {
+        console.error('DB error:', dbError);
+        return;
+      }
+
+      if (dbFlights && dbFlights.length > 0) {
+        setFlights(dbFlights.map(f => ({
+          id: f.id,
+          flightId: f.flight_id,
+          origin: f.origin,
+          scheduledTime: f.scheduled_time,
+          estimatedTime: f.estimated_time || f.scheduled_time,
+          terminal: f.terminal,
+          status: f.status,
+          date: f.flight_date,
+          airlineCode: f.airline_code,
+        })));
+      } else if (data?.flights) {
+        setFlights(data.flights.map((f: any) => ({
+          id: f.flight_id + f.flight_date,
+          flightId: f.flight_id,
+          origin: f.origin,
+          scheduledTime: f.scheduled_time,
+          estimatedTime: f.estimated_time || f.scheduled_time,
+          terminal: f.terminal,
+          status: f.status,
+          date: f.flight_date,
+          airlineCode: f.airline_code,
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching flights:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading]);
+
+  // Fetch flights and subscribe to realtime + 30s polling
   useEffect(() => {
     fetchFlights();
+
+    // 30 second polling
+    const pollingInterval = setInterval(() => {
+      fetchFlights();
+    }, POLLING_INTERVAL);
 
     const channel = supabase
       .channel('flights-realtime')
@@ -119,6 +196,7 @@ const Index = () => {
       .subscribe();
 
     return () => {
+      clearInterval(pollingInterval);
       supabase.removeChannel(channel);
     };
   }, []);
@@ -132,62 +210,6 @@ const Index = () => {
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
-
-  const fetchFlights = async () => {
-    setIsLoading(true);
-    try {
-      // First try to get from edge function (which scrapes and updates DB)
-      const { data, error } = await supabase.functions.invoke('scrape-flights');
-      
-      if (error) {
-        console.error('Scrape error:', error);
-      }
-
-      // Then fetch from database
-      const today = new Date().toISOString().split('T')[0];
-      const { data: dbFlights, error: dbError } = await supabase
-        .from('flights')
-        .select('*')
-        .eq('flight_date', today)
-        .order('scheduled_time', { ascending: true });
-
-      if (dbError) {
-        console.error('DB error:', dbError);
-        return;
-      }
-
-      if (dbFlights && dbFlights.length > 0) {
-        setFlights(dbFlights.map(f => ({
-          id: f.id,
-          flightId: f.flight_id,
-          origin: f.origin,
-          scheduledTime: f.scheduled_time,
-          estimatedTime: f.estimated_time || f.scheduled_time,
-          terminal: f.terminal,
-          status: f.status,
-          date: f.flight_date,
-          airlineCode: f.airline_code,
-        })));
-      } else if (data?.flights) {
-        // Use scraped data if DB empty
-        setFlights(data.flights.map((f: any) => ({
-          id: f.flight_id + f.flight_date,
-          flightId: f.flight_id,
-          origin: f.origin,
-          scheduledTime: f.scheduled_time,
-          estimatedTime: f.estimated_time || f.scheduled_time,
-          terminal: f.terminal,
-          status: f.status,
-          date: f.flight_date,
-          airlineCode: f.airline_code,
-        })));
-      }
-    } catch (error) {
-      console.error('Error fetching flights:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const loadUserSubscriptions = async (userId: string) => {
     const today = new Date().toISOString().split('T')[0];
@@ -216,8 +238,7 @@ const Index = () => {
   };
 
   const handleForceRefresh = () => {
-    toast.success('Refreshing schedule...');
-    fetchFlights();
+    fetchFlights(true);
   };
 
   const handleToggleNotification = async (flightId: string) => {
@@ -225,6 +246,15 @@ const Index = () => {
       toast.info('Please sign in to enable notifications');
       navigate('/auth');
       return;
+    }
+
+    // Request push notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        toast.error('Please enable notifications in your browser');
+        return;
+      }
     }
 
     const today = new Date().toISOString().split('T')[0];
@@ -259,7 +289,7 @@ const Index = () => {
 
       if (!error) {
         setNotificationIds(prev => new Set(prev).add(flightId));
-        toast.success('Notifications enabled');
+        toast.success('You\'ll be notified when this flight lands or is delayed');
       }
     }
   };

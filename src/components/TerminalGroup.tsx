@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronDown, Plane } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import FlightCard, { Flight } from './FlightCard';
@@ -10,25 +10,65 @@ interface Props {
   onToggleNotification: (flightId: string) => void;
 }
 
-const groupFlightsByDate = (flights: Flight[]) => {
+// Smart grouping: group flights by date, handling flights past midnight
+const groupFlightsByDateSmart = (flights: Flight[]) => {
   const grouped: Record<string, Flight[]> = {};
   
-  flights.forEach(flight => {
-    if (!grouped[flight.date]) {
-      grouped[flight.date] = [];
+  // Sort flights by scheduled time
+  const sorted = [...flights].sort((a, b) => {
+    const timeA = a.scheduledTime.replace(':', '');
+    const timeB = b.scheduledTime.replace(':', '');
+    return parseInt(timeA) - parseInt(timeB);
+  });
+  
+  let currentDate = '';
+  let lastTime = -1;
+  
+  sorted.forEach(flight => {
+    const flightTime = parseInt(flight.scheduledTime.replace(':', ''));
+    
+    // Determine if we need a new date group
+    // If time goes backwards significantly (like from 23:xx to 00:xx), it's a new day
+    if (currentDate === '' || (lastTime > 2000 && flightTime < 600)) {
+      // Parse the date or use flight.date
+      currentDate = flight.date;
     }
-    grouped[flight.date].push(flight);
+    
+    if (!grouped[currentDate]) {
+      grouped[currentDate] = [];
+    }
+    grouped[currentDate].push(flight);
+    lastTime = flightTime;
   });
 
   return grouped;
+};
+
+const formatDateDisplay = (dateStr: string) => {
+  const date = new Date(dateStr);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  const isToday = date.toDateString() === today.toDateString();
+  const isTomorrow = date.toDateString() === tomorrow.toDateString();
+  
+  if (isToday) return 'Today';
+  if (isTomorrow) return 'Tomorrow';
+  
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
 };
 
 const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotification }: Props) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
 
-  const groupedFlights = groupFlightsByDate(flights);
-  const dates = Object.keys(groupedFlights);
+  const groupedFlights = useMemo(() => groupFlightsByDateSmart(flights), [flights]);
+  const dates = Object.keys(groupedFlights).sort();
 
   const upcomingCount = flights.filter(f => f.status === '-').length;
   const landedCount = flights.filter(f => f.status.toUpperCase() === 'LANDED').length;
@@ -102,7 +142,7 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
                     expandedDates.has(date) && "active-selection"
                   )}
                 >
-                  <span className="font-medium">{date}</span>
+                  <span className="font-medium">{formatDateDisplay(date)}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">
                       {groupedFlights[date].length} flights
