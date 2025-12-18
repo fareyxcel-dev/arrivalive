@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { ChevronDown, Plane } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSettings } from '@/contexts/SettingsContext';
 import FlightCard, { Flight } from './FlightCard';
 
 interface Props {
@@ -34,23 +35,26 @@ const groupFlightsByDate = (flights: Flight[]) => {
   return grouped;
 };
 
+// Format date as "18 Dec - Wednesday"
 const formatDateDisplay = (dateStr: string) => {
   const date = new Date(dateStr + 'T00:00:00+05:00');
-  return date.toLocaleDateString('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  });
+  const day = date.getDate();
+  const month = date.toLocaleDateString('en-GB', { month: 'short' });
+  const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
+  return `${day} ${month} - ${weekday}`;
 };
 
 const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotification }: Props) => {
+  const { settings } = useSettings();
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [animationType, setAnimationType] = useState<'landing' | 'takeoff' | null>(null);
 
   const groupedFlights = useMemo(() => groupFlightsByDate(flights), [flights]);
   const dates = Object.keys(groupedFlights).sort();
 
-  // Calculate terminal stats from date groups (ensures consistency with date-level counts)
+  // Calculate terminal stats from date groups
   const terminalStats = useMemo(() => {
     let total = 0;
     let landed = 0;
@@ -68,6 +72,26 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
       remaining: total - landed
     };
   }, [groupedFlights]);
+
+  const handleToggleExpand = () => {
+    if (isExpanded) {
+      setAnimationType('takeoff');
+      setIsAnimating(true);
+      setTimeout(() => {
+        setIsExpanded(false);
+        setIsAnimating(false);
+        setAnimationType(null);
+      }, 400);
+    } else {
+      setIsExpanded(true);
+      setAnimationType('landing');
+      setIsAnimating(true);
+      setTimeout(() => {
+        setIsAnimating(false);
+        setAnimationType(null);
+      }, 500);
+    }
+  };
 
   const toggleDate = (date: string) => {
     const newExpandedDates = new Set(expandedDates);
@@ -96,15 +120,38 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
     <div className="terminal-group">
       {/* Terminal Header */}
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
+        onClick={handleToggleExpand}
+        className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors relative overflow-hidden"
       >
-        <div className="flex items-center gap-3">
+        {/* Animated plane behind terminal name */}
+        {(isExpanded || isAnimating) && (
+          <div 
+            className={cn(
+              "absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none",
+              animationType === 'landing' && "plane-landing",
+              animationType === 'takeoff' && "plane-takeoff",
+              !isAnimating && isExpanded && "opacity-30"
+            )}
+          >
+            <Plane className="w-8 h-8 text-foreground -rotate-45" />
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 z-10">
           <div className="w-10 h-10 rounded-lg glass flex items-center justify-center">
-            <Plane className="w-5 h-5 text-foreground -rotate-45" />
+            {/* Empty placeholder where plane icon was */}
+            <span 
+              className="text-lg font-bold text-foreground"
+              style={{ fontFamily: settings.fontFamily }}
+            >
+              {terminal}
+            </span>
           </div>
           <div className="text-left">
-            <h2 className="font-display text-lg font-bold text-foreground uppercase tracking-wider">
+            <h2 
+              className="text-lg font-bold text-foreground uppercase tracking-wider"
+              style={{ fontFamily: settings.fontFamily }}
+            >
               {getTerminalName(terminal)}
             </h2>
             <p className="text-xs text-muted-foreground">
@@ -114,7 +161,7 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
         </div>
         <ChevronDown
           className={cn(
-            "w-5 h-5 text-muted-foreground transition-transform duration-300",
+            "w-5 h-5 text-muted-foreground transition-transform duration-300 z-10",
             isExpanded && "rotate-180"
           )}
         />
@@ -144,7 +191,12 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
                       expandedDates.has(date) && "active-selection"
                     )}
                   >
-                    <span className="font-medium">{formatDateDisplay(date)}</span>
+                    <span 
+                      className="font-medium"
+                      style={{ fontFamily: settings.fontFamily }}
+                    >
+                      {formatDateDisplay(date)}
+                    </span>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">
                         {totalCount} flights, {dateLandedCount} landed, {remainingCount} remaining

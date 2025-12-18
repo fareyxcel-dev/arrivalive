@@ -9,6 +9,10 @@
     <meta name="author" content="ArrivaMv" />
     <meta name="theme-color" content="#151015" />
     
+    <!-- Preload critical assets for LCP -->
+    <link rel="preload" href="/splash-logo.png" as="image" />
+    <link rel="preload" href="/src/assets/header-logo.png" as="image" />
+    
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -19,6 +23,10 @@
     <!-- Icons -->
     <link rel="icon" type="image/png" href="/icon-512.png" />
     <link rel="apple-touch-icon" href="/icon-512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-512.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icon-512.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/icon-512.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/icon-512.png" />
     
     <!-- Splash Screens for iOS -->
     <link rel="apple-touch-startup-image" href="/splash-logo.png" />
@@ -35,10 +43,10 @@
     <meta name="twitter:description" content="Real-time Maldives flight arrivals" />
     <meta name="twitter:image" content="/icon-512.png" />
     
-    <!-- Google Fonts -->
+    <!-- Google Fonts - preconnect for performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700&display=swap" rel="stylesheet" />
   </head>
 
   <body>

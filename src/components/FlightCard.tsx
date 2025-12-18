@@ -30,7 +30,7 @@ const AIRLINE_LOGO_FILES: Record<string, string> = {
   '8D': '8D (FitsAir).png',
   'AF': 'AF (Air France).png',
   'AI': 'AI (Air India).png',
-  'AK': 'AK (AirAsia).png',
+  'AK': 'AK (Air Asia).png',
   'AZ': 'AZ (ITA Airways).png',
   'B4': 'B4 (beOnd).png',
   'BA': 'BA (British Airways).png',
@@ -75,7 +75,7 @@ const AIRLINE_LOGO_FILES: Record<string, string> = {
   'ZF': 'ZF (Azur Air).png',
 };
 
-// Airline name mapping (corrected)
+// Airline name mapping
 const AIRLINE_NAMES: Record<string, string> = {
   '3U': 'Sichuan Airlines',
   '4Y': 'Discover Airlines',
@@ -211,6 +211,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   const logoColor = getLogoColor(flight.status);
   const airlineName = AIRLINE_NAMES[flight.airlineCode] || flight.airlineCode;
   const airlineLogoUrl = getAirlineLogoUrl(flight.airlineCode);
+  const isLanded = flight.status.toUpperCase() === 'LANDED';
 
   // Handle logo click with auto-fadeout
   const handleLogoClick = () => {
@@ -219,16 +220,13 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
     setShowAirlineName(true);
     setIsFadingOut(false);
     
-    // Clear any existing timeout
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
     
-    // Start fadeout after 2 seconds
     timeoutRef.current = setTimeout(() => {
       setIsFadingOut(true);
       
-      // Complete fadeout after animation
       timeoutRef.current = setTimeout(() => {
         setShowAirlineName(false);
         setIsFadingOut(false);
@@ -236,7 +234,6 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
     }, 2000);
   };
 
-  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (timeoutRef.current) {
@@ -250,12 +247,12 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
 
   return (
     <div className={cn("flight-card", getStatusClass(flight.status))}>
-      {/* Top Row: Logo, Flight Info, Bell */}
+      {/* Top Row: Logo, Flight Info, Status Badge, Bell */}
       <div className="flex items-center gap-3">
-        {/* Compact Logo (2 text rows height) */}
+        {/* Expanded Logo */}
         <button
           onClick={handleLogoClick}
-          className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden transition-all duration-300 relative"
+          className="w-14 h-14 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden transition-all duration-300 relative"
           style={{ 
             backgroundColor: `${logoColor}15`,
             border: `1px solid ${logoColor}30`
@@ -273,7 +270,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             </span>
           ) : logoError || !airlineLogoUrl ? (
             <Plane 
-              className="w-5 h-5 -rotate-45" 
+              className="w-6 h-6 -rotate-45" 
               style={{ color: logoColor }}
             />
           ) : (
@@ -281,58 +278,77 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
               src={airlineLogoUrl}
               alt={`${flight.airlineCode} logo`}
               className={cn(
-                "w-8 h-8 object-contain transition-all duration-500",
+                "w-10 h-10 object-contain transition-all duration-500",
                 showAirlineName && "blur-sm opacity-0"
               )}
               style={{ 
-                filter: `brightness(0) invert(1) drop-shadow(0 0 2px ${logoColor})`,
+                filter: `brightness(0) saturate(100%) drop-shadow(0 0 2px ${logoColor})`,
               }}
               onError={() => setLogoError(true)}
+              onLoad={(e) => {
+                // Apply color tint after load
+                const img = e.currentTarget;
+                img.style.filter = `brightness(0) saturate(100%)`;
+                // Use CSS filter to colorize
+                const hue = flight.status.toUpperCase() === 'DELAYED' ? 'sepia(100%) saturate(500%) hue-rotate(-10deg)' :
+                            flight.status.toUpperCase() === 'LANDED' ? 'sepia(100%) saturate(500%) hue-rotate(130deg)' :
+                            flight.status.toUpperCase() === 'CANCELLED' ? 'sepia(100%) saturate(500%) hue-rotate(-40deg)' :
+                            'brightness(0) invert(1)';
+                img.style.filter = hue;
+              }}
             />
           )}
         </button>
 
-        {/* Flight ID & Origin - 2 rows */}
+        {/* Flight ID & Origin */}
         <div className="flex flex-col flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className={cn("font-display font-bold text-base", getTextColorClass(flight.status))}>
-              {flight.flightId}
-            </span>
-            {flight.status !== '-' && (
-              <span className={cn("status-badge text-xs", getStatusBadgeClass(flight.status))}>
-                {flight.status}
-              </span>
-            )}
-          </div>
+          <span 
+            className={cn("font-bold text-base", getTextColorClass(flight.status))}
+            style={{ fontFamily: settings.fontFamily }}
+          >
+            {flight.flightId}
+          </span>
           <span className={cn("text-sm truncate", getTextColorClass(flight.status))}>
             {flight.origin}
           </span>
         </div>
 
-        {/* Notification Bell */}
-        <button
-          onClick={() => onToggleNotification(flight.id)}
-          className={cn(
-            "p-2 rounded-full transition-all duration-300 flex-shrink-0",
-            isNotificationEnabled 
-              ? "active-selection" 
-              : "hover:bg-white/10"
-          )}
-          aria-label={isNotificationEnabled ? "Disable notifications" : "Enable notifications"}
-        >
-          {isNotificationEnabled ? (
-            <BellRing className="w-5 h-5 text-primary animate-pulse-soft" />
-          ) : (
-            <Bell className="w-5 h-5 text-muted-foreground" />
-          )}
-        </button>
+        {/* Status Badge - moved to right side */}
+        {flight.status !== '-' && (
+          <span className={cn("status-badge text-xs flex-shrink-0", getStatusBadgeClass(flight.status))}>
+            {flight.status}
+          </span>
+        )}
+
+        {/* Notification Bell - hidden if LANDED */}
+        {!isLanded && (
+          <button
+            onClick={() => onToggleNotification(flight.id)}
+            className={cn(
+              "p-2 rounded-full transition-all duration-300 flex-shrink-0",
+              isNotificationEnabled 
+                ? "active-selection" 
+                : "hover:bg-white/10"
+            )}
+            aria-label={isNotificationEnabled ? "Disable notifications" : "Enable notifications"}
+          >
+            {isNotificationEnabled ? (
+              <BellRing className="w-5 h-5 bell-active animate-pulse-soft" />
+            ) : (
+              <Bell className="w-5 h-5 bell-neutral" />
+            )}
+          </button>
+        )}
       </div>
 
       {/* Time Info */}
       <div className="mt-3 flex items-center justify-between text-sm">
         <div>
           <p className="text-muted-foreground text-xs">Scheduled</p>
-          <p className={cn("font-display font-semibold", getTextColorClass(flight.status))}>
+          <p 
+            className={cn("font-semibold", getTextColorClass(flight.status))}
+            style={{ fontFamily: settings.fontFamily }}
+          >
             {scheduledTimeFormatted}
           </p>
         </div>
@@ -343,7 +359,10 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
         </div>
         <div className="text-right">
           <p className="text-muted-foreground text-xs">Estimated</p>
-          <p className={cn("font-display font-semibold", getTextColorClass(flight.status))}>
+          <p 
+            className={cn("font-semibold", getTextColorClass(flight.status))}
+            style={{ fontFamily: settings.fontFamily }}
+          >
             {estimatedTimeFormatted}
           </p>
         </div>
