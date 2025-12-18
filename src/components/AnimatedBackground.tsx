@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
 import backgroundOverlay from '@/assets/background-overlay.png';
 import weatherAssets from '@/assets/weather-assets.png';
+import RainAnimation from './RainAnimation';
 
 interface WeatherData {
   temp: number;
   condition: string;
   humidity?: number;
   windSpeed?: number;
+  windDirection?: number;
+  precipitation?: number;
+  isRaining?: boolean;
 }
 
 const SKY_COLORS = [
@@ -29,7 +33,7 @@ const getCycleValue = (): number => {
   const now = new Date();
   const hours = now.getHours();
   const minutes = now.getMinutes();
-  return (hours * 60 + minutes) / 1440; // 1440 = 24 * 60
+  return (hours * 60 + minutes) / 1440;
 };
 
 const interpolateColor = (color1: string, color2: string, factor: number): string => {
@@ -60,7 +64,6 @@ const getSkyGradient = (cycleValue: number): string[] => {
 
   const currentColor = interpolateColor(start.color, end.color, factor);
   
-  // Create gradient with variations
   const lighterColor = interpolateColor(currentColor, '#ffffff', 0.1);
   const darkerColor = interpolateColor(currentColor, '#000000', 0.2);
 
@@ -81,7 +84,7 @@ const AnimatedBackground = ({ weather }: Props) => {
     };
 
     updateGradient();
-    const interval = setInterval(updateGradient, 60000); // Update every minute
+    const interval = setInterval(updateGradient, 60000);
 
     return () => clearInterval(interval);
   }, []);
@@ -117,7 +120,17 @@ const AnimatedBackground = ({ weather }: Props) => {
         />
       </div>
 
-      {/* Layer 4: Monochrome Filter + Glass Reflection */}
+      {/* Layer 4: Rain Animation (when raining) */}
+      {weather && (
+        <RainAnimation
+          isRaining={weather.isRaining || false}
+          precipitation={weather.precipitation || 0}
+          windSpeed={weather.windSpeed || 0}
+          windDirection={weather.windDirection || 180}
+        />
+      )}
+
+      {/* Layer 5: Monochrome Filter + Glass Reflection */}
       <div className="absolute inset-0 monochrome opacity-60 pointer-events-none" />
       
       {/* Glass-like reflection overlay */}

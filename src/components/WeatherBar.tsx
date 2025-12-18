@@ -1,4 +1,4 @@
-import { Moon, Sun, Cloud, CloudRain, CloudSnow } from 'lucide-react';
+import { Moon, Sun, Cloud, CloudRain, CloudSnow, CloudSun } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 
 interface WeatherData {
@@ -23,9 +23,10 @@ const getWeatherIcon = (condition: string, isDay: boolean) => {
     case 'haze':
     case 'mist':
     case 'fog':
-      return <Cloud className={iconClass} />;
+      return isDay ? <CloudSun className={iconClass} /> : <Cloud className={iconClass} />;
     case 'rain':
     case 'drizzle':
+    case 'thunderstorm':
       return <CloudRain className={iconClass} />;
     case 'snow':
       return <CloudSnow className={iconClass} />;
@@ -72,12 +73,15 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
           className="flex items-center gap-3 hover:bg-white/5 rounded-lg p-1 -m-1 transition-colors"
         >
           {isDay ? (
-            <Sun className="w-6 h-6 text-primary animate-pulse-soft" />
+            <Sun className="w-6 h-6 text-foreground animate-pulse-soft" />
           ) : (
-            <Moon className="w-6 h-6 text-accent animate-pulse-soft" />
+            <Moon className="w-6 h-6 text-foreground animate-pulse-soft" />
           )}
           <div className="text-left">
-            <p className="font-display text-xl font-bold text-foreground">
+            <p 
+              className="text-xl font-bold text-foreground"
+              style={{ fontFamily: settings.fontFamily }}
+            >
               {formatTime(currentTime)}
             </p>
             <p className="text-[10px] text-muted-foreground tracking-wide">
@@ -90,7 +94,10 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
         {weather && (
           <div className="flex items-center gap-3 text-right">
             <div>
-              <p className="font-display text-xl font-bold text-foreground">
+              <p 
+                className="text-xl font-bold text-foreground"
+                style={{ fontFamily: settings.fontFamily }}
+              >
                 {Math.round(weather.temp)}°C
               </p>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide">

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Download, FileSpreadsheet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface Props {
   isOpen: boolean;
@@ -21,13 +22,13 @@ interface FlightRecord {
 }
 
 const ExportModal = ({ isOpen, onClose }: Props) => {
+  const { settings } = useSettings();
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTerminal, setSelectedTerminal] = useState<'all' | 'T1' | 'T2' | 'DOM'>('all');
   const [historyFlights, setHistoryFlights] = useState<FlightRecord[]>([]);
   const [dates, setDates] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch 7 days of flight history when modal opens
   useEffect(() => {
     if (!isOpen) return;
 
@@ -73,14 +74,13 @@ const ExportModal = ({ isOpen, onClose }: Props) => {
 
   if (!isOpen) return null;
 
+  // Format date as "18 Dec - Wednesday"
   const formatDateLabel = (dateStr: string) => {
     const date = new Date(dateStr + 'T00:00:00+05:00');
-    return date.toLocaleDateString('en-GB', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-GB', { month: 'short' });
+    const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
+    return `${day} ${month} - ${weekday}`;
   };
 
   const handleExport = () => {
@@ -94,16 +94,22 @@ const ExportModal = ({ isOpen, onClose }: Props) => {
       filteredFlights = filteredFlights.filter(f => f.terminal === selectedTerminal);
     }
 
-    // Create CSV content
-    const headers = ['Flight ID', 'Origin', 'Scheduled', 'Estimated', 'Terminal', 'Status', 'Date'];
+    // Sort flights for export (by scheduled time by default)
+    filteredFlights.sort((a, b) => {
+      const timeA = a.scheduled_time.replace(':', '');
+      const timeB = b.scheduled_time.replace(':', '');
+      return parseInt(timeA) - parseInt(timeB);
+    });
+
+    // Create CSV content WITHOUT date column, sortable columns
+    const headers = ['Flight ID', 'Origin', 'Scheduled Time', 'Estimated Time', 'Terminal', 'Status'];
     const rows = filteredFlights.map(f => [
       f.flight_id,
-      f.origin,
+      `"${f.origin}"`, // Quote origin in case of commas
       f.scheduled_time,
       f.estimated_time || f.scheduled_time,
       f.terminal,
       f.status,
-      f.flight_date,
     ]);
 
     const csvContent = [
@@ -135,7 +141,12 @@ const ExportModal = ({ isOpen, onClose }: Props) => {
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <div className="flex items-center gap-3">
             <FileSpreadsheet className="w-5 h-5 text-foreground/70" />
-            <h2 className="font-display text-lg font-bold text-foreground">Export Schedule</h2>
+            <h2 
+              className="text-lg font-bold text-foreground"
+              style={{ fontFamily: settings.fontFamily }}
+            >
+              Export Schedule
+            </h2>
           </div>
           <button
             onClick={onClose}
@@ -157,6 +168,7 @@ const ExportModal = ({ isOpen, onClose }: Props) => {
                   value={selectedDate}
                   onChange={e => setSelectedDate(e.target.value)}
                   className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-foreground/50 outline-none"
+                  style={{ fontFamily: settings.fontFamily }}
                 >
                   {dates.map(date => (
                     <option key={date} value={date} className="bg-popover">

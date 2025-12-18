@@ -11,13 +11,22 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 
-const OPENWEATHER_API_KEY = '78aaad585d417afad796fd6c0aaea73b';
 const POLLING_INTERVAL = 30000; // 30 seconds
+
+interface WeatherData {
+  temp: number;
+  condition: string;
+  humidity: number;
+  windSpeed: number;
+  windDirection?: number;
+  precipitation?: number;
+  isRaining?: boolean;
+}
 
 const Index = () => {
   const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [weather, setWeather] = useState<{ temp: number; condition: string; humidity: number; windSpeed: number } | null>(null);
+  const [weather, setWeather] = useState<WeatherData | null>(null);
   const [flights, setFlights] = useState<Flight[]>([]);
   const [notificationIds, setNotificationIds] = useState<Set<string>>(new Set());
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -71,26 +80,34 @@ const Index = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch weather
+  // Fetch weather from Yr.no edge function
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        const res = await fetch(
-          `https://api.openweathermap.org/data/2.5/weather?q=Male,MV&units=metric&appid=${OPENWEATHER_API_KEY}`
-        );
-        const data = await res.json();
-        setWeather({
-          temp: data.main.temp,
-          condition: data.weather[0].main,
-          humidity: data.main.humidity,
-          windSpeed: data.wind.speed,
-        });
+        const { data, error } = await supabase.functions.invoke('get-weather');
+        
+        if (error) {
+          console.error('Weather fetch error:', error);
+          return;
+        }
+        
+        if (data?.current) {
+          setWeather({
+            temp: data.current.temp,
+            condition: data.current.condition,
+            humidity: data.current.humidity,
+            windSpeed: data.current.windSpeed,
+            windDirection: data.current.windDirection,
+            precipitation: data.current.precipitation,
+            isRaining: data.current.isRaining,
+          });
+        }
       } catch (error) {
         console.error('Weather fetch error:', error);
       }
     };
     fetchWeather();
-    const interval = setInterval(fetchWeather, 600000);
+    const interval = setInterval(fetchWeather, 600000); // 10 minutes
     return () => clearInterval(interval);
   }, []);
 
@@ -213,6 +230,7 @@ const Index = () => {
     const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
+      console.log('PWA install prompt captured');
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
@@ -240,7 +258,17 @@ const Index = () => {
       }
       setDeferredPrompt(null);
     } else {
-      toast.info('Add to home screen from your browser menu');
+      // Show instructions for manual install
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      
+      if (isIOS) {
+        toast.info('Tap the Share button, then "Add to Home Screen"', { duration: 5000 });
+      } else if (isAndroid) {
+        toast.info('Open browser menu (⋮) and tap "Add to Home Screen"', { duration: 5000 });
+      } else {
+        toast.info('Add to home screen from your browser menu');
+      }
     }
   };
 

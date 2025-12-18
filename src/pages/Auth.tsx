@@ -106,12 +106,12 @@ const Auth = () => {
         </button>
 
         <div className="w-full max-w-md">
-          {/* Logo */}
+          {/* Logo with animation */}
           <div className="text-center mb-8">
             <img
               src="/splash-logo.png"
               alt="ARRIVA.MV"
-              className="h-28 w-auto mx-auto mb-4"
+              className="h-32 w-auto mx-auto mb-4 auth-logo-animate"
             />
             <p className="text-sm text-muted-foreground mt-1">
               {isLogin ? 'Sign in to track your flights' : 'Create an account to get started'}
@@ -132,7 +132,7 @@ const Auth = () => {
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                       placeholder="Your name"
-                      className="pl-10 bg-background/50 border-border/50"
+                      className="pl-10 bg-background/50 border-border/50 focus:ring-foreground/50"
                       required={!isLogin}
                     />
                   </div>
@@ -149,7 +149,7 @@ const Auth = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="pl-10 bg-background/50 border-border/50"
+                    className="pl-10 bg-background/50 border-border/50 focus:ring-foreground/50"
                     required
                   />
                 </div>
@@ -165,7 +165,7 @@ const Auth = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="pl-10 bg-background/50 border-border/50"
+                    className="pl-10 bg-background/50 border-border/50 focus:ring-foreground/50"
                     required
                     minLength={6}
                   />

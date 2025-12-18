@@ -31,21 +31,21 @@ const Header = ({
 
   return (
     <header className="relative z-50 w-full">
-      <div className="flex items-center justify-between px-4 py-4">
-        {/* Logo - clickable for PWA install */}
+      <div className="flex flex-col items-center px-4 py-4">
+        {/* Centered Logo - clickable for PWA install */}
         <button
           onClick={onInstallPWA}
-          className="flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
+          className="flex items-center justify-center transition-transform hover:scale-105 active:scale-95 mb-2"
         >
           <img
             src={headerLogo}
             alt="ARRIVA.MV"
-            className="h-10 w-auto"
+            className="h-16 w-auto"
           />
         </button>
 
-        {/* Orb Menu Button */}
-        <div className="relative">
+        {/* Orb Menu Button - positioned in corner */}
+        <div className="absolute right-4 top-4">
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className={cn(
