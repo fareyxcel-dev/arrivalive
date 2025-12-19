@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ChevronDown, Plane } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
 import FlightCard, { Flight } from './FlightCard';
@@ -48,8 +48,6 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
   const { settings } = useSettings();
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [animationType, setAnimationType] = useState<'landing' | 'takeoff' | null>(null);
 
   const groupedFlights = useMemo(() => groupFlightsByDate(flights), [flights]);
   const dates = Object.keys(groupedFlights).sort();
@@ -74,23 +72,7 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
   }, [groupedFlights]);
 
   const handleToggleExpand = () => {
-    if (isExpanded) {
-      setAnimationType('takeoff');
-      setIsAnimating(true);
-      setTimeout(() => {
-        setIsExpanded(false);
-        setIsAnimating(false);
-        setAnimationType(null);
-      }, 400);
-    } else {
-      setIsExpanded(true);
-      setAnimationType('landing');
-      setIsAnimating(true);
-      setTimeout(() => {
-        setIsAnimating(false);
-        setAnimationType(null);
-      }, 500);
-    }
+    setIsExpanded(!isExpanded);
   };
 
   const toggleDate = (date: string) => {
@@ -106,9 +88,9 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
   const getTerminalName = (t: string) => {
     switch (t) {
       case 'T1':
-        return 'Terminal 1';
+        return 'International Terminal 1';
       case 'T2':
-        return 'Terminal 2';
+        return 'International Terminal 2';
       case 'DOM':
         return 'Domestic Terminal';
       default:
@@ -117,59 +99,31 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
   };
 
   return (
-    <div className="terminal-group">
-      {/* Terminal Header */}
+    <div className="terminal-group" style={{ fontFamily: settings.fontFamily }}>
+      {/* Terminal Header - Clean design without icons */}
       <button
         onClick={handleToggleExpand}
-        className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors relative overflow-hidden"
+        className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
       >
-        {/* Animated plane behind terminal name */}
-        {(isExpanded || isAnimating) && (
-          <div 
-            className={cn(
-              "absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none",
-              animationType === 'landing' && "plane-landing",
-              animationType === 'takeoff' && "plane-takeoff",
-              !isAnimating && isExpanded && "opacity-30"
-            )}
-          >
-            <Plane className="w-8 h-8 text-foreground -rotate-45" />
-          </div>
-        )}
-
-        <div className="flex items-center gap-3 z-10">
-          <div className="w-10 h-10 rounded-lg glass flex items-center justify-center">
-            {/* Empty placeholder where plane icon was */}
-            <span 
-              className="text-lg font-bold text-foreground"
-              style={{ fontFamily: settings.fontFamily }}
-            >
-              {terminal}
-            </span>
-          </div>
-          <div className="text-left">
-            <h2 
-              className="text-lg font-bold text-foreground uppercase tracking-wider"
-              style={{ fontFamily: settings.fontFamily }}
-            >
-              {getTerminalName(terminal)}
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              {terminalStats.total} FLIGHTS · {terminalStats.remaining} REMAINING · {terminalStats.landed} LANDED
-            </p>
-          </div>
+        <div className="text-left">
+          <h2 className="text-lg font-bold text-foreground">
+            {getTerminalName(terminal)}
+          </h2>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">
+            {terminalStats.total} FLIGHTS · {terminalStats.remaining} REMAINING · {terminalStats.landed} LANDED
+          </p>
         </div>
         <ChevronDown
           className={cn(
-            "w-5 h-5 text-muted-foreground transition-transform duration-300 z-10",
+            "w-5 h-5 text-muted-foreground transition-transform duration-300",
             isExpanded && "rotate-180"
           )}
         />
       </button>
 
-      {/* Expanded Content */}
+      {/* Expanded Content - No animations */}
       {isExpanded && (
-        <div className="px-4 pb-4 space-y-3 animate-fade-in">
+        <div className="px-4 pb-4 space-y-3">
           {dates.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
               No flights scheduled
@@ -191,15 +145,12 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
                       expandedDates.has(date) && "active-selection"
                     )}
                   >
-                    <span 
-                      className="font-medium"
-                      style={{ fontFamily: settings.fontFamily }}
-                    >
+                    <span className="font-medium">
                       {formatDateDisplay(date)}
                     </span>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">
-                        {totalCount} flights, {dateLandedCount} landed, {remainingCount} remaining
+                        {totalCount} flights · {dateLandedCount} landed · {remainingCount} remaining
                       </span>
                       <ChevronDown
                         className={cn(
@@ -210,20 +161,20 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
                     </div>
                   </button>
 
-                {/* Flights for this date */}
-                {expandedDates.has(date) && (
-                  <div className="space-y-3 pl-2 animate-slide-up">
-                    {groupedFlights[date].map(flight => (
-                      <FlightCard
-                        key={flight.id}
-                        flight={flight}
-                        isNotificationEnabled={notificationIds.has(flight.id)}
-                        onToggleNotification={onToggleNotification}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+                  {/* Flights for this date */}
+                  {expandedDates.has(date) && (
+                    <div className="space-y-3 pl-2">
+                      {groupedFlights[date].map(flight => (
+                        <FlightCard
+                          key={flight.id}
+                          flight={flight}
+                          isNotificationEnabled={notificationIds.has(flight.id)}
+                          onToggleNotification={onToggleNotification}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
               );
             })
           )}

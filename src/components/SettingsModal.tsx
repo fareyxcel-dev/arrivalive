@@ -1,7 +1,9 @@
-import { useState } from 'react';
-import { X, User, Palette, Bell, Shield } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, User, Palette, Bell, Shield, Camera, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface Props {
   isOpen: boolean;
@@ -17,10 +19,43 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     setFontFamily, 
     setFontSize, 
     setTextCase,
-    setNotification 
+    setNotification,
+    updateProfile,
+    updatePassword,
+    deleteAccount,
   } = useSettings();
   
   const [activeTab, setActiveTab] = useState<Tab>('profile');
+  const [username, setUsername] = useState('');
+  const [phone, setPhone] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+
+  // Load user profile
+  useEffect(() => {
+    const loadProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('display_name, phone')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (data) {
+          setUsername(data.display_name || '');
+          setPhone(data.phone || '');
+        }
+        setProfileLoaded(true);
+      }
+    };
+    
+    if (isOpen) {
+      loadProfile();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -31,11 +66,64 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     { id: 'security', label: 'Security', icon: Shield },
   ];
 
+  const handleSaveProfile = async () => {
+    setIsLoading(true);
+    try {
+      await updateProfile({ display_name: username, phone });
+      toast.success('Profile updated');
+    } catch (error) {
+      toast.error('Failed to update profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      await updatePassword(newPassword);
+      toast.success('Password updated');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      toast.error('Failed to update password');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirm('Are you sure you want to delete your account? This cannot be undone.')) {
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      await deleteAccount();
+      toast.success('Account deleted');
+      onClose();
+    } catch (error) {
+      toast.error('Failed to delete account');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="modal-overlay flex items-center justify-center p-4" onClick={onClose}>
       <div
         className="glass-strong rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden animate-scale-in"
         onClick={e => e.stopPropagation()}
+        style={{ fontFamily: settings.fontFamily }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
@@ -72,24 +160,40 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
           {activeTab === 'profile' && (
             <div className="space-y-4 animate-fade-in">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full glass flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full glass flex items-center justify-center relative">
                   <User className="w-8 h-8 text-muted-foreground" />
+                  <button className="absolute bottom-0 right-0 w-6 h-6 rounded-full glass-interactive flex items-center justify-center">
+                    <Camera className="w-3 h-3" />
+                  </button>
                 </div>
-                <button className="px-4 py-2 rounded-lg glass hover:bg-white/10 transition-colors text-sm">
-                  Change Photo
-                </button>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground">Profile Photo</p>
+                  <p className="text-sm text-foreground">Coming soon</p>
+                </div>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground uppercase tracking-wide">Username</label>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide">Display Name</label>
                 <input
                   type="text"
-                  placeholder="Guest"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  placeholder="Enter your name"
                   className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-foreground/50 outline-none"
                 />
               </div>
+              <button
+                onClick={handleSaveProfile}
+                disabled={isLoading}
+                className="w-full py-2 rounded-lg glass-interactive flex items-center justify-center gap-2"
+              >
+                {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                Save Profile
+              </button>
               <div className="glass rounded-lg p-4">
                 <p className="text-xs text-muted-foreground">Time spent on Arriva.MV</p>
-                <p className="font-display text-2xl font-bold text-foreground mt-1">0 days</p>
+                <p className="font-display text-2xl font-bold text-foreground mt-1">
+                  {profileLoaded ? '0 days' : '...'}
+                </p>
               </div>
             </div>
           )}
@@ -190,24 +294,62 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
           )}
 
           {activeTab === 'security' && (
-            <div className="space-y-3 animate-fade-in">
+            <div className="space-y-4 animate-fade-in">
               <div>
                 <label className="text-xs text-muted-foreground uppercase tracking-wide">Phone Number</label>
                 <input
                   type="tel"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
                   placeholder="+960 XXXXXXX"
                   className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-foreground/50 outline-none"
                 />
               </div>
-              <button className="w-full py-3 rounded-lg glass hover:bg-white/10 transition-colors text-left px-4">
-                Change Password
+              <button
+                onClick={handleSaveProfile}
+                disabled={isLoading}
+                className="w-full py-2 rounded-lg glass-interactive flex items-center justify-center gap-2 text-sm"
+              >
+                {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                Update Phone
               </button>
-              <button className="w-full py-3 rounded-lg glass hover:bg-white/10 transition-colors text-left px-4 text-delayed">
-                Deactivate Account
-              </button>
-              <button className="w-full py-3 rounded-lg bg-destructive/20 hover:bg-destructive/30 transition-colors text-left px-4 text-destructive border border-destructive/30">
-                Delete Account
-              </button>
+              
+              <div className="pt-4 border-t border-white/10">
+                <label className="text-xs text-muted-foreground uppercase tracking-wide">Change Password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder="New password"
+                  className="w-full mt-2 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-foreground/50 outline-none"
+                />
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm password"
+                  className="w-full mt-2 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-foreground/50 outline-none"
+                />
+                <button
+                  onClick={handleChangePassword}
+                  disabled={isLoading || !newPassword || !confirmPassword}
+                  className="w-full mt-2 py-2 rounded-lg glass-interactive flex items-center justify-center gap-2 text-sm"
+                >
+                  {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Update Password
+                </button>
+              </div>
+              
+              <div className="pt-4 border-t border-white/10 space-y-2">
+                <button 
+                  onClick={handleDeleteAccount}
+                  disabled={isLoading}
+                  className="w-full py-3 rounded-lg bg-destructive/20 hover:bg-destructive/30 transition-colors text-left px-4 text-destructive border border-destructive/30 flex items-center gap-2"
+                >
+                  {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Delete Account
+                </button>
+              </div>
             </div>
           )}
         </div>

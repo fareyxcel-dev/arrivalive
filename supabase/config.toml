@@ -5,3 +5,12 @@ verify_jwt = false
 
 [functions.send-notification]
 verify_jwt = true
+
+[functions.get-weather]
+verify_jwt = false
+
+[functions.track-flight]
+verify_jwt = false
+
+[functions.send-web-push]
+verify_jwt = true

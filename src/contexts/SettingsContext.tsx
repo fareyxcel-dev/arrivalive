@@ -1,7 +1,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
-// Available fonts - commonly available web fonts
+// Extended fonts list - 50+ fonts including user requested ones
 const AVAILABLE_FONTS = [
+  // Original fonts
   'Inter',
   'Roboto',
   'Open Sans',
@@ -35,6 +37,39 @@ const AVAILABLE_FONTS = [
   'Titillium Web',
   'Rajdhani',
   'Chakra Petch',
+  // User requested fonts
+  'PT Sans Narrow',
+  'Instrument Serif',
+  'Bona Nova SC',
+  'Yanone Kaffeesatz',
+  'Bai Jamjuree',
+  'Sofia Sans Extra Condensed',
+  'Agdasima',
+  'Kanit',
+  'Teko',
+  'ZCOOL QingKe HuangYou',
+  'Kelly Slab',
+  'Tulpen One',
+  'Offside',
+  'Big Shoulders Stencil',
+  'Odibee Sans',
+  'Revalia',
+  'Smooch Sans',
+  'Anta',
+  'WDXL Lubrifont TC',
+  'Iceberg',
+  'Iceland',
+  'Geo',
+  'Electrolize',
+  'Quantico',
+  'Audiowide',
+  'Sansita Swashed',
+  'Trochut',
+  'Play',
+  'Jaini Purva',
+  'Karantina',
+  'Federant',
+  'Bahianita',
 ];
 
 interface SettingsState {
@@ -58,6 +93,9 @@ interface SettingsContextType {
   setTextCase: (textCase: 'default' | 'uppercase' | 'lowercase') => void;
   toggleTimeFormat: () => void;
   setNotification: (key: keyof SettingsState['notifications'], value: boolean) => void;
+  updateProfile: (data: { display_name?: string; phone?: string }) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const defaultSettings: SettingsState = {
@@ -137,6 +175,38 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const updateProfile = async (data: { display_name?: string; phone?: string }) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({
+        user_id: user.id,
+        ...data,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
+
+    if (error) throw error;
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  };
+
+  const deleteAccount = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Delete user data from profiles
+    await supabase.from('profiles').delete().eq('user_id', user.id);
+    await supabase.from('notification_subscriptions').delete().eq('user_id', user.id);
+    
+    // Sign out
+    await supabase.auth.signOut();
+  };
+
   return (
     <SettingsContext.Provider
       value={{
@@ -147,6 +217,9 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         setTextCase,
         toggleTimeFormat,
         setNotification,
+        updateProfile,
+        updatePassword,
+        deleteAccount,
       }}
     >
       {children}

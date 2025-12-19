@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, X, RefreshCw, Download, Settings, LogIn, LogOut } from 'lucide-react';
+import { Plus, X, RefreshCw, Download, Settings, LogIn, LogOut, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import headerLogo from '@/assets/header-logo.png';
 
@@ -10,6 +10,8 @@ interface Props {
   isLoggedIn: boolean;
   onAuthAction: () => void;
   onInstallPWA: () => void;
+  userEmail?: string;
+  onAdminExport?: () => void;
 }
 
 const Header = ({
@@ -19,13 +21,17 @@ const Header = ({
   isLoggedIn,
   onAuthAction,
   onInstallPWA,
+  userEmail,
+  onAdminExport,
 }: Props) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const isAdmin = userEmail === 'arrivamv@gmail.com';
 
   const menuItems = [
     { icon: RefreshCw, label: 'Force Refresh', action: onForceRefresh },
     { icon: Download, label: 'Export Schedule', action: onExportSchedule },
     { icon: Settings, label: 'Settings', action: onOpenSettings },
+    ...(isAdmin && onAdminExport ? [{ icon: FileText, label: 'Export Build Data', action: onAdminExport }] : []),
     { icon: isLoggedIn ? LogOut : LogIn, label: isLoggedIn ? 'Logout' : 'Login', action: onAuthAction },
   ];
 
