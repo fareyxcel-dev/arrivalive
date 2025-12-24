@@ -138,6 +138,7 @@ export type Database = {
           id: string
           notification_email: string | null
           phone: string | null
+          push_subscription: Json | null
           updated_at: string
           user_id: string
         }
@@ -148,6 +149,7 @@ export type Database = {
           id?: string
           notification_email?: string | null
           phone?: string | null
+          push_subscription?: Json | null
           updated_at?: string
           user_id: string
         }
@@ -158,6 +160,7 @@ export type Database = {
           id?: string
           notification_email?: string | null
           phone?: string | null
+          push_subscription?: Json | null
           updated_at?: string
           user_id?: string
         }
