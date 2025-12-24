@@ -1,5 +1,8 @@
 project_id = "izxahziuilamkikvrfhi"
 
+[functions.get-weather-astronomy]
+verify_jwt = false
+
 [functions.scrape-flights]
 verify_jwt = false
 

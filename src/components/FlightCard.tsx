@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, BellRing, Plane } from 'lucide-react';
+import { Bell, BellRing } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
+import FlightProgressBar from './FlightProgressBar';
 
 export interface Flight {
   id: string;
@@ -14,7 +15,7 @@ export interface Flight {
   date: string;
   airlineCode: string;
   airlineLogo?: string;
-  trackingProgress?: number; // 0-100 percentage
+  trackingProgress?: number;
 }
 
 interface Props {
@@ -23,211 +24,144 @@ interface Props {
   onToggleNotification: (flightId: string) => void;
 }
 
-// ImageKit logo filenames (IATA code → exact filename)
-const AIRLINE_LOGO_FILES: Record<string, string> = {
-  '3U': '3U (Sichuan Airlines).png',
-  '4Y': '4Y (Discover Airlines).png',
-  '6E': '6E (IndiGo).png',
-  '8D': '8D (FitsAir).png',
-  'AF': 'AF (Air France).png',
-  'AI': 'AI (Air India).png',
-  'AK': 'AK (Air Asia).png',
-  'AZ': 'AZ (ITA Airways).png',
-  'B4': 'B4 (beOnd).png',
-  'BA': 'BA (British Airways).png',
-  'BS': 'BS (US-Bangla Airlines).png',
-  'DE': 'DE (Condor).png',
-  'EK': 'EK (Emirates).png',
-  'EY': 'EY (Etihad Airways).png',
-  'FD': 'FD (Thai AirAsia).png',
-  'FZ': 'FZ (FlyDubai).png',
-  'G9': 'G9 (Air Arabia).png',
-  'GF': 'GF (Gulf Air).png',
-  'HX': 'HX (Hong Kong Airlines).png',
-  'HY': 'HY (Uzbekistan Airways).png',
-  'IB': 'IB (Iberia).png',
-  'J2': 'J2 (Azerbaijan Airlines).png',
-  'J9': 'J9 (Jazeera Airways).png',
-  'JD': 'JD (Beijing Capital Airlines).png',
-  'KC': 'KC (Air Astana).png',
-  'KU': 'KU (Kuwait Airways).png',
-  'LO': 'LO (LOT Polish Airlines).png',
-  'MH': 'MH (Malaysia Airlines).png',
-  'MU': 'MU (China Eastern Airlines).png',
-  'NO': 'NO (Neos).png',
-  'NR': 'NR (MantaAir).png',
-  'OD': 'OD (Batik Air Malaysia).png',
-  'OS': 'OS (Austrian Airlines).png',
-  'PG': 'PG (Bangkok Airways).png',
-  'Q2': 'Q2 (Maldivian).png',
-  'QR': 'QR (Qatar Airways).png',
-  'SH': 'SH (FlyMe).png',
-  'SQ': 'SQ (Singapore Airlines).png',
-  'SU': 'SU (Aeroflot).png',
-  'SV': 'SV (Saudia).png',
-  'TK': 'TK (Turkish Airlines).png',
-  'UL': 'UL (SriLankan Airlines).png',
-  'VP': 'VP (VillaAir).png',
-  'VS': 'VS (Virgin Atlantic).png',
-  'W6': 'W6 (Wizz Air).png',
-  'WK': 'WK (Edelweiss Air).png',
-  'WY': 'WY (Oman Air).png',
-  'XY': 'XY (Flynas).png',
-  'ZF': 'ZF (Azur Air).png',
-};
-
 // Airline name mapping
 const AIRLINE_NAMES: Record<string, string> = {
-  '3U': 'Sichuan Airlines',
-  '4Y': 'Discover Airlines',
-  '6E': 'IndiGo',
-  '8D': 'FitsAir',
-  'AF': 'Air France',
-  'AI': 'Air India',
-  'AK': 'AirAsia',
-  'AZ': 'ITA Airways',
-  'B4': 'beOnd',
-  'BA': 'British Airways',
-  'BS': 'US-Bangla Airlines',
-  'DE': 'Condor',
-  'EK': 'Emirates',
-  'EY': 'Etihad Airways',
-  'FD': 'Thai AirAsia',
-  'FZ': 'FlyDubai',
-  'G9': 'Air Arabia',
-  'GF': 'Gulf Air',
-  'HX': 'Hong Kong Airlines',
-  'HY': 'Uzbekistan Airways',
-  'IB': 'Iberia',
-  'J2': 'Azerbaijan Airlines',
-  'J9': 'Jazeera Airways',
-  'JD': 'Beijing Capital Airlines',
-  'KC': 'Air Astana',
-  'KU': 'Kuwait Airways',
-  'LO': 'LOT Polish Airlines',
-  'MH': 'Malaysia Airlines',
-  'MU': 'China Eastern Airlines',
-  'NO': 'Neos',
-  'NR': 'MantaAir',
-  'OD': 'Batik Air Malaysia',
-  'OS': 'Austrian Airlines',
-  'PG': 'Bangkok Airways',
-  'Q2': 'Maldivian',
-  'QR': 'Qatar Airways',
-  'SH': 'FlyMe',
-  'SQ': 'Singapore Airlines',
-  'SU': 'Aeroflot',
-  'SV': 'Saudia',
-  'TK': 'Turkish Airlines',
-  'UL': 'SriLankan Airlines',
-  'VP': 'VillaAir',
-  'VS': 'Virgin Atlantic',
-  'W6': 'Wizz Air',
-  'WK': 'Edelweiss Air',
-  'WY': 'Oman Air',
-  'XY': 'Flynas',
-  'ZF': 'Azur Air',
+  '3U': 'Sichuan Airlines', '4Y': 'Discover Airlines', '6E': 'IndiGo', '8D': 'FitsAir',
+  'AF': 'Air France', 'AI': 'Air India', 'AK': 'AirAsia', 'AZ': 'ITA Airways',
+  'B4': 'beOnd', 'BA': 'British Airways', 'BS': 'US-Bangla Airlines', 'DE': 'Condor',
+  'EK': 'Emirates', 'EY': 'Etihad Airways', 'FD': 'Thai AirAsia', 'FZ': 'FlyDubai',
+  'G9': 'Air Arabia', 'GF': 'Gulf Air', 'HX': 'Hong Kong Airlines', 'HY': 'Uzbekistan Airways',
+  'IB': 'Iberia', 'J2': 'Azerbaijan Airlines', 'J9': 'Jazeera Airways', 'JD': 'Beijing Capital Airlines',
+  'KC': 'Air Astana', 'KU': 'Kuwait Airways', 'LO': 'LOT Polish Airlines', 'MH': 'Malaysia Airlines',
+  'MU': 'China Eastern Airlines', 'NO': 'Neos', 'NR': 'MantaAir', 'OD': 'Batik Air Malaysia',
+  'OS': 'Austrian Airlines', 'PG': 'Bangkok Airways', 'Q2': 'Maldivian', 'QR': 'Qatar Airways',
+  'SH': 'FlyMe', 'SQ': 'Singapore Airlines', 'SU': 'Aeroflot', 'SV': 'Saudia',
+  'TK': 'Turkish Airlines', 'UL': 'SriLankan Airlines', 'VP': 'VillaAir', 'VS': 'Virgin Atlantic',
+  'W6': 'Wizz Air', 'WK': 'Edelweiss Air', 'WY': 'Oman Air', 'XY': 'Flynas', 'ZF': 'Azur Air',
 };
 
-const getStatusClass = (status: string) => {
+// Status-based theme colors
+const getStatusTheme = (status: string) => {
   switch (status.toUpperCase()) {
-    case 'DELAYED':
-      return 'glass-delayed';
     case 'LANDED':
-      return 'glass-landed';
-    case 'CANCELLED':
-      return 'glass-cancelled';
-    default:
-      return 'glass';
-  }
-};
-
-const getStatusColor = (status: string) => {
-  switch (status.toUpperCase()) {
+      return {
+        cardBg: 'rgba(16, 232, 185, 0.08)',
+        cardBorder: 'rgba(16, 232, 185, 0.2)',
+        trackInactive: '#0f6955',
+        trackActive: '#30c2a2',
+        textColor: '#81f0d8',
+        statusBg: 'rgba(16, 232, 185, 0.15)',
+      };
     case 'DELAYED':
-      return '#fd7e01';
-    case 'LANDED':
-      return '#25fce8';
+      return {
+        cardBg: 'rgba(235, 82, 12, 0.08)',
+        cardBorder: 'rgba(235, 82, 12, 0.2)',
+        trackInactive: '#a1441a',
+        trackActive: '#c25e30',
+        textColor: '#f2763d',
+        statusBg: 'rgba(235, 82, 12, 0.15)',
+      };
     case 'CANCELLED':
-      return '#e9264d';
+      return {
+        cardBg: 'rgba(191, 15, 36, 0.08)',
+        cardBorder: 'rgba(191, 15, 36, 0.2)',
+        trackInactive: '#5a0a15',
+        trackActive: '#bf0f24',
+        textColor: '#f7485d',
+        statusBg: 'rgba(191, 15, 36, 0.15)',
+      };
     default:
-      return '#DCE0DE';
-  }
-};
-
-const getTextColorClass = (status: string) => {
-  switch (status.toUpperCase()) {
-    case 'DELAYED':
-      return 'text-delayed';
-    case 'LANDED':
-      return 'text-landed';
-    case 'CANCELLED':
-      return 'text-cancelled';
-    default:
-      return 'text-foreground';
+      return {
+        cardBg: 'rgba(255, 255, 255, 0.03)',
+        cardBorder: 'rgba(255, 255, 255, 0.08)',
+        trackInactive: 'rgba(255, 255, 255, 0.1)',
+        trackActive: 'rgba(255, 255, 255, 0.3)',
+        textColor: '#dce0de',
+        statusBg: 'rgba(255, 255, 255, 0.1)',
+      };
   }
 };
 
 // Convert 24h time to 12h format
 const formatTime = (time: string, format: '12h' | '24h') => {
   if (format === '24h' || !time) return time;
-  
   const [hours, minutes] = time.split(':').map(Number);
   if (isNaN(hours) || isNaN(minutes)) return time;
-  
   const period = hours >= 12 ? 'PM' : 'AM';
   const hours12 = hours % 12 || 12;
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
 };
 
-// Get logo URL from ImageKit
-const getAirlineLogoUrl = (airlineCode: string) => {
-  const filename = AIRLINE_LOGO_FILES[airlineCode];
-  if (filename) {
-    return `https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/${encodeURIComponent(filename)}`;
-  }
-  return null;
+// SVG Airline Icon Component (color-changing)
+const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: string }) => {
+  return (
+    <svg 
+      width="48" 
+      height="32" 
+      viewBox="0 0 48 32" 
+      fill="none" 
+      className="transition-colors duration-300"
+    >
+      <path 
+        d="M42 16L36 12V8L42 12V16ZM42 20L36 24V28L42 24V20ZM34 8V28L24 22V12L34 8ZM22 12V22L6 28V24L20 18L6 12V8L22 12Z" 
+        fill={color}
+        fillOpacity="0.9"
+      />
+      <text 
+        x="24" 
+        y="20" 
+        textAnchor="middle" 
+        fill={color} 
+        fontSize="10" 
+        fontWeight="bold"
+        fontFamily="Inter, sans-serif"
+      >
+        {airlineCode}
+      </text>
+    </svg>
+  );
 };
 
-// Calculate hours until scheduled landing
-const getHoursUntilLanding = (scheduledTime: string, flightDate: string): number => {
-  const now = new Date();
-  const [hours, minutes] = scheduledTime.split(':').map(Number);
-  const scheduled = new Date(flightDate + 'T00:00:00+05:00');
-  scheduled.setHours(hours, minutes, 0, 0);
-  return (scheduled.getTime() - now.getTime()) / (1000 * 60 * 60);
-};
+// SVG Flight Icon for progress bar
+const FlightIcon = ({ color }: { color: string }) => (
+  <svg 
+    width="20" 
+    height="20" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    className="transform -rotate-90"
+  >
+    <path 
+      d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" 
+      fill={color}
+    />
+  </svg>
+);
 
 const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Props) => {
   const { settings } = useSettings();
   const [showAirlineName, setShowAirlineName] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
-  const [logoError, setLogoError] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  const statusColor = getStatusColor(flight.status);
+  const theme = getStatusTheme(flight.status);
   const airlineName = AIRLINE_NAMES[flight.airlineCode] || flight.airlineCode;
-  const airlineLogoUrl = getAirlineLogoUrl(flight.airlineCode);
   const isLanded = flight.status.toUpperCase() === 'LANDED';
   const isCancelled = flight.status.toUpperCase() === 'CANCELLED';
   const isDelayed = flight.status.toUpperCase() === 'DELAYED';
-  const hoursUntilLanding = getHoursUntilLanding(flight.scheduledTime, flight.date);
-  const showTrackingIcon = hoursUntilLanding <= 5 && hoursUntilLanding > 0 && !isLanded && !isCancelled;
+  const hasStatus = flight.status !== '-' && (isLanded || isCancelled || isDelayed);
+  const showBellOnly = !hasStatus && !isLanded && !isCancelled;
+  const showProgressBar = !isCancelled;
 
-  // Handle logo click with auto-fadeout
   const handleLogoClick = () => {
     if (showAirlineName) return;
-    
     setShowAirlineName(true);
     setIsFadingOut(false);
     
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     
     timeoutRef.current = setTimeout(() => {
       setIsFadingOut(true);
-      
       timeoutRef.current = setTimeout(() => {
         setShowAirlineName(false);
         setIsFadingOut(false);
@@ -237,153 +171,170 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
 
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
   const scheduledTimeFormatted = formatTime(flight.scheduledTime, settings.timeFormat);
   const estimatedTimeFormatted = formatTime(flight.estimatedTime, settings.timeFormat);
-  const trackingProgress = flight.trackingProgress ?? 0;
 
   return (
     <div 
-      className={cn("flight-card-redesigned", getStatusClass(flight.status))}
-      style={{ fontFamily: settings.fontFamily }}
+      className="flight-card-v2 rounded-xl p-4 backdrop-blur-md transition-all duration-300"
+      style={{ 
+        fontFamily: settings.fontFamily,
+        backgroundColor: theme.cardBg,
+        borderColor: theme.cardBorder,
+        borderWidth: '1px',
+        borderStyle: 'solid',
+      }}
     >
-      {/* Top Row: Logo, Flight Info, Status Badge, Bell */}
-      <div className="flex items-center gap-3">
-        {/* Widened/Shortened Logo Container */}
+      {/* TOP SECTION - 2 Rows */}
+      <div className="flex gap-3">
+        {/* Airline Logo Container (spans 2 rows) */}
         <button
           onClick={handleLogoClick}
-          className="w-20 h-10 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden transition-all duration-300 relative"
+          className="w-20 h-16 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden transition-all duration-300 relative"
           style={{ 
-            backgroundColor: `${statusColor}15`,
-            border: `1px solid ${statusColor}30`
+            backgroundColor: theme.statusBg,
+            border: `1px solid ${theme.textColor}20`
           }}
         >
           {showAirlineName ? (
             <span 
               className={cn(
-                "text-[8px] font-medium text-center px-0.5 leading-tight transition-all duration-500",
+                "text-[9px] font-medium text-center px-1 leading-tight transition-all duration-500",
                 isFadingOut && "opacity-0 blur-sm"
               )}
-              style={{ color: statusColor }}
+              style={{ color: theme.textColor }}
             >
               {airlineName}
             </span>
-          ) : logoError || !airlineLogoUrl ? (
-            <Plane 
-              className="w-6 h-6 -rotate-45" 
-              style={{ color: statusColor }}
-            />
           ) : (
-            <img 
-              src={airlineLogoUrl}
-              alt={`${flight.airlineCode} logo`}
-              className={cn(
-                "w-16 h-8 object-contain transition-all duration-500",
-                showAirlineName && "blur-sm opacity-0"
-              )}
-              style={{ 
-                filter: `brightness(0) saturate(100%)`,
-              }}
-              onError={() => setLogoError(true)}
-              onLoad={(e) => {
-                const img = e.currentTarget;
-                const hue = flight.status.toUpperCase() === 'DELAYED' ? 'sepia(100%) saturate(500%) hue-rotate(-10deg)' :
-                            flight.status.toUpperCase() === 'LANDED' ? 'sepia(100%) saturate(500%) hue-rotate(130deg)' :
-                            flight.status.toUpperCase() === 'CANCELLED' ? 'sepia(100%) saturate(500%) hue-rotate(-40deg)' :
-                            'brightness(0) invert(1)';
-                img.style.filter = hue;
-              }}
-            />
+            <AirlineIcon airlineCode={flight.airlineCode} color={theme.textColor} />
           )}
         </button>
 
-        {/* Flight ID & Origin */}
-        <div className="flex flex-col flex-1 min-w-0">
-          <span className={cn("font-bold text-base", getTextColorClass(flight.status))}>
-            {flight.flightId}
-          </span>
-          <span className={cn("text-sm truncate", getTextColorClass(flight.status))}>
-            {flight.origin}
-          </span>
-        </div>
-
-        {/* Status Badge with Ripple */}
-        {flight.status !== '-' && (
-          <div className="status-container-redesigned" style={{ '--status-color': statusColor } as React.CSSProperties}>
+        {/* Flight Info + Status/Bell - 2 Rows */}
+        <div className="flex-1 flex flex-col justify-between min-w-0">
+          {/* Row 1: Flight Number + Status Badge OR Bell */}
+          <div className="flex items-center justify-between">
             <span 
-              className="status-text-therilo"
-              style={{ color: statusColor }}
+              className="font-bold text-lg"
+              style={{ color: theme.textColor }}
             >
-              {flight.status}
+              {flight.flightId}
             </span>
-            <div className="status-ripple" style={{ backgroundColor: statusColor }} />
+            
+            {/* Status Badge (Row 1) - shown for landed, cancelled, or delayed */}
+            {hasStatus && (
+              <div 
+                className="status-badge-v2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide"
+                style={{ 
+                  backgroundColor: theme.statusBg,
+                  color: theme.textColor,
+                  border: `1px solid ${theme.textColor}30`
+                }}
+              >
+                <span className="status-badge-text">{flight.status}</span>
+                <div className="status-ripple-v2" style={{ backgroundColor: theme.textColor }} />
+              </div>
+            )}
+            
+            {/* Bell Icon Only (Row 1) - shown when no status and flight is on-time */}
+            {showBellOnly && (
+              <button
+                onClick={() => onToggleNotification(flight.id)}
+                className={cn(
+                  "p-2 rounded-full transition-all duration-300 flex-shrink-0",
+                  isNotificationEnabled ? "active-selection" : "hover:bg-white/10"
+                )}
+                aria-label={isNotificationEnabled ? "Disable notifications" : "Enable notifications"}
+              >
+                {isNotificationEnabled ? (
+                  <BellRing className="w-5 h-5" style={{ color: theme.textColor }} />
+                ) : (
+                  <Bell className="w-5 h-5" style={{ color: theme.textColor }} />
+                )}
+              </button>
+            )}
           </div>
-        )}
-
-        {/* Notification Bell - only for delayed, positioned below badge */}
-        {isDelayed && (
-          <button
-            onClick={() => onToggleNotification(flight.id)}
-            className={cn(
-              "p-2 rounded-full transition-all duration-300 flex-shrink-0",
-              isNotificationEnabled 
-                ? "active-selection" 
-                : "hover:bg-white/10"
+          
+          {/* Row 2: Origin + Bell (for delayed) */}
+          <div className="flex items-center justify-between">
+            <span 
+              className="text-sm truncate opacity-80"
+              style={{ color: theme.textColor }}
+            >
+              {flight.origin}
+            </span>
+            
+            {/* Bell Icon (Row 2) - only for delayed flights */}
+            {isDelayed && (
+              <button
+                onClick={() => onToggleNotification(flight.id)}
+                className={cn(
+                  "p-1.5 rounded-full transition-all duration-300 flex-shrink-0",
+                  isNotificationEnabled ? "active-selection" : "hover:bg-white/10"
+                )}
+                aria-label={isNotificationEnabled ? "Disable notifications" : "Enable notifications"}
+              >
+                {isNotificationEnabled ? (
+                  <BellRing className="w-4 h-4 bell-active-v2" style={{ color: theme.textColor }} />
+                ) : (
+                  <Bell className="w-4 h-4" style={{ color: theme.textColor }} />
+                )}
+              </button>
             )}
-            aria-label={isNotificationEnabled ? "Disable notifications" : "Enable notifications"}
-          >
-            {isNotificationEnabled ? (
-              <BellRing className="w-5 h-5 bell-active" />
-            ) : (
-              <Bell className="w-5 h-5 bell-neutral" />
-            )}
-          </button>
-        )}
+          </div>
+        </div>
       </div>
 
-      {/* Time Info with Tracking Line */}
-      <div className="mt-3 flex items-center justify-between text-sm">
-        <div>
-          <p className="text-muted-foreground text-xs">Scheduled</p>
-          <p className={cn("font-semibold", getTextColorClass(flight.status))}>
-            {scheduledTimeFormatted}
-          </p>
+      {/* BOTTOM SECTION - 2 Rows */}
+      <div className="mt-4 space-y-2">
+        {/* Row 3: Labels */}
+        <div className="flex items-center justify-between text-xs" style={{ color: `${theme.textColor}80` }}>
+          <span>Schedule Time</span>
+          <span>Estimated Time</span>
         </div>
         
-        {/* Tracking Line */}
-        <div className="flex-1 flex items-center justify-center px-4 relative">
-          <div className="w-full h-px bg-gradient-to-r from-transparent via-border/50 to-transparent relative">
-            {showTrackingIcon && (
-              <>
-                {/* Progress line */}
-                <div 
-                  className="absolute top-0 left-0 h-px bg-foreground/30 transition-all duration-1000"
-                  style={{ width: `${trackingProgress}%` }}
-                />
-                {/* Moving plane icon */}
-                <div 
-                  className="absolute top-1/2 -translate-y-1/2 transition-all duration-1000"
-                  style={{ left: `${trackingProgress}%` }}
-                >
-                  <Plane 
-                    className={cn("w-4 h-4 -rotate-45", getTextColorClass(flight.status))} 
-                  />
-                </div>
-              </>
-            )}
+        {/* Row 4: Times + Progress Bar */}
+        <div className="flex items-center gap-3">
+          {/* Scheduled Time */}
+          <div className="text-left flex-shrink-0 min-w-[70px]">
+            <span 
+              className="font-semibold text-base"
+              style={{ color: theme.textColor }}
+            >
+              {scheduledTimeFormatted}
+            </span>
           </div>
-        </div>
-        
-        <div className="text-right">
-          <p className="text-muted-foreground text-xs">Estimated</p>
-          <p className={cn("font-semibold", getTextColorClass(flight.status))}>
-            {estimatedTimeFormatted}
-          </p>
+          
+          {/* Flight Progress Bar */}
+          {showProgressBar && (
+            <div className="flex-1">
+              <FlightProgressBar
+                scheduledTime={flight.scheduledTime}
+                estimatedTime={flight.estimatedTime}
+                flightDate={flight.date}
+                status={flight.status}
+                trackingProgress={flight.trackingProgress}
+                textColor={theme.textColor}
+                trackActiveColor={theme.trackActive}
+                trackInactiveColor={theme.trackInactive}
+              />
+            </div>
+          )}
+          
+          {/* Estimated Time */}
+          <div className="text-right flex-shrink-0 min-w-[70px]">
+            <span 
+              className="font-semibold text-base"
+              style={{ color: theme.textColor }}
+            >
+              {estimatedTimeFormatted}
+            </span>
+          </div>
         </div>
       </div>
     </div>
