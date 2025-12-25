@@ -77,6 +77,7 @@ interface SettingsState {
   fontSize: number;
   textCase: 'default' | 'uppercase' | 'lowercase';
   timeFormat: '12h' | '24h';
+  temperatureUnit: 'C' | 'F';
   notifications: {
     sms: boolean;
     email: boolean;
@@ -92,6 +93,7 @@ interface SettingsContextType {
   setFontSize: (size: number) => void;
   setTextCase: (textCase: 'default' | 'uppercase' | 'lowercase') => void;
   toggleTimeFormat: () => void;
+  toggleTemperatureUnit: () => void;
   setNotification: (key: keyof SettingsState['notifications'], value: boolean) => void;
   updateProfile: (data: { display_name?: string; phone?: string }) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
@@ -103,6 +105,7 @@ const defaultSettings: SettingsState = {
   fontSize: 16,
   textCase: 'default',
   timeFormat: '24h',
+  temperatureUnit: 'C',
   notifications: {
     sms: false,
     email: false,
@@ -130,8 +133,11 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     localStorage.setItem('arriva-settings', JSON.stringify(settings));
     
-    // Apply font to document
-    document.documentElement.style.setProperty('--font-body', `'${settings.fontFamily}', sans-serif`);
+    // Apply font globally to document
+    const fontFamily = `'${settings.fontFamily}', sans-serif`;
+    document.documentElement.style.setProperty('--font-body', fontFamily);
+    document.documentElement.style.setProperty('--font-display', fontFamily);
+    document.body.style.fontFamily = fontFamily;
     document.documentElement.style.fontSize = `${settings.fontSize}px`;
     
     // Load Google Font dynamically
@@ -165,6 +171,13 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     setSettings(prev => ({ 
       ...prev, 
       timeFormat: prev.timeFormat === '12h' ? '24h' : '12h' 
+    }));
+  };
+
+  const toggleTemperatureUnit = () => {
+    setSettings(prev => ({ 
+      ...prev, 
+      temperatureUnit: prev.temperatureUnit === 'C' ? 'F' : 'C' 
     }));
   };
 
@@ -216,6 +229,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         setFontSize,
         setTextCase,
         toggleTimeFormat,
+        toggleTemperatureUnit,
         setNotification,
         updateProfile,
         updatePassword,

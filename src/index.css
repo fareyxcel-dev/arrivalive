@@ -75,6 +75,7 @@
 @layer base {
   * {
     @apply border-border;
+    font-family: inherit;
   }
 
   html {
@@ -87,7 +88,7 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
+    font-family: var(--font-body);
   }
 }
 
@@ -501,6 +502,83 @@
 
   .bell-active {
     color: hsl(var(--foreground));
+  }
+
+  /* Flight Progress Bar animations */
+  .flight-progress-pulse {
+    animation: progress-pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes progress-pulse {
+    0%, 100% {
+      box-shadow: 0 0 4px rgba(255, 255, 255, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+    }
+  }
+
+  .countdown-pulse {
+    animation: countdown-pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes countdown-pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  .flight-icon-glow {
+    animation: flight-glow 1s ease-in-out infinite;
+    filter: drop-shadow(0 0 4px currentColor);
+  }
+
+  @keyframes flight-glow {
+    0%, 100% {
+      filter: drop-shadow(0 0 2px currentColor);
+    }
+    50% {
+      filter: drop-shadow(0 0 8px currentColor);
+    }
+  }
+
+  /* Status badge v2 animations */
+  .status-badge-v2 {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .status-ripple-v2 {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    animation: status-ripple-v2 2.5s ease-out infinite;
+  }
+
+  @keyframes status-ripple-v2 {
+    0% {
+      transform: scale(0.8);
+      opacity: 0.2;
+    }
+    100% {
+      transform: scale(1.5);
+      opacity: 0;
+    }
+  }
+
+  .bell-active-v2 {
+    animation: bell-ring 0.5s ease-out;
+  }
+
+  @keyframes bell-ring {
+    0%, 100% { transform: rotate(0); }
+    20% { transform: rotate(15deg); }
+    40% { transform: rotate(-10deg); }
+    60% { transform: rotate(5deg); }
+    80% { transform: rotate(-5deg); }
   }
 }
 

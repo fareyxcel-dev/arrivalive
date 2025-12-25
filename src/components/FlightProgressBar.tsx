@@ -175,12 +175,12 @@ const FlightProgressBar = ({
         }}
       />
       
-      {/* Countdown text */}
+      {/* Countdown text overlay */}
       {countdown && (
         <div 
           className={cn(
-            "absolute inset-0 flex items-center justify-center text-xs font-medium transition-opacity duration-300",
-            isLandingPulse && "animate-pulse"
+            "absolute inset-0 flex items-center justify-center text-[10px] font-medium transition-opacity duration-300",
+            isLandingPulse && "countdown-pulse"
           )}
           style={{ color: textColor }}
         >
@@ -192,13 +192,14 @@ const FlightProgressBar = ({
       <div 
         className={cn(
           "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-1000 ease-out z-10",
-          isLandingPulse && "flight-icon-pulse"
+          isLandingPulse && "flight-icon-glow"
         )}
-        style={{ left: `${progress}%` }}
+        style={{ left: `${Math.min(progress, 95)}%` }}
       >
+        {/* Plane SVG from provided ImageKit URL - scaled down */}
         <svg 
-          width="20" 
-          height="20" 
+          width="16" 
+          height="16" 
           viewBox="0 0 24 24" 
           fill="none" 
           className="transform -rotate-90"
