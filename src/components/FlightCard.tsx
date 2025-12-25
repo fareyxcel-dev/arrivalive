@@ -40,7 +40,7 @@ const AIRLINE_NAMES: Record<string, string> = {
   'W6': 'Wizz Air', 'WK': 'Edelweiss Air', 'WY': 'Oman Air', 'XY': 'Flynas', 'ZF': 'Azur Air',
 };
 
-// Status-based theme colors
+// Status-based theme colors with subtle live blur tints
 const getStatusTheme = (status: string) => {
   switch (status.toUpperCase()) {
     case 'LANDED':
@@ -92,51 +92,38 @@ const formatTime = (time: string, format: '12h' | '24h') => {
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
 };
 
-// SVG Airline Icon Component (color-changing)
+// SVG Airline Icon Component (dynamic color matching text)
 const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: string }) => {
+  // Use ImageKit CDN for airline logos
+  const logoUrl = `https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/${airlineCode}.png`;
+  
   return (
-    <svg 
-      width="48" 
-      height="32" 
-      viewBox="0 0 48 32" 
-      fill="none" 
-      className="transition-colors duration-300"
-    >
-      <path 
-        d="M42 16L36 12V8L42 12V16ZM42 20L36 24V28L42 24V20ZM34 8V28L24 22V12L34 8ZM22 12V22L6 28V24L20 18L6 12V8L22 12Z" 
-        fill={color}
-        fillOpacity="0.9"
+    <div className="relative w-full h-full flex items-center justify-center">
+      <img 
+        src={logoUrl}
+        alt={airlineCode}
+        className="max-w-[60px] max-h-[40px] object-contain transition-all duration-300"
+        style={{ 
+          filter: `brightness(0) saturate(100%)`,
+          // Apply color overlay using CSS
+        }}
+        onError={(e) => {
+          // Fallback to text if image fails
+          e.currentTarget.style.display = 'none';
+          const parent = e.currentTarget.parentElement;
+          if (parent) {
+            parent.innerHTML = `<span style="color: ${color}; font-size: 14px; font-weight: 600;">${airlineCode}</span>`;
+          }
+        }}
       />
-      <text 
-        x="24" 
-        y="20" 
-        textAnchor="middle" 
-        fill={color} 
-        fontSize="10" 
-        fontWeight="bold"
-        fontFamily="Inter, sans-serif"
-      >
-        {airlineCode}
-      </text>
-    </svg>
+      {/* Color overlay for the logo */}
+      <div 
+        className="absolute inset-0 mix-blend-color pointer-events-none"
+        style={{ backgroundColor: color }}
+      />
+    </div>
   );
 };
-
-// SVG Flight Icon for progress bar
-const FlightIcon = ({ color }: { color: string }) => (
-  <svg 
-    width="20" 
-    height="20" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    className="transform -rotate-90"
-  >
-    <path 
-      d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" 
-      fill={color}
-    />
-  </svg>
-);
 
 const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Props) => {
   const { settings } = useSettings();
@@ -149,8 +136,15 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   const isLanded = flight.status.toUpperCase() === 'LANDED';
   const isCancelled = flight.status.toUpperCase() === 'CANCELLED';
   const isDelayed = flight.status.toUpperCase() === 'DELAYED';
-  const hasStatus = flight.status !== '-' && (isLanded || isCancelled || isDelayed);
-  const showBellOnly = !hasStatus && !isLanded && !isCancelled;
+  
+  // Status/Bell logic:
+  // - On-time (no status): Bell only
+  // - Delayed: Status badge (row 1) + Bell (row 2)
+  // - Landed/Cancelled: Status badge only (replaces bell permanently)
+  const hasTerminalStatus = isLanded || isCancelled || isDelayed;
+  const showStatusBadge = hasTerminalStatus;
+  const showBellRow1 = !hasTerminalStatus; // Bell only in row 1 when no status
+  const showBellRow2 = isDelayed; // Bell in row 2 only for delayed
   const showProgressBar = !isCancelled;
 
   const handleLogoClick = () => {
@@ -182,7 +176,6 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
     <div 
       className="flight-card-v2 rounded-xl p-4 backdrop-blur-md transition-all duration-300"
       style={{ 
-        fontFamily: settings.fontFamily,
         backgroundColor: theme.cardBg,
         borderColor: theme.cardBorder,
         borderWidth: '1px',
@@ -227,22 +220,22 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             </span>
             
             {/* Status Badge (Row 1) - shown for landed, cancelled, or delayed */}
-            {hasStatus && (
+            {showStatusBadge && (
               <div 
-                className="status-badge-v2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide"
+                className="status-badge-v2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide relative overflow-hidden"
                 style={{ 
                   backgroundColor: theme.statusBg,
                   color: theme.textColor,
                   border: `1px solid ${theme.textColor}30`
                 }}
               >
-                <span className="status-badge-text">{flight.status}</span>
+                <span className="status-badge-text relative z-10">{flight.status}</span>
                 <div className="status-ripple-v2" style={{ backgroundColor: theme.textColor }} />
               </div>
             )}
             
-            {/* Bell Icon Only (Row 1) - shown when no status and flight is on-time */}
-            {showBellOnly && (
+            {/* Bell Icon Only (Row 1) - shown when no status */}
+            {showBellRow1 && (
               <button
                 onClick={() => onToggleNotification(flight.id)}
                 className={cn(
@@ -252,7 +245,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
                 aria-label={isNotificationEnabled ? "Disable notifications" : "Enable notifications"}
               >
                 {isNotificationEnabled ? (
-                  <BellRing className="w-5 h-5" style={{ color: theme.textColor }} />
+                  <BellRing className="w-5 h-5 bell-active-v2" style={{ color: theme.textColor }} />
                 ) : (
                   <Bell className="w-5 h-5" style={{ color: theme.textColor }} />
                 )}
@@ -270,7 +263,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             </span>
             
             {/* Bell Icon (Row 2) - only for delayed flights */}
-            {isDelayed && (
+            {showBellRow2 && (
               <button
                 onClick={() => onToggleNotification(flight.id)}
                 className={cn(

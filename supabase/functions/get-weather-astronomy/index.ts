@@ -42,6 +42,18 @@ interface WeatherPayload {
     precipitation: number;
     cloudCoverage: number;
   };
+  astronomy: {
+    sunrise: string;
+    sunset: string;
+    moonrise: string;
+    moonset: string;
+    dayLength: string;
+  };
+  forecast: {
+    nextCondition: string;
+    timeToChange: number; // minutes
+    chanceOfRain: number;
+  };
 }
 
 function getCurrentMaldivesTime(): { hours: number; minutes: number; decimalHours: number } {
@@ -174,6 +186,13 @@ async function fetchWeatherFromOpenWeatherMap(apiKey: string): Promise<any> {
   return response.json();
 }
 
+async function fetchForecastFromOpenWeatherMap(apiKey: string): Promise<any> {
+  const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${MALE_LAT}&lon=${MALE_LON}&appid=${apiKey}&units=metric&cnt=8`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('OpenWeatherMap Forecast API failed');
+  return response.json();
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -193,6 +212,9 @@ serve(async (req) => {
     let windDirection = 180;
     let precipitation = 0;
     let cloudCoverage = 20;
+    let chanceOfRain = 0;
+    let nextCondition = '';
+    let timeToChange = 0;
     
     // Try Weatherstack first
     if (weatherstackKey) {
@@ -229,6 +251,33 @@ serve(async (req) => {
           weatherData = owmData;
           console.log('Weather data from OpenWeatherMap:', condition);
         }
+        
+        // Try to get forecast
+        try {
+          const forecastData = await fetchForecastFromOpenWeatherMap(openWeatherKey);
+          if (forecastData.list && forecastData.list.length > 1) {
+            const currentCondition = condition.toLowerCase();
+            for (let i = 1; i < forecastData.list.length; i++) {
+              const item = forecastData.list[i];
+              const itemCondition = item.weather?.[0]?.description?.toLowerCase() || '';
+              if (itemCondition !== currentCondition) {
+                nextCondition = itemCondition;
+                const itemTime = new Date(item.dt * 1000);
+                const now = new Date();
+                timeToChange = Math.round((itemTime.getTime() - now.getTime()) / (1000 * 60));
+                break;
+              }
+            }
+            // Calculate chance of rain
+            const rainItems = forecastData.list.filter((item: any) => 
+              item.weather?.[0]?.main?.toLowerCase().includes('rain') ||
+              item.pop > 0.3
+            );
+            chanceOfRain = Math.round((rainItems.length / forecastData.list.length) * 100);
+          }
+        } catch (forecastError) {
+          console.log('Forecast fetch failed:', forecastError);
+        }
       } catch (e) {
         console.log('OpenWeatherMap also failed:', e);
       }
@@ -264,6 +313,15 @@ serve(async (req) => {
       { x: Math.random(), y: Math.random() * 0.5, time: Date.now() + Math.random() * 5000 },
     ] : [];
     
+    // Fixed astronomy times for Maldives
+    const astronomy = {
+      sunrise: '06:07',
+      sunset: '18:00',
+      moonrise: '18:30',
+      moonset: '06:00',
+      dayLength: '11h 53m',
+    };
+    
     const payload: WeatherPayload = {
       gradient: { top, mid, bottom },
       skyPhase: phase,
@@ -298,9 +356,15 @@ serve(async (req) => {
         precipitation,
         cloudCoverage,
       },
+      astronomy,
+      forecast: {
+        nextCondition: nextCondition || condition,
+        timeToChange,
+        chanceOfRain,
+      },
     };
 
-    console.log('Weather payload generated:', { phase, condition, isRaining, hasLightning });
+    console.log('Weather payload generated:', { phase, condition, isRaining, hasLightning, chanceOfRain });
 
     return new Response(JSON.stringify(payload), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -332,6 +396,18 @@ serve(async (req) => {
         windDirection: 180,
         precipitation: 0,
         cloudCoverage: 20,
+      },
+      astronomy: {
+        sunrise: '06:07',
+        sunset: '18:00',
+        moonrise: '18:30',
+        moonset: '06:00',
+        dayLength: '11h 53m',
+      },
+      forecast: {
+        nextCondition: 'clear',
+        timeToChange: 0,
+        chanceOfRain: 0,
       },
     };
 
