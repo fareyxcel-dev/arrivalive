@@ -3,12 +3,26 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Simple in-memory cache for weather data (5-minute TTL)
+let weatherCache: { data: any; timestamp: number } | null = null;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Check cache first
+    const now = Date.now();
+    if (weatherCache && (now - weatherCache.timestamp) < CACHE_TTL_MS) {
+      console.log("Returning cached weather data");
+      return new Response(
+        JSON.stringify({ current: weatherCache.data, cached: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const lat = 4.1755;
     const lon = 73.5093;
     
@@ -79,6 +93,9 @@ Deno.serve(async (req) => {
         isRaining: false,
       };
     }
+
+    // Cache the result
+    weatherCache = { data: weatherData, timestamp: now };
 
     return new Response(
       JSON.stringify({ current: weatherData }),
