@@ -5,6 +5,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Simple in-memory cache (5-minute TTL)
+interface CacheEntry { data: any; timestamp: number }
+let astronomyCache: CacheEntry | null = null;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 // Maldives coordinates
 const MALE_LAT = 4.1918;
 const MALE_LON = 73.5291;
@@ -199,6 +204,16 @@ serve(async (req) => {
   }
 
   try {
+    // Check cache first
+    const now = Date.now();
+    const cachedData = astronomyCache;
+    if (cachedData && (now - cachedData.timestamp) < CACHE_TTL_MS) {
+      console.log('Returning cached astronomy data');
+      return new Response(JSON.stringify({ ...cachedData.data, cached: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     console.log('Fetching weather and astronomy data for Maldives');
     
     const weatherstackKey = Deno.env.get('WEATHERSTACK_API_KEY');
@@ -363,6 +378,9 @@ serve(async (req) => {
         chanceOfRain,
       },
     };
+
+    // Cache the result
+    astronomyCache = { data: payload, timestamp: Date.now() };
 
     console.log('Weather payload generated:', { phase, condition, isRaining, hasLightning, chanceOfRain });
 

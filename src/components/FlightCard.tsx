@@ -128,9 +128,24 @@ const getColorFilter = (hexColor: string): string => {
 
 // Airline Icon Component with color matching
 const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: string }) => {
+  const [imageError, setImageError] = useState(false);
+  
   // Updated ImageKit CDN URL for airline logos with IATA code naming
   const logoUrl = `https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/${airlineCode}.png`;
   const colorFilter = getColorFilter(color);
+  
+  if (imageError) {
+    return (
+      <div className="relative w-full h-full flex items-center justify-center">
+        <span 
+          className="text-xs font-semibold"
+          style={{ color }}
+        >
+          {airlineCode}
+        </span>
+      </div>
+    );
+  }
   
   return (
     <div className="relative w-full h-full flex items-center justify-center">
@@ -139,14 +154,7 @@ const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: strin
         alt={airlineCode}
         className="max-w-[56px] max-h-[28px] object-contain transition-all duration-300"
         style={{ filter: colorFilter }}
-        onError={(e) => {
-          // Fallback to text if image fails
-          e.currentTarget.style.display = 'none';
-          const parent = e.currentTarget.parentElement;
-          if (parent) {
-            parent.innerHTML = `<span style="color: ${color}; font-size: 12px; font-weight: 600;">${airlineCode}</span>`;
-          }
-        }}
+        onError={() => setImageError(true)}
       />
     </div>
   );
