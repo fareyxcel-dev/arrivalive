@@ -10,6 +10,7 @@ interface Props {
   textColor: string;
   trackActiveColor: string;
   trackInactiveColor: string;
+  onCountdownChange?: (countdown: string) => void;
 }
 
 // Calculate time remaining in human-readable format
@@ -66,6 +67,31 @@ const calculateProgress = (
   return { progress, minutesRemaining };
 };
 
+// Generate CSS filter to colorize white image to target color
+const getColorFilter = (hexColor: string): string => {
+  const hex = hexColor.replace('#', '');
+  const r = parseInt(hex.substr(0, 2), 16) / 255;
+  const g = parseInt(hex.substr(2, 2), 16) / 255;
+  const b = parseInt(hex.substr(4, 2), 16) / 255;
+  
+  const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+  const brightness = luminance * 100;
+  
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  if (max !== min) {
+    const d = max - min;
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+  const hue = Math.round(h * 360);
+  const saturation = max === 0 ? 0 : ((max - min) / max) * 100;
+  
+  return `brightness(0) saturate(100%) invert(1) sepia(100%) saturate(${Math.max(100, saturation * 10)}%) hue-rotate(${hue}deg) brightness(${Math.max(80, brightness)}%)`;
+};
+
 const FlightProgressBar = ({
   scheduledTime,
   estimatedTime,
@@ -75,6 +101,7 @@ const FlightProgressBar = ({
   textColor,
   trackActiveColor,
   trackInactiveColor,
+  onCountdownChange,
 }: Props) => {
   const [progress, setProgress] = useState(0);
   const [minutesRemaining, setMinutesRemaining] = useState(0);
@@ -104,15 +131,12 @@ const FlightProgressBar = ({
   }, [isLanded, scheduledTime, estimatedTime, flightDate]);
 
   useEffect(() => {
-    // Show progress bar: when flight is in air OR 4 hours before arrival
-    // Hide: if cancelled, or 45 mins after landing
     if (isCancelled) {
       setIsVisible(false);
       return;
     }
 
     if (isLanded) {
-      // Fade out 45 mins after landing
       if (hoursSinceLanding < 0.75) {
         setIsVisible(true);
         setProgress(100);
@@ -122,7 +146,6 @@ const FlightProgressBar = ({
       return;
     }
 
-    // Show if tracking data exists or within 4 hours of arrival
     const shouldShow = (trackingProgress !== undefined && trackingProgress > 0) || 
                        (hoursUntilLanding <= 4 && hoursUntilLanding > 0);
     setIsVisible(shouldShow);
@@ -141,23 +164,36 @@ const FlightProgressBar = ({
       setProgress(newProgress);
       setMinutesRemaining(newMinutes);
       
+      // Notify parent of countdown change
+      const countdown = formatCountdown(newMinutes);
+      onCountdownChange?.(countdown);
+      
       // Activate landing pulse in final 5 minutes
       setIsLandingPulse(newMinutes <= 5 && newMinutes > 0);
     };
 
     updateProgress();
-    const interval = setInterval(updateProgress, 30000); // Update every 30 seconds
+    const interval = setInterval(updateProgress, 30000);
 
     return () => clearInterval(interval);
-  }, [isVisible, isLanded, scheduledTime, estimatedTime, flightDate, trackingProgress]);
+  }, [isVisible, isLanded, scheduledTime, estimatedTime, flightDate, trackingProgress, onCountdownChange]);
+
+  // Clear countdown when not visible
+  useEffect(() => {
+    if (!isVisible) {
+      onCountdownChange?.('');
+    }
+  }, [isVisible, onCountdownChange]);
 
   if (!isVisible) return null;
 
-  const countdown = formatCountdown(minutesRemaining);
+  const colorFilter = getColorFilter(textColor);
+  // Position plane icon at progress point, with 50% of icon outside the active track
+  const planePosition = Math.min(progress, 98);
 
   return (
     <div className={cn(
-      "relative h-6 rounded-full overflow-hidden transition-all duration-500",
+      "relative h-5 rounded-full overflow-visible transition-all duration-500",
       isLandingPulse && "flight-progress-pulse"
     )}>
       {/* Inactive track */}
@@ -175,41 +211,23 @@ const FlightProgressBar = ({
         }}
       />
       
-      {/* Countdown text overlay */}
-      {countdown && (
-        <div 
-          className={cn(
-            "absolute inset-0 flex items-center justify-center text-[10px] font-medium transition-opacity duration-300",
-            isLandingPulse && "countdown-pulse"
-          )}
-          style={{ color: textColor }}
-        >
-          {countdown}
-        </div>
-      )}
-      
-      {/* Aircraft icon moving along the progress */}
+      {/* Aircraft icon from ImageKit - positioned with 50% outside active track */}
       <div 
         className={cn(
-          "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-1000 ease-out z-10",
+          "absolute top-1/2 -translate-y-1/2 transition-all duration-1000 ease-out z-10",
           isLandingPulse && "flight-icon-glow"
         )}
-        style={{ left: `${Math.min(progress, 95)}%` }}
+        style={{ 
+          left: `${planePosition}%`,
+          transform: 'translate(-50%, -50%)',
+        }}
       >
-        {/* Plane SVG from provided ImageKit URL - scaled down */}
-        <svg 
-          width="16" 
-          height="16" 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          className="transform -rotate-90"
-          style={{ color: textColor }}
-        >
-          <path 
-            d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" 
-            fill="currentColor"
-          />
-        </svg>
+        <img 
+          src="https://ik.imagekit.io/jv0j9qvtw/whiteshade-output(16).png?updatedAt=1766600584801"
+          alt="Flight"
+          className="w-6 h-6 object-contain"
+          style={{ filter: colorFilter }}
+        />
       </div>
     </div>
   );
