@@ -1,1 +1,19 @@
 project_id = "qesiqfehmhqxiydkdwky"
+
+[functions.scrape-flights]
+verify_jwt = false
+
+[functions.get-weather]
+verify_jwt = false
+
+[functions.get-weather-astronomy]
+verify_jwt = false
+
+[functions.send-notification]
+verify_jwt = false
+
+[functions.send-web-push]
+verify_jwt = false
+
+[functions.track-flight]
+verify_jwt = false
