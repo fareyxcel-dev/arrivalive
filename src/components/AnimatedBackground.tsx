@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
-import backgroundOverlay from '@/assets/background-overlay.png';
+import { useEffect, useState, useMemo } from 'react';
+import dayNightCycle from '@/assets/day-night-cycle.gif';
 import weatherAssets from '@/assets/weather-assets.png';
 import RainAnimation from './RainAnimation';
+import CloudLayer from './CloudLayer';
 
 interface WeatherData {
   temp: number;
@@ -11,107 +12,94 @@ interface WeatherData {
   windDirection?: number;
   precipitation?: number;
   isRaining?: boolean;
+  cloudCover?: number;
 }
-
-const SKY_COLORS = [
-  { time: 0.0, color: '#151015' },   // Midnight
-  { time: 0.2, color: '#303131' },   // Dawn
-  { time: 0.25, color: '#474749' },  // Sunrise
-  { time: 0.3, color: '#696969' },   // Early Morning
-  { time: 0.4, color: '#767676' },   // Morning
-  { time: 0.45, color: '#828288' },  // Daytime
-  { time: 0.5, color: '#7f7f7f' },   // Noon
-  { time: 0.55, color: '#828288' },  // Daytime
-  { time: 0.65, color: '#666666' },  // Evening
-  { time: 0.75, color: '#6d6d6d' },  // Sunset
-  { time: 0.8, color: '#3a3939' },   // Dusk
-  { time: 0.9, color: '#202020' },   // Night
-  { time: 1.0, color: '#151015' },   // Midnight
-];
-
-const getCycleValue = (): number => {
-  const now = new Date();
-  const hours = now.getHours();
-  const minutes = now.getMinutes();
-  return (hours * 60 + minutes) / 1440;
-};
-
-const interpolateColor = (color1: string, color2: string, factor: number): string => {
-  const hex = (c: string) => parseInt(c.slice(1), 16);
-  const r = (h: number) => (h >> 16) & 255;
-  const g = (h: number) => (h >> 8) & 255;
-  const b = (h: number) => h & 255;
-
-  const h1 = hex(color1);
-  const h2 = hex(color2);
-
-  const newR = Math.round(r(h1) + (r(h2) - r(h1)) * factor);
-  const newG = Math.round(g(h1) + (g(h2) - g(h1)) * factor);
-  const newB = Math.round(b(h1) + (b(h2) - b(h1)) * factor);
-
-  return `rgb(${newR}, ${newG}, ${newB})`;
-};
-
-const getSkyGradient = (cycleValue: number): string[] => {
-  let i = 0;
-  while (i < SKY_COLORS.length - 1 && SKY_COLORS[i + 1].time <= cycleValue) {
-    i++;
-  }
-
-  const start = SKY_COLORS[i];
-  const end = SKY_COLORS[Math.min(i + 1, SKY_COLORS.length - 1)];
-  const factor = end.time === start.time ? 0 : (cycleValue - start.time) / (end.time - start.time);
-
-  const currentColor = interpolateColor(start.color, end.color, factor);
-  
-  const lighterColor = interpolateColor(currentColor, '#ffffff', 0.1);
-  const darkerColor = interpolateColor(currentColor, '#000000', 0.2);
-
-  return [lighterColor, currentColor, darkerColor];
-};
 
 interface Props {
   weather?: WeatherData | null;
 }
 
 const AnimatedBackground = ({ weather }: Props) => {
-  const [gradientColors, setGradientColors] = useState<string[]>(['#151015', '#202020', '#151015']);
+  const [frameOffset, setFrameOffset] = useState(0);
 
+  // Calculate the current position in the 24-hour cycle
+  // GIF starts at 6am, so we need to offset accordingly
   useEffect(() => {
-    const updateGradient = () => {
-      const cycleValue = getCycleValue();
-      setGradientColors(getSkyGradient(cycleValue));
+    const updateFrameOffset = () => {
+      const now = new Date();
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+      const seconds = now.getSeconds();
+      
+      // Total seconds since midnight
+      const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+      
+      // GIF starts at 6am (6 * 3600 = 21600 seconds)
+      // We need to offset so that 6am = start of GIF
+      const gifStartOffset = 6 * 3600;
+      const adjustedSeconds = (totalSeconds - gifStartOffset + 86400) % 86400;
+      
+      // Convert to percentage of day (0-100)
+      const percentOfDay = (adjustedSeconds / 86400) * 100;
+      setFrameOffset(percentOfDay);
     };
 
-    updateGradient();
-    const interval = setInterval(updateGradient, 60000);
-
+    updateFrameOffset();
+    // Update every minute for smooth transitions
+    const interval = setInterval(updateFrameOffset, 60000);
     return () => clearInterval(interval);
   }, []);
 
+  // Calculate cloud parameters from weather
+  const cloudParams = useMemo(() => {
+    if (!weather) {
+      return { coverage: 30, windSpeed: 5, windDirection: 180 };
+    }
+    
+    // Map weather condition to cloud coverage
+    let coverage = 30;
+    const condition = weather.condition?.toLowerCase() || '';
+    
+    if (condition.includes('clear')) coverage = 10;
+    else if (condition.includes('cloud') || condition.includes('overcast')) coverage = 70;
+    else if (condition.includes('rain') || condition.includes('storm')) coverage = 90;
+    else if (condition.includes('fog') || condition.includes('mist')) coverage = 80;
+    else if (condition.includes('haze')) coverage = 50;
+    
+    return {
+      coverage: weather.cloudCover || coverage,
+      windSpeed: weather.windSpeed || 5,
+      windDirection: weather.windDirection || 180,
+    };
+  }, [weather]);
+
   return (
     <div className="fixed inset-0 z-0 overflow-hidden">
-      {/* Layer 1: Flowing Gradient Sky */}
+      {/* Layer 1: Day-Night Cycle GIF as base background
+          The GIF is 24 seconds, we're slowing it to 24 hours (3600x slower)
+          Using CSS animation-duration to control playback timing */}
       <div
-        className="absolute inset-0 transition-all duration-[60000ms]"
+        className="absolute inset-0 bg-cover bg-center"
         style={{
-          background: `linear-gradient(180deg, ${gradientColors[0]} 0%, ${gradientColors[1]} 50%, ${gradientColors[2]} 100%)`,
-        }}
-      />
-
-      {/* Layer 2: Background Overlay */}
-      <div
-        className="absolute inset-0 bg-cover bg-center opacity-30"
-        style={{
-          backgroundImage: `url(${backgroundOverlay})`,
+          backgroundImage: `url(${dayNightCycle})`,
           backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          filter: 'grayscale(100%) brightness(0.85)',
         }}
       />
 
-      {/* Layer 3: Weather Assets with Animation */}
+      {/* Layer 2: Cloud Layer based on weather */}
+      <CloudLayer
+        cloudCoverage={cloudParams.coverage}
+        windSpeed={cloudParams.windSpeed}
+        windDirection={cloudParams.windDirection}
+        isRaining={weather?.isRaining || false}
+      />
+
+      {/* Layer 3: Weather Assets overlay with animation */}
       <div className="absolute inset-0 overflow-hidden">
         <div
-          className="absolute w-[200%] h-full animate-drift opacity-20"
+          className="absolute w-[200%] h-full animate-drift opacity-15"
           style={{
             backgroundImage: `url(${weatherAssets})`,
             backgroundSize: 'contain',
@@ -131,7 +119,7 @@ const AnimatedBackground = ({ weather }: Props) => {
       )}
 
       {/* Layer 5: Monochrome Filter + Glass Reflection */}
-      <div className="absolute inset-0 monochrome opacity-60 pointer-events-none" />
+      <div className="absolute inset-0 monochrome opacity-40 pointer-events-none" />
       
       {/* Glass-like reflection overlay */}
       <div className="absolute inset-0 glass-reflect pointer-events-none" />
@@ -140,7 +128,7 @@ const AnimatedBackground = ({ weather }: Props) => {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.4) 100%)',
+          background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.5) 100%)',
         }}
       />
     </div>

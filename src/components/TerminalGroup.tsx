@@ -163,7 +163,7 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
 
                   {/* Flights for this date */}
                   {expandedDates.has(date) && (
-                    <div className="space-y-3 pl-2">
+                    <div className="space-y-2 pl-2">
                       {groupedFlights[date].map(flight => (
                         <FlightCard
                           key={flight.id}
