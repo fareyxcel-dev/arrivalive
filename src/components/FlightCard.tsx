@@ -130,17 +130,14 @@ const getColorFilter = (hexColor: string): string => {
 const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: string }) => {
   const [imageError, setImageError] = useState(false);
   
-  // Updated ImageKit CDN URL for airline logos with IATA code naming
+  // ImageKit CDN URL for airline logos
   const logoUrl = `https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/${airlineCode}.png`;
   const colorFilter = getColorFilter(color);
   
   if (imageError) {
     return (
-      <div className="relative w-full h-full flex items-center justify-center">
-        <span 
-          className="text-xs font-semibold"
-          style={{ color }}
-        >
+      <div className="w-full h-full flex items-center justify-center">
+        <span className="text-xs font-semibold" style={{ color }}>
           {airlineCode}
         </span>
       </div>
@@ -148,11 +145,11 @@ const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: strin
   }
   
   return (
-    <div className="relative w-full h-full flex items-center justify-center">
+    <div className="w-full h-full flex items-center justify-center">
       <img 
         src={logoUrl}
         alt={airlineCode}
-        className="max-w-[56px] max-h-[28px] object-contain transition-all duration-300"
+        className="max-w-[48px] max-h-[24px] object-contain"
         style={{ filter: colorFilter }}
         onError={() => setImageError(true)}
       />
@@ -212,7 +209,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
 
   return (
     <div 
-      className="flight-card-v2 rounded-xl p-4 backdrop-blur-md transition-all duration-300"
+      className="rounded-xl p-3 backdrop-blur-md"
       style={{ 
         backgroundColor: theme.cardBg,
         borderColor: theme.cardBorder,
@@ -220,12 +217,12 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
         borderStyle: 'solid',
       }}
     >
-      {/* TOP SECTION - 2 Rows with no spacing */}
-      <div className="flex gap-3">
-        {/* Airline Logo Container - reduced height to match text rows */}
+      {/* TOP SECTION - Compact 2 Rows */}
+      <div className="flex gap-2.5 items-center">
+        {/* Airline Logo Container */}
         <button
           onClick={handleLogoClick}
-          className="w-16 h-10 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden transition-all duration-300 relative"
+          className="w-12 h-9 rounded-md flex-shrink-0 flex items-center justify-center overflow-hidden"
           style={{ 
             backgroundColor: theme.statusBg,
             border: `1px solid ${theme.textColor}20`
@@ -234,8 +231,8 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           {showAirlineName ? (
             <span 
               className={cn(
-                "text-[8px] font-medium text-center px-1 leading-tight transition-all duration-500",
-                isFadingOut && "opacity-0 blur-sm"
+                "text-[7px] font-medium text-center px-0.5 leading-tight",
+                isFadingOut && "opacity-0"
               )}
               style={{ color: theme.textColor }}
             >
@@ -246,74 +243,62 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           )}
         </button>
 
-        {/* Flight Info + Status/Bell - 2 Rows with no gap */}
-        <div className="flex-1 flex flex-col justify-center min-w-0 gap-0">
+        {/* Flight Info + Status/Bell */}
+        <div className="flex-1 flex flex-col justify-center min-w-0">
           {/* Row 1: Flight Number + Status Badge OR Bell */}
           <div className="flex items-center justify-between">
-            <span 
-              className="font-bold text-base leading-tight"
-              style={{ color: theme.textColor }}
-            >
+            <span className="font-bold text-sm leading-none" style={{ color: theme.textColor }}>
               {flight.flightId}
             </span>
             
-            {/* Status Badge (Row 1) */}
             {showStatusBadge && (
               <div 
-                className="status-badge-v2 px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide relative overflow-hidden"
+                className="px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide"
                 style={{ 
                   backgroundColor: theme.statusBg,
                   color: theme.textColor,
                   border: `1px solid ${theme.textColor}30`
                 }}
               >
-                <span className="status-badge-text relative z-10">{flight.status}</span>
-                <div className="status-ripple-v2" style={{ backgroundColor: theme.textColor }} />
+                {flight.status}
               </div>
             )}
             
-            {/* Bell Icon Only (Row 1) */}
             {showBellRow1 && (
               <button
                 onClick={() => onToggleNotification(flight.id)}
                 className={cn(
-                  "p-1.5 rounded-full transition-all duration-300 flex-shrink-0",
+                  "p-1 rounded-full flex-shrink-0",
                   isNotificationEnabled ? "active-selection" : "hover:bg-white/10"
                 )}
-                aria-label={isNotificationEnabled ? "Disable notifications" : "Enable notifications"}
               >
                 {isNotificationEnabled ? (
-                  <BellRing className="w-4 h-4 bell-active-v2" style={{ color: theme.textColor }} />
+                  <BellRing className="w-3.5 h-3.5" style={{ color: theme.textColor }} />
                 ) : (
-                  <Bell className="w-4 h-4" style={{ color: theme.textColor }} />
+                  <Bell className="w-3.5 h-3.5" style={{ color: theme.textColor }} />
                 )}
               </button>
             )}
           </div>
           
-          {/* Row 2: Origin + Bell (for delayed) - no spacing from Row 1 */}
-          <div className="flex items-center justify-between">
-            <span 
-              className="text-sm truncate opacity-80 leading-tight"
-              style={{ color: theme.textColor }}
-            >
+          {/* Row 2: Origin + Bell (for delayed) */}
+          <div className="flex items-center justify-between -mt-0.5">
+            <span className="text-xs truncate opacity-80 leading-none" style={{ color: theme.textColor }}>
               {flight.origin}
             </span>
             
-            {/* Bell Icon (Row 2) - only for delayed flights */}
             {showBellRow2 && (
               <button
                 onClick={() => onToggleNotification(flight.id)}
                 className={cn(
-                  "p-1 rounded-full transition-all duration-300 flex-shrink-0",
+                  "p-0.5 rounded-full flex-shrink-0",
                   isNotificationEnabled ? "active-selection" : "hover:bg-white/10"
                 )}
-                aria-label={isNotificationEnabled ? "Disable notifications" : "Enable notifications"}
               >
                 {isNotificationEnabled ? (
-                  <BellRing className="w-3.5 h-3.5 bell-active-v2" style={{ color: theme.textColor }} />
+                  <BellRing className="w-3 h-3" style={{ color: theme.textColor }} />
                 ) : (
-                  <Bell className="w-3.5 h-3.5" style={{ color: theme.textColor }} />
+                  <Bell className="w-3 h-3" style={{ color: theme.textColor }} />
                 )}
               </button>
             )}
@@ -321,35 +306,25 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
         </div>
       </div>
 
-      {/* BOTTOM SECTION - 2 Rows */}
-      <div className="mt-3 space-y-1">
-        {/* Row 3: Labels with countdown in center */}
-        <div className="flex items-center justify-between text-xs" style={{ color: `${theme.textColor}80` }}>
-          <span>Scheduled Time</span>
+      {/* BOTTOM SECTION */}
+      <div className="mt-2">
+        {/* Labels with countdown */}
+        <div className="flex items-center justify-between text-[10px] mb-0.5" style={{ color: `${theme.textColor}70` }}>
+          <span>Scheduled</span>
           {showProgressBar && countdown && (
-            <span 
-              className="text-[11px] font-medium countdown-text-above"
-              style={{ color: theme.textColor }}
-            >
+            <span className="text-[10px] font-medium" style={{ color: theme.textColor }}>
               {countdown}
             </span>
           )}
-          <span>Estimated Time</span>
+          <span>Estimated</span>
         </div>
         
-        {/* Row 4: Times + Progress Bar */}
-        <div className="flex items-center gap-2">
-          {/* Scheduled Time */}
-          <div className="text-left flex-shrink-0 min-w-[65px]">
-            <span 
-              className="font-semibold text-sm"
-              style={{ color: theme.textColor }}
-            >
-              {scheduledTimeFormatted}
-            </span>
-          </div>
+        {/* Times + Progress Bar */}
+        <div className="flex items-center gap-1.5">
+          <span className="font-semibold text-xs flex-shrink-0 w-14 text-left" style={{ color: theme.textColor }}>
+            {scheduledTimeFormatted}
+          </span>
           
-          {/* Flight Progress Bar */}
           {showProgressBar && (
             <div className="flex-1">
               <FlightProgressBar
@@ -366,15 +341,9 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             </div>
           )}
           
-          {/* Estimated Time */}
-          <div className="text-right flex-shrink-0 min-w-[65px]">
-            <span 
-              className="font-semibold text-sm"
-              style={{ color: theme.textColor }}
-            >
-              {estimatedTimeFormatted}
-            </span>
-          </div>
+          <span className="font-semibold text-xs flex-shrink-0 w-14 text-right" style={{ color: theme.textColor }}>
+            {estimatedTimeFormatted}
+          </span>
         </div>
       </div>
     </div>

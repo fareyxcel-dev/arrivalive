@@ -1,75 +1,45 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-// Extended fonts list - 50+ fonts including user requested ones
+// Extended fonts list - 100+ fonts for variety
 const AVAILABLE_FONTS = [
-  // Original fonts
-  'Inter',
-  'Roboto',
-  'Open Sans',
-  'Lato',
-  'Montserrat',
-  'Poppins',
-  'Source Sans Pro',
-  'Oswald',
-  'Raleway',
-  'Merriweather',
-  'Playfair Display',
-  'Nunito',
-  'Ubuntu',
-  'Rubik',
-  'Work Sans',
-  'Fira Sans',
-  'Quicksand',
-  'Karla',
-  'Inconsolata',
-  'Bebas Neue',
-  'Orbitron',
-  'Space Grotesk',
-  'DM Sans',
-  'Manrope',
-  'Outfit',
-  'Sora',
-  'Plus Jakarta Sans',
-  'Archivo',
-  'Barlow',
-  'Exo 2',
-  'Titillium Web',
-  'Rajdhani',
-  'Chakra Petch',
-  // User requested fonts
-  'PT Sans Narrow',
-  'Instrument Serif',
-  'Bona Nova SC',
-  'Yanone Kaffeesatz',
-  'Bai Jamjuree',
-  'Sofia Sans Extra Condensed',
-  'Agdasima',
-  'Kanit',
-  'Teko',
-  'ZCOOL QingKe HuangYou',
-  'Kelly Slab',
-  'Tulpen One',
-  'Offside',
-  'Big Shoulders Stencil',
-  'Odibee Sans',
-  'Revalia',
-  'Smooch Sans',
-  'Anta',
-  'WDXL Lubrifont TC',
-  'Iceberg',
-  'Iceland',
-  'Geo',
-  'Electrolize',
-  'Quantico',
-  'Audiowide',
-  'Sansita Swashed',
-  'Trochut',
-  'Play',
-  'Jaini Purva',
-  'Karantina',
-  'Federant',
-  'Bahianita',
+  // Sans-Serif Modern
+  'Inter', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins',
+  'Source Sans Pro', 'Nunito', 'Ubuntu', 'Rubik', 'Work Sans',
+  'Fira Sans', 'Quicksand', 'Karla', 'DM Sans', 'Manrope',
+  'Outfit', 'Sora', 'Plus Jakarta Sans', 'Archivo', 'Barlow',
+  'Exo 2', 'Titillium Web', 'Mukta', 'Noto Sans', 'Public Sans',
+  'Space Grotesk', 'Albert Sans', 'Figtree', 'Urbanist', 'Lexend',
+  
+  // Display & Futuristic
+  'Oswald', 'Bebas Neue', 'Orbitron', 'Rajdhani', 'Chakra Petch',
+  'Teko', 'Kanit', 'Electrolize', 'Quantico', 'Audiowide',
+  'Play', 'Geo', 'Iceland', 'Iceberg', 'Revalia',
+  'Odibee Sans', 'Big Shoulders Stencil', 'Agdasima', 'Anta',
+  
+  // Condensed & Narrow
+  'PT Sans Narrow', 'Sofia Sans Extra Condensed', 'Yanone Kaffeesatz',
+  'Bai Jamjuree', 'Smooch Sans', 'Tulpen One', 'Big Shoulders Display',
+  'Saira Condensed', 'Oswald', 'Barlow Condensed', 'Roboto Condensed',
+  
+  // Serif & Elegant
+  'Playfair Display', 'Merriweather', 'Instrument Serif', 'Bona Nova SC',
+  'Lora', 'Crimson Text', 'Libre Baskerville', 'EB Garamond',
+  'Cormorant Garamond', 'Spectral', 'Source Serif Pro', 'Noto Serif',
+  
+  // Artistic & Unique
+  'Kelly Slab', 'Offside', 'Federant', 'Bahianita', 'Karantina',
+  'Jaini Purva', 'Trochut', 'Sansita Swashed', 'ZCOOL QingKe HuangYou',
+  'WDXL Lubrifont TC', 'Monoton', 'Abril Fatface', 'Lobster',
+  
+  // Monospace
+  'Inconsolata', 'Fira Code', 'JetBrains Mono', 'Source Code Pro',
+  'IBM Plex Mono', 'Space Mono', 'Roboto Mono', 'Ubuntu Mono',
+  
+  // Additional Modern
+  'Nunito Sans', 'Hind', 'Asap', 'Catamaran', 'Heebo',
+  'Overpass', 'Jost', 'Commissioner', 'Epilogue', 'Syne',
+  'Chivo', 'Josefin Sans', 'Signika', 'Prompt', 'Sarabun',
 ];
 
 interface SettingsState {
@@ -133,16 +103,37 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     localStorage.setItem('arriva-settings', JSON.stringify(settings));
     
-    // Apply font globally to document
+    // Apply font globally to ALL elements including portals/modals
     const fontFamily = `'${settings.fontFamily}', sans-serif`;
+    
+    // Set CSS custom properties
     document.documentElement.style.setProperty('--font-body', fontFamily);
     document.documentElement.style.setProperty('--font-display', fontFamily);
+    
+    // Apply to root elements for global coverage
+    document.documentElement.style.fontFamily = fontFamily;
     document.body.style.fontFamily = fontFamily;
+    
+    // Apply font size
     document.documentElement.style.fontSize = `${settings.fontSize}px`;
     
-    // Load Google Font dynamically
+    // Apply text case globally via CSS custom property
+    let textTransform: string;
+    switch (settings.textCase) {
+      case 'uppercase':
+        textTransform = 'uppercase';
+        break;
+      case 'lowercase':
+        textTransform = 'lowercase';
+        break;
+      default:
+        textTransform = 'none';
+    }
+    document.documentElement.style.setProperty('--text-case', textTransform);
+    
+    // Load Google Font dynamically with all weights
     const fontLink = document.getElementById('dynamic-font') as HTMLLinkElement;
-    const fontUrl = `https://fonts.googleapis.com/css2?family=${settings.fontFamily.replace(/ /g, '+')}:wght@300;400;500;600;700&display=swap`;
+    const fontUrl = `https://fonts.googleapis.com/css2?family=${settings.fontFamily.replace(/ /g, '+')}:wght@300;400;500;600;700;800&display=swap`;
     
     if (fontLink) {
       fontLink.href = fontUrl;
@@ -212,11 +203,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Delete user data from profiles
     await supabase.from('profiles').delete().eq('user_id', user.id);
     await supabase.from('notification_subscriptions').delete().eq('user_id', user.id);
-    
-    // Sign out
     await supabase.auth.signOut();
   };
 

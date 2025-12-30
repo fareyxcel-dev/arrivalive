@@ -76,6 +76,7 @@
   * {
     @apply border-border;
     font-family: inherit;
+    text-transform: var(--text-case, none);
   }
 
   html {
