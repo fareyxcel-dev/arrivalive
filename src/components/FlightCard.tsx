@@ -130,8 +130,10 @@ const getColorFilter = (hexColor: string): string => {
 const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: string }) => {
   const [imageError, setImageError] = useState(false);
   
-  // ImageKit CDN URL for airline logos
-  const logoUrl = `https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/${airlineCode}.png`;
+  // Get airline name for full filename format: "EK (Emirates).png"
+  const airlineName = AIRLINE_NAMES[airlineCode] || airlineCode;
+  const filename = `${airlineCode} (${airlineName}).png`;
+  const logoUrl = `https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/${encodeURIComponent(filename)}`;
   const colorFilter = getColorFilter(color);
   
   if (imageError) {
@@ -148,7 +150,7 @@ const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: strin
     <div className="w-full h-full flex items-center justify-center">
       <img 
         src={logoUrl}
-        alt={airlineCode}
+        alt={airlineName}
         className="max-w-[48px] max-h-[24px] object-contain"
         style={{ filter: colorFilter }}
         onError={() => setImageError(true)}
