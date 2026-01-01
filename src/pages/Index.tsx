@@ -36,17 +36,63 @@ const Index = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Register service worker
+  // Register service worker and background syncs
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
-        .then(registration => {
-          console.log('SW registered:', registration);
-        })
-        .catch(error => {
-          console.error('SW registration failed:', error);
+    const registerServiceWorker = async () => {
+      if (!('serviceWorker' in navigator)) return;
+      
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        console.log('SW registered:', registration);
+        
+        // Register background sync
+        if ('sync' in registration) {
+          await (registration as any).sync.register('sync-flights');
+          await (registration as any).sync.register('sync-weather');
+          console.log('Background sync registered');
+        }
+        
+        // Register periodic sync if supported
+        if ('periodicSync' in registration) {
+          try {
+            await (registration as any).periodicSync.register('update-flights', {
+              minInterval: 30 * 1000 // 30 seconds
+            });
+            await (registration as any).periodicSync.register('update-weather', {
+              minInterval: 5 * 60 * 1000 // 5 minutes
+            });
+            console.log('Periodic sync registered');
+          } catch (e) {
+            console.log('Periodic sync not available:', e);
+          }
+        }
+        
+        // Listen for messages from service worker
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data?.type === 'FLIGHTS_SYNCED') {
+            fetchFlights();
+          }
         });
-    }
+      } catch (error) {
+        console.error('SW registration failed:', error);
+      }
+    };
+    
+    registerServiceWorker();
+    
+    // Sync on visibility change (app focus)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchFlights();
+        // Trigger service worker sync
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({ type: 'SYNC_NOW' });
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   // Auth state
@@ -339,19 +385,35 @@ const Index = () => {
     }
   };
 
-  // Filter today's flights: remove flights that are more than 1 hour before current time
+  // Filter flights: remove flights scheduled 1.5+ hours ago, handle delayed flights by estimated time
   const filteredFlights = flights.filter(flight => {
-    const today = new Date().toISOString().split('T')[0];
-    if (flight.date !== today) return true; // Keep all future dates
-    
-    // For today's flights, only show if scheduled time is within 1 hour of now or later
     const now = new Date();
-    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-    const [hours, minutes] = flight.scheduledTime.split(':').map(Number);
-    const flightTime = new Date(now);
-    flightTime.setHours(hours, minutes, 0, 0);
+    const todayStr = now.toISOString().split('T')[0];
     
-    return flightTime >= oneHourAgo;
+    // Hide all past days' flights completely
+    if (flight.date < todayStr) return false;
+    
+    // Keep all future days' flights
+    if (flight.date > todayStr) return true;
+    
+    // For today's flights, apply 1.5-hour cutoff
+    const cutoffTime = new Date(now.getTime() - 90 * 60 * 1000); // 1.5 hours ago
+    
+    // Parse scheduled time
+    const [schHours, schMinutes] = flight.scheduledTime.split(':').map(Number);
+    const scheduledDateTime = new Date(now);
+    scheduledDateTime.setHours(schHours, schMinutes, 0, 0);
+    
+    // For delayed flights, use estimated time for filtering
+    if (flight.status.toUpperCase() === 'DELAYED' && flight.estimatedTime) {
+      const [estHours, estMinutes] = flight.estimatedTime.split(':').map(Number);
+      const estimatedDateTime = new Date(now);
+      estimatedDateTime.setHours(estHours, estMinutes, 0, 0);
+      return estimatedDateTime >= cutoffTime;
+    }
+    
+    // For landed/cancelled flights, hide after 1.5 hours from scheduled time
+    return scheduledDateTime >= cutoffTime;
   });
 
   const t1Flights = filteredFlights.filter(f => f.terminal === 'T1');
