@@ -1,45 +1,68 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-// Extended fonts list - 100+ fonts for variety
+// Extended fonts list - 200+ fonts for variety (like the GIF shows)
 const AVAILABLE_FONTS = [
-  // Sans-Serif Modern
-  'Inter', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins',
-  'Source Sans Pro', 'Nunito', 'Ubuntu', 'Rubik', 'Work Sans',
-  'Fira Sans', 'Quicksand', 'Karla', 'DM Sans', 'Manrope',
-  'Outfit', 'Sora', 'Plus Jakarta Sans', 'Archivo', 'Barlow',
-  'Exo 2', 'Titillium Web', 'Mukta', 'Noto Sans', 'Public Sans',
-  'Space Grotesk', 'Albert Sans', 'Figtree', 'Urbanist', 'Lexend',
+  // Display & Impact (from GIF)
+  'Poppins', 'Teko', 'Sulphur Point', 'Stick No Bills', 'Space Mono', 'Notable',
+  'Archive', 'Bebas Neue', 'Oswald', 'Anton', 'Permanent Marker', 'Russo One',
+  'Black Ops One', 'Bangers', 'Bungee', 'Audiowide', 'Orbitron', 'Electrolize',
   
-  // Display & Futuristic
-  'Oswald', 'Bebas Neue', 'Orbitron', 'Rajdhani', 'Chakra Petch',
-  'Teko', 'Kanit', 'Electrolize', 'Quantico', 'Audiowide',
-  'Play', 'Geo', 'Iceland', 'Iceberg', 'Revalia',
-  'Odibee Sans', 'Big Shoulders Stencil', 'Agdasima', 'Anta',
+  // Sans-Serif Modern
+  'Inter', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Source Sans Pro',
+  'Nunito', 'Ubuntu', 'Rubik', 'Work Sans', 'Fira Sans', 'Quicksand',
+  'Karla', 'DM Sans', 'Manrope', 'Outfit', 'Sora', 'Plus Jakarta Sans',
+  'Archivo', 'Barlow', 'Exo 2', 'Titillium Web', 'Mukta', 'Noto Sans',
+  'Public Sans', 'Space Grotesk', 'Albert Sans', 'Figtree', 'Urbanist', 'Lexend',
+  'Raleway', 'Nunito Sans', 'Hind', 'Asap', 'Catamaran', 'Heebo',
+  'Overpass', 'Jost', 'Commissioner', 'Epilogue', 'Syne', 'Chivo',
+  'Josefin Sans', 'Signika', 'Prompt', 'Sarabun', 'Mulish', 'Cairo',
+  
+  // Futuristic & Tech
+  'Rajdhani', 'Chakra Petch', 'Kanit', 'Quantico', 'Play', 'Geo',
+  'Iceland', 'Iceberg', 'Revalia', 'Odibee Sans', 'Big Shoulders Stencil',
+  'Agdasima', 'Anta', 'Michroma', 'Oxanium', 'Saira', 'Sarpanch',
+  'Share Tech', 'Share Tech Mono', 'Syncopate', 'Tomorrow', 'Turret Road',
   
   // Condensed & Narrow
   'PT Sans Narrow', 'Sofia Sans Extra Condensed', 'Yanone Kaffeesatz',
   'Bai Jamjuree', 'Smooch Sans', 'Tulpen One', 'Big Shoulders Display',
-  'Saira Condensed', 'Oswald', 'Barlow Condensed', 'Roboto Condensed',
+  'Saira Condensed', 'Barlow Condensed', 'Roboto Condensed', 'Fjalla One',
+  'Pathway Gothic One', 'Encode Sans Condensed', 'Oswald',
   
   // Serif & Elegant
   'Playfair Display', 'Merriweather', 'Instrument Serif', 'Bona Nova SC',
   'Lora', 'Crimson Text', 'Libre Baskerville', 'EB Garamond',
   'Cormorant Garamond', 'Spectral', 'Source Serif Pro', 'Noto Serif',
+  'Bitter', 'Domine', 'Vollkorn', 'Cardo', 'Frank Ruhl Libre',
+  'Old Standard TT', 'Sorts Mill Goudy', 'Gilda Display', 'Rozha One',
+  
+  // Script & Handwriting
+  'Pacifico', 'Dancing Script', 'Great Vibes', 'Allura', 'Sacramento',
+  'Satisfy', 'Tangerine', 'Alex Brush', 'Petit Formal Script', 'Pinyon Script',
+  'Indie Flower', 'Caveat', 'Shadows Into Light', 'Amatic SC', 'Kaushan Script',
+  'Courgette', 'Cookie', 'Yellowtail', 'Marck Script', 'Merienda',
   
   // Artistic & Unique
   'Kelly Slab', 'Offside', 'Federant', 'Bahianita', 'Karantina',
-  'Jaini Purva', 'Trochut', 'Sansita Swashed', 'ZCOOL QingKe HuangYou',
-  'WDXL Lubrifont TC', 'Monoton', 'Abril Fatface', 'Lobster',
+  'Jaini Purva', 'Trochut', 'Sansita Swashed', 'Monoton', 'Abril Fatface',
+  'Lobster', 'Lobster Two', 'Righteous', 'Philosopher', 'Comfortaa',
+  'Fredoka', 'Baloo 2', 'Chewy', 'Concert One', 'Luckiest Guy',
+  'Rampart One', 'Silkscreen', 'Special Elite', 'VT323', 'Press Start 2P',
+  'Creepster', 'Nosifer', 'Metal Mania', 'Butcherman', 'Eater',
   
   // Monospace
   'Inconsolata', 'Fira Code', 'JetBrains Mono', 'Source Code Pro',
   'IBM Plex Mono', 'Space Mono', 'Roboto Mono', 'Ubuntu Mono',
+  'Courier Prime', 'Anonymous Pro', 'Cutive Mono', 'Major Mono Display',
   
-  // Additional Modern
-  'Nunito Sans', 'Hind', 'Asap', 'Catamaran', 'Heebo',
-  'Overpass', 'Jost', 'Commissioner', 'Epilogue', 'Syne',
-  'Chivo', 'Josefin Sans', 'Signika', 'Prompt', 'Sarabun',
+  // Geometric
+  'Comfortaa', 'Varela Round', 'Quicksand', 'Nunito', 'Fredoka',
+  'Baloo 2', 'Bubblegum Sans', 'Cherry Cream Soda', 'Chewy', 'Coiny',
+  
+  // International Display
+  'ZCOOL QingKe HuangYou', 'WDXL Lubrifont TC', 'Noto Sans JP',
+  'Noto Sans KR', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans Arabic',
 ];
 
 interface SettingsState {

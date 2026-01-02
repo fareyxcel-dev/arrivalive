@@ -6,6 +6,8 @@ import WeatherBar from '@/components/WeatherBar';
 import TerminalGroup from '@/components/TerminalGroup';
 import SettingsModal from '@/components/SettingsModal';
 import ExportModal from '@/components/ExportModal';
+import NotificationsModal from '@/components/NotificationsModal';
+import AdminDashboard from '@/components/AdminDashboard';
 import { Flight } from '@/components/FlightCard';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,6 +33,8 @@ const Index = () => {
   const [notificationIds, setNotificationIds] = useState<Set<string>>(new Set());
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -429,9 +433,12 @@ const Index = () => {
           onForceRefresh={handleForceRefresh}
           onExportSchedule={() => setIsExportOpen(true)}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenNotifications={() => setIsNotificationsOpen(true)}
+          onOpenAdmin={() => setIsAdminOpen(true)}
           isLoggedIn={!!user}
           onAuthAction={handleAuthAction}
           onInstallPWA={handleInstallPWA}
+          userEmail={user?.email}
         />
 
         <main className="pb-8">
@@ -480,6 +487,8 @@ const Index = () => {
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <ExportModal isOpen={isExportOpen} onClose={() => setIsExportOpen(false)} />
+      <NotificationsModal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
+      <AdminDashboard isOpen={isAdminOpen} onClose={() => setIsAdminOpen(false)} />
     </div>
   );
 };
