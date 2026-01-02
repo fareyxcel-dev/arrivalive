@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { X, User, Palette, Bell, Shield, Camera, Loader2 } from 'lucide-react';
+import { X, User, Palette, Bell, Shield, Camera, Loader2, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import FontPicker from './FontPicker';
 
 interface Props {
   isOpen: boolean;
@@ -118,10 +119,14 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     }
   };
 
+  const handleFontUpload = () => {
+    toast.info('Font upload coming soon! Uploaded fonts will need admin approval.');
+  };
+
   return (
     <div className="modal-overlay flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="glass-strong rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden animate-scale-in"
+        className="glass-blur-strong rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden animate-scale-in"
         onClick={e => e.stopPropagation()}
         style={{ fontFamily: settings.fontFamily }}
       >
@@ -201,19 +206,13 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
           {activeTab === 'appearance' && (
             <div className="space-y-4 animate-fade-in">
               <div>
-                <label className="text-xs text-muted-foreground uppercase tracking-wide">Font Family</label>
-                <select
-                  value={settings.fontFamily}
-                  onChange={e => setFontFamily(e.target.value)}
-                  className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-foreground/50 outline-none"
-                  style={{ fontFamily: settings.fontFamily }}
-                >
-                  {availableFonts.map(font => (
-                    <option key={font} value={font} className="bg-popover" style={{ fontFamily: font }}>
-                      {font}
-                    </option>
-                  ))}
-                </select>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">Font Family</label>
+                <FontPicker
+                  fonts={availableFonts}
+                  selectedFont={settings.fontFamily}
+                  onSelect={setFontFamily}
+                  onUploadClick={handleFontUpload}
+                />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground uppercase tracking-wide">
