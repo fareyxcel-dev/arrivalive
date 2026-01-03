@@ -107,6 +107,8 @@ const FlightProgressBar = ({
   const [minutesRemaining, setMinutesRemaining] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const [isLandingPulse, setIsLandingPulse] = useState(false);
+  const [barHeight, setBarHeight] = useState(100); // Percentage of original height
+  const [iconScale, setIconScale] = useState(1);
 
   const isLanded = status.toUpperCase() === 'LANDED';
   const isCancelled = status.toUpperCase() === 'CANCELLED';
@@ -120,16 +122,17 @@ const FlightProgressBar = ({
     return (estimated.getTime() - now.getTime()) / (1000 * 60 * 60);
   }, [scheduledTime, estimatedTime, flightDate]);
 
-  // Calculate hours since landing for fade-out
-  const hoursSinceLanding = useMemo(() => {
+  // Calculate minutes since landing for gradual fade-out (20 minutes)
+  const minutesSinceLanding = useMemo(() => {
     if (!isLanded) return 0;
     const now = new Date();
     const [hours, minutes] = (estimatedTime || scheduledTime).split(':').map(Number);
     const landed = new Date(flightDate + 'T00:00:00+05:00');
     landed.setHours(hours, minutes, 0, 0);
-    return (now.getTime() - landed.getTime()) / (1000 * 60 * 60);
+    return (now.getTime() - landed.getTime()) / (1000 * 60);
   }, [isLanded, scheduledTime, estimatedTime, flightDate]);
 
+  // Handle visibility and post-landing animation
   useEffect(() => {
     if (isCancelled) {
       setIsVisible(false);
@@ -137,9 +140,13 @@ const FlightProgressBar = ({
     }
 
     if (isLanded) {
-      if (hoursSinceLanding < 0.75) {
+      if (minutesSinceLanding < 20) {
         setIsVisible(true);
         setProgress(100);
+        // Gradually shrink bar height and icon over 20 minutes
+        const shrinkProgress = minutesSinceLanding / 20;
+        setBarHeight(100 * (1 - shrinkProgress));
+        setIconScale(1 - (shrinkProgress * 0.6)); // Scale down to 0.4
       } else {
         setIsVisible(false);
       }
@@ -149,8 +156,11 @@ const FlightProgressBar = ({
     const shouldShow = (trackingProgress !== undefined && trackingProgress > 0) || 
                        (hoursUntilLanding <= 4 && hoursUntilLanding > 0);
     setIsVisible(shouldShow);
-  }, [isCancelled, isLanded, trackingProgress, hoursUntilLanding, hoursSinceLanding]);
+    setBarHeight(100);
+    setIconScale(1);
+  }, [isCancelled, isLanded, trackingProgress, hoursUntilLanding, minutesSinceLanding]);
 
+  // Update icon scale based on progress (grow as approaching landing)
   useEffect(() => {
     if (!isVisible || isLanded) return;
 
@@ -170,6 +180,10 @@ const FlightProgressBar = ({
       
       // Activate landing pulse in final 5 minutes
       setIsLandingPulse(newMinutes <= 5 && newMinutes > 0);
+      
+      // Icon grows as it approaches landing (from 0.7 to 1.0)
+      const growProgress = Math.min(newProgress / 100, 1);
+      setIconScale(0.7 + (growProgress * 0.3));
     };
 
     updateProgress();
@@ -188,30 +202,38 @@ const FlightProgressBar = ({
   if (!isVisible) return null;
 
   const colorFilter = getColorFilter(textColor);
-  // Position plane icon at progress point, with 50% of icon outside the active track
   const planePosition = Math.min(progress, 98);
+  
+  // Calculate actual height (slimmer bar: h-3 = 12px base)
+  const actualHeight = (12 * barHeight) / 100;
 
   return (
-    <div className={cn(
-      "relative h-5 rounded-full overflow-visible transition-all duration-500",
-      isLandingPulse && "flight-progress-pulse"
-    )}>
-      {/* Inactive track */}
+    <div 
+      className={cn(
+        "relative rounded-full overflow-visible transition-all duration-500",
+        isLandingPulse && "flight-progress-pulse"
+      )}
+      style={{ height: `${Math.max(actualHeight, 2)}px` }}
+    >
+      {/* Inactive track with transparency and blur */}
       <div 
-        className="absolute inset-0 rounded-full"
-        style={{ backgroundColor: trackInactiveColor }}
+        className="absolute inset-0 rounded-full backdrop-blur-sm"
+        style={{ 
+          backgroundColor: trackInactiveColor,
+          opacity: 0.6,
+        }}
       />
       
-      {/* Active track */}
+      {/* Active track with gradient */}
       <div 
         className="absolute inset-y-0 left-0 rounded-full transition-all duration-1000 ease-out"
         style={{ 
           width: `${progress}%`,
-          backgroundColor: trackActiveColor,
+          background: `linear-gradient(90deg, ${trackActiveColor}90, ${trackActiveColor})`,
         }}
       />
       
-      {/* Aircraft icon from ImageKit - positioned with 50% outside active track */}
+      {/* Aircraft icon with dynamic scaling */}
       <div 
         className={cn(
           "absolute top-1/2 -translate-y-1/2 transition-all duration-1000 ease-out z-10",
@@ -219,13 +241,13 @@ const FlightProgressBar = ({
         )}
         style={{ 
           left: `${planePosition}%`,
-          transform: 'translate(-50%, -50%)',
+          transform: `translate(-50%, -50%) scale(${iconScale})`,
         }}
       >
         <img 
           src="https://ik.imagekit.io/jv0j9qvtw/whiteshade-output(16).png?updatedAt=1766600584801"
           alt="Flight"
-          className="w-6 h-6 object-contain"
+          className="w-5 h-5 object-contain"
           style={{ filter: colorFilter }}
         />
       </div>

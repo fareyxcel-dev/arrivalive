@@ -221,29 +221,33 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
     >
       {/* TOP SECTION - Compact 2 Rows */}
       <div className="flex gap-2.5 items-center">
-        {/* Airline Logo Container */}
+        {/* Airline Logo - Transparent Container */}
         <button
           onClick={handleLogoClick}
-          className="w-12 h-9 rounded-md flex-shrink-0 flex items-center justify-center overflow-hidden"
-          style={{ 
-            backgroundColor: theme.statusBg,
-            border: `1px solid ${theme.textColor}20`
-          }}
+          className="w-12 h-9 flex-shrink-0 flex items-center justify-center overflow-hidden transition-all duration-300"
         >
           {showAirlineName ? (
-            <span 
+            <div 
               className={cn(
-                "text-[7px] font-medium text-center px-0.5 leading-tight",
+                "backdrop-blur-md rounded px-1 py-0.5 transition-opacity duration-300",
                 isFadingOut && "opacity-0"
               )}
-              style={{ color: theme.textColor }}
+              style={{ backgroundColor: `${theme.textColor}15` }}
             >
-              {airlineName}
-            </span>
+              <span 
+                className="text-[7px] font-medium text-center leading-tight block"
+                style={{ color: theme.textColor }}
+              >
+                {airlineName}
+              </span>
+            </div>
           ) : (
             <AirlineIcon airlineCode={flight.airlineCode} color={theme.textColor} />
           )}
         </button>
+
+        {/* Separator */}
+        <span className="text-lg font-light opacity-40 flex-shrink-0" style={{ color: theme.textColor }}>|</span>
 
         {/* Flight Info + Status/Bell */}
         <div className="flex-1 flex flex-col justify-center min-w-0">
