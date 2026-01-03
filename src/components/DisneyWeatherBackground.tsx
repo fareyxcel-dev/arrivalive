@@ -65,13 +65,13 @@ const DisneyWeatherBackground = ({ weatherData }: Props) => {
   const lightningFlashRef = useRef<number>(0);
   const nextLightningRef = useRef<number>(0);
 
-  // Generate stars once
+  // Generate stars once - expanded to cover more of the screen
   useEffect(() => {
     const stars: Star[] = [];
-    for (let i = 0; i < 150; i++) {
+    for (let i = 0; i < 200; i++) {
       stars.push({
         x: Math.random(),
-        y: Math.random() * 0.6,
+        y: Math.random() * 0.75, // Extended from 0.6 to 0.75 for more coverage
         brightness: 0.3 + Math.random() * 0.7,
         twinkleSpeed: 0.5 + Math.random() * 2,
         twinklePhase: Math.random() * Math.PI * 2,
@@ -81,13 +81,13 @@ const DisneyWeatherBackground = ({ weatherData }: Props) => {
     starsRef.current = stars;
   }, []);
 
-  // Generate Disney-style fluffy clouds
+  // Generate Disney-style fluffy clouds - expanded coverage
   useEffect(() => {
     if (!weatherData) return;
     
     const cloudCoverage = weatherData.weather.cloudCoverage;
     const windSpeed = weatherData.weather.windSpeed;
-    const count = Math.floor((cloudCoverage / 100) * 12) + 3;
+    const count = Math.floor((cloudCoverage / 100) * 15) + 5; // More clouds
     
     const clouds: Cloud[] = [];
     for (let i = 0; i < count; i++) {
@@ -107,11 +107,13 @@ const DisneyWeatherBackground = ({ weatherData }: Props) => {
         segments.push({ offsetX, offsetY, radius });
       }
       
+      // Expanded Y range for better coverage - clouds now span 0.05 to 0.85 of viewport
+      const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 1080;
       clouds.push({
         x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1920),
-        y: layer === 'high' ? Math.random() * 0.15 * (typeof window !== 'undefined' ? window.innerHeight : 1080) :
-           layer === 'mid' ? 0.15 * (typeof window !== 'undefined' ? window.innerHeight : 1080) + Math.random() * 0.25 * (typeof window !== 'undefined' ? window.innerHeight : 1080) :
-           0.4 * (typeof window !== 'undefined' ? window.innerHeight : 1080) + Math.random() * 0.25 * (typeof window !== 'undefined' ? window.innerHeight : 1080),
+        y: layer === 'high' ? 0.05 * windowHeight + Math.random() * 0.2 * windowHeight :
+           layer === 'mid' ? 0.25 * windowHeight + Math.random() * 0.3 * windowHeight :
+           0.55 * windowHeight + Math.random() * 0.3 * windowHeight,
         width,
         height,
         opacity: layer === 'high' ? 0.3 : layer === 'mid' ? 0.5 : 0.7,
@@ -253,44 +255,75 @@ const DisneyWeatherBackground = ({ weatherData }: Props) => {
       
       ctx.save();
       
-      // Moon glow
-      const glowGradient = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, radius * 3);
-      glowGradient.addColorStop(0, `rgba(220, 230, 255, ${illumination / 100 * 0.5})`);
-      glowGradient.addColorStop(0.5, `rgba(180, 200, 230, ${illumination / 100 * 0.2})`);
+      // Moon glow - softer and more atmospheric
+      const glowGradient = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, radius * 3.5);
+      glowGradient.addColorStop(0, `rgba(220, 230, 255, ${illumination / 100 * 0.4})`);
+      glowGradient.addColorStop(0.3, `rgba(200, 215, 240, ${illumination / 100 * 0.2})`);
+      glowGradient.addColorStop(0.6, `rgba(180, 200, 230, ${illumination / 100 * 0.1})`);
       glowGradient.addColorStop(1, 'rgba(150, 170, 200, 0)');
       ctx.fillStyle = glowGradient;
       ctx.beginPath();
-      ctx.arc(moonX, moonY, radius * 3, 0, Math.PI * 2);
+      ctx.arc(moonX, moonY, radius * 3.5, 0, Math.PI * 2);
       ctx.fill();
       
-      // Moon body
+      // Moon body with realistic coloring
       const moonGradient = ctx.createRadialGradient(moonX - 5, moonY - 5, 0, moonX, moonY, radius);
-      moonGradient.addColorStop(0, 'rgba(240, 245, 255, 1)');
-      moonGradient.addColorStop(0.8, 'rgba(200, 210, 230, 1)');
-      moonGradient.addColorStop(1, 'rgba(180, 190, 210, 0.9)');
+      moonGradient.addColorStop(0, 'rgba(245, 248, 255, 1)');
+      moonGradient.addColorStop(0.6, 'rgba(220, 225, 235, 1)');
+      moonGradient.addColorStop(0.9, 'rgba(200, 208, 220, 0.95)');
+      moonGradient.addColorStop(1, 'rgba(180, 190, 205, 0.8)');
       ctx.fillStyle = moonGradient;
       ctx.beginPath();
       ctx.arc(moonX, moonY, radius, 0, Math.PI * 2);
       ctx.fill();
       
-      // Moon phase shadow (crescent effect)
+      // Moon phase shadow - blend with sky instead of harsh black
       if (phase !== 0.5) {
-        const shadowOffset = (phase < 0.5 ? -1 : 1) * (1 - Math.abs(phase - 0.5) * 2) * radius * 1.5;
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        const shadowOffset = (phase < 0.5 ? -1 : 1) * (1 - Math.abs(phase - 0.5) * 2) * radius * 1.3;
+        
+        // Get sky color from gradient for blending
+        const skyMidColor = weatherData.gradient.mid || 'rgb(30, 40, 60)';
+        
+        // Create a gradient shadow that blends with the sky
+        const shadowGradient = ctx.createRadialGradient(
+          moonX + shadowOffset, moonY, 0,
+          moonX + shadowOffset, moonY, radius * 1.1
+        );
+        shadowGradient.addColorStop(0, skyMidColor);
+        shadowGradient.addColorStop(0.7, skyMidColor);
+        shadowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.fillStyle = shadowGradient;
         ctx.beginPath();
-        ctx.arc(moonX + shadowOffset, moonY, radius * 0.95, 0, Math.PI * 2);
+        ctx.arc(moonX + shadowOffset, moonY, radius * 1.1, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalCompositeOperation = 'source-over';
+        
+        // Add a subtle edge glow on the lit side
+        const litSide = phase < 0.5 ? 1 : -1;
+        const edgeGlow = ctx.createRadialGradient(
+          moonX - litSide * radius * 0.3, moonY, 0,
+          moonX - litSide * radius * 0.3, moonY, radius * 0.5
+        );
+        edgeGlow.addColorStop(0, 'rgba(255, 255, 255, 0.15)');
+        edgeGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = edgeGlow;
+        ctx.beginPath();
+        ctx.arc(moonX - litSide * radius * 0.3, moonY, radius * 0.5, 0, Math.PI * 2);
+        ctx.fill();
       }
       
-      // Subtle moon craters/texture
-      ctx.fillStyle = 'rgba(150, 160, 180, 0.1)';
+      // Subtle moon craters/texture - more realistic
+      ctx.fillStyle = 'rgba(140, 150, 170, 0.08)';
       ctx.beginPath();
       ctx.arc(moonX - 8, moonY - 5, 4, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
       ctx.arc(moonX + 5, moonY + 8, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(moonX + 2, moonY - 8, 2, 0, Math.PI * 2);
       ctx.fill();
       
       ctx.restore();
@@ -319,33 +352,39 @@ const DisneyWeatherBackground = ({ weatherData }: Props) => {
           cloud.x = canvas.width + cloud.width;
         }
         
-        // Disney-style fluffy cloud rendering
+        // Disney-style fluffy cloud rendering with blur
         const brightness = weatherData.rain.active ? 0.4 : 0.7;
         const grayValue = Math.floor(brightness * 255);
         
         ctx.save();
         ctx.globalAlpha = cloud.opacity;
         
+        // Apply blur for Disney-style softness based on layer
+        const blurAmount = cloud.layer === 'high' ? 6 : cloud.layer === 'mid' ? 4 : 2;
+        ctx.filter = `blur(${blurAmount}px)`;
+        
         // Draw cloud with multiple overlapping circles
         cloud.segments.forEach(segment => {
           const cx = cloud.x + segment.offsetX;
           const cy = cloud.y + segment.offsetY;
           
-          // Soft cloud gradient
+          // Soft cloud gradient with enhanced edges
           const cloudGradient = ctx.createRadialGradient(
             cx - segment.radius * 0.2, cy - segment.radius * 0.2, 0,
             cx, cy, segment.radius
           );
-          cloudGradient.addColorStop(0, `rgba(${grayValue + 30}, ${grayValue + 30}, ${grayValue + 30}, 1)`);
-          cloudGradient.addColorStop(0.7, `rgba(${grayValue}, ${grayValue}, ${grayValue}, 0.9)`);
-          cloudGradient.addColorStop(1, `rgba(${grayValue - 20}, ${grayValue - 20}, ${grayValue - 20}, 0.3)`);
+          cloudGradient.addColorStop(0, `rgba(${grayValue + 40}, ${grayValue + 40}, ${grayValue + 40}, 1)`);
+          cloudGradient.addColorStop(0.5, `rgba(${grayValue + 20}, ${grayValue + 20}, ${grayValue + 20}, 0.95)`);
+          cloudGradient.addColorStop(0.8, `rgba(${grayValue}, ${grayValue}, ${grayValue}, 0.7)`);
+          cloudGradient.addColorStop(1, `rgba(${grayValue - 20}, ${grayValue - 20}, ${grayValue - 20}, 0)`);
           
           ctx.fillStyle = cloudGradient;
           ctx.beginPath();
-          ctx.arc(cx, cy, segment.radius, 0, Math.PI * 2);
+          ctx.arc(cx, cy, segment.radius * 1.1, 0, Math.PI * 2);
           ctx.fill();
         });
         
+        ctx.filter = 'none';
         ctx.restore();
       });
     };
