@@ -74,7 +74,7 @@ const FontPicker = ({ fonts, selectedFont, onSelect, onUploadClick }: FontPicker
       {/* Selected font display / trigger */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 rounded-lg glass-blur-strong text-left flex items-center justify-between transition-all hover:bg-white/10"
+        className="w-full px-4 py-3 rounded-lg live-blur-tint bg-white/5 text-left flex items-center justify-between transition-all hover:bg-white/10 border border-white/10"
       >
         <span
           className="text-foreground font-semibold truncate"
@@ -87,10 +87,10 @@ const FontPicker = ({ fonts, selectedFont, onSelect, onUploadClick }: FontPicker
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 mt-2 w-full max-h-80 rounded-xl glass-blur-strong overflow-hidden animate-scale-in border border-white/10">
+        <div className="absolute z-50 mt-2 w-full max-h-80 rounded-xl live-blur-tint overflow-hidden animate-scale-in border border-white/15 bg-black/40">
           {/* Header - selected font name */}
           <div 
-            className="px-4 py-3 border-b border-white/10 text-center"
+            className="px-4 py-3 border-b border-white/10 text-center bg-white/5"
             style={{ fontFamily: `'${selectedFont}', sans-serif` }}
           >
             <span className="text-foreground font-bold text-lg">
@@ -105,10 +105,13 @@ const FontPicker = ({ fonts, selectedFont, onSelect, onUploadClick }: FontPicker
                 onUploadClick();
                 setIsOpen(false);
               }}
-              className="w-full px-4 py-3 flex items-center gap-3 border-b border-white/10 hover:bg-white/5 transition-colors"
+              className="w-full px-4 py-3 flex items-center gap-3 border-b border-white/10 hover:bg-white/5 transition-colors group"
             >
-              <Upload className="w-4 h-4 text-muted-foreground" />
-              <span className="text-muted-foreground text-sm">Upload font</span>
+              <Upload className="w-4 h-4 text-accent group-hover:text-accent" />
+              <div className="text-left">
+                <span className="text-accent text-sm font-medium block">Upload font</span>
+                <span className="text-muted-foreground text-xs">Submit for approval</span>
+              </div>
             </button>
           )}
 
@@ -127,7 +130,7 @@ const FontPicker = ({ fonts, selectedFont, onSelect, onUploadClick }: FontPicker
                   className={cn(
                     "w-full px-4 py-3 text-left transition-all border-b border-white/5 last:border-0",
                     isSelected
-                      ? "bg-white/20 text-foreground"
+                      ? "bg-white/25 text-foreground"
                       : "hover:bg-white/10 text-foreground/80"
                   )}
                   style={{ fontFamily: loadedFonts.has(font) ? `'${font}', sans-serif` : 'inherit' }}
