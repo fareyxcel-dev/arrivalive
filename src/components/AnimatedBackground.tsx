@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react';
-import DisneyWeatherBackground from './DisneyWeatherBackground';
+import { useEffect, useState, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { lazy } from 'react';
+
+// Lazy load Three.js background to avoid blocking initial render
+const ThreeJsBackground = lazy(() => import('./ThreeJsBackground'));
+const DisneyWeatherBackground = lazy(() => import('./DisneyWeatherBackground'));
 
 interface WeatherPayload {
   gradient: { top: string; mid: string; bottom: string };
@@ -30,6 +34,8 @@ interface Props {
 
 const AnimatedBackground = ({ weather }: Props) => {
   const [weatherData, setWeatherData] = useState<WeatherPayload | null>(null);
+  const [useThreeJs, setUseThreeJs] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Fetch full weather astronomy data
   useEffect(() => {
@@ -39,6 +45,7 @@ const AnimatedBackground = ({ weather }: Props) => {
         
         if (error) {
           console.error('Weather astronomy fetch error:', error);
+          setIsLoading(false);
           return;
         }
         
@@ -47,6 +54,8 @@ const AnimatedBackground = ({ weather }: Props) => {
         }
       } catch (error) {
         console.error('Weather astronomy fetch error:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -57,10 +66,37 @@ const AnimatedBackground = ({ weather }: Props) => {
     return () => clearInterval(interval);
   }, []);
 
+  // Check if WebGL is supported
+  useEffect(() => {
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (!gl) {
+        setUseThreeJs(false);
+      }
+    } catch (e) {
+      setUseThreeJs(false);
+    }
+  }, []);
+
   return (
     <div className="fixed inset-0 z-0 overflow-hidden">
-      {/* Disney 2D Style Animated Weather Background */}
-      <DisneyWeatherBackground weatherData={weatherData} />
+      {/* Animated Weather Background */}
+      <Suspense fallback={
+        <div 
+          className="absolute inset-0" 
+          style={{ 
+            background: `linear-gradient(180deg, ${weatherData?.gradient?.top || '#0c0c0e'} 0%, ${weatherData?.gradient?.mid || '#141416'} 50%, ${weatherData?.gradient?.bottom || '#1c1c1f'} 100%)`,
+            filter: 'grayscale(100%)'
+          }} 
+        />
+      }>
+        {useThreeJs && weatherData ? (
+          <ThreeJsBackground weatherData={weatherData} />
+        ) : (
+          <DisneyWeatherBackground weatherData={weatherData} />
+        )}
+      </Suspense>
 
       {/* Glass-like reflection overlay */}
       <div className="absolute inset-0 glass-reflect pointer-events-none" />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Moon, Sun, Cloud, CloudRain, CloudSnow, CloudSun, Sunrise, Sunset } from 'lucide-react';
+import { Moon, Sun, Cloud, CloudRain, CloudSnow, CloudSun, Sunrise, Sunset, CloudLightning, CloudDrizzle, Cloudy } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { cn } from '@/lib/utils';
 
@@ -32,24 +32,28 @@ interface Props {
 
 const getWeatherIcon = (condition: string, isDay: boolean) => {
   const iconClass = "w-5 h-5";
+  const lowerCondition = condition.toLowerCase();
   
-  switch (condition.toLowerCase()) {
-    case 'clear':
-      return isDay ? <Sun className={iconClass} /> : <Moon className={iconClass} />;
-    case 'clouds':
-    case 'haze':
-    case 'mist':
-    case 'fog':
-      return isDay ? <CloudSun className={iconClass} /> : <Cloud className={iconClass} />;
-    case 'rain':
-    case 'drizzle':
-    case 'thunderstorm':
-      return <CloudRain className={iconClass} />;
-    case 'snow':
-      return <CloudSnow className={iconClass} />;
-    default:
-      return isDay ? <Sun className={iconClass} /> : <Moon className={iconClass} />;
+  if (lowerCondition.includes('thunder') || lowerCondition.includes('storm')) {
+    return <CloudLightning className={iconClass} />;
   }
+  if (lowerCondition.includes('drizzle')) {
+    return <CloudDrizzle className={iconClass} />;
+  }
+  if (lowerCondition.includes('rain') || lowerCondition.includes('shower')) {
+    return <CloudRain className={iconClass} />;
+  }
+  if (lowerCondition.includes('snow')) {
+    return <CloudSnow className={iconClass} />;
+  }
+  if (lowerCondition.includes('cloudy') || lowerCondition.includes('overcast')) {
+    return <Cloudy className={iconClass} />;
+  }
+  if (lowerCondition.includes('partly') || lowerCondition.includes('cloud') || lowerCondition.includes('haze') || lowerCondition.includes('mist') || lowerCondition.includes('fog')) {
+    return isDay ? <CloudSun className={iconClass} /> : <Cloud className={iconClass} />;
+  }
+  // Clear/sunny
+  return isDay ? <Sun className={iconClass} /> : <Moon className={iconClass} />;
 };
 
 // Default sun times for Maldives
@@ -71,18 +75,6 @@ const formatCountdown = (minutes: number): string => {
   return `${mins}m`;
 };
 
-const formatDuration = (minutes: number): string => {
-  if (minutes <= 0) return 'changing soon';
-  const hrs = Math.floor(minutes / 60);
-  const mins = Math.floor(minutes % 60);
-  if (hrs > 0 && mins > 0) {
-    return `${hrs}h ${mins}m more`;
-  } else if (hrs > 0) {
-    return `${hrs}h more`;
-  }
-  return `${mins}m more`;
-};
-
 const WeatherBar = ({ weather, currentTime }: Props) => {
   const { settings, toggleTimeFormat, toggleTemperatureUnit } = useSettings();
   const [showSunCountdown, setShowSunCountdown] = useState(false);
@@ -96,44 +88,65 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
   const sunrise = weather?.sunrise || DEFAULT_SUNRISE;
   const sunset = weather?.sunset || DEFAULT_SUNSET;
 
+  // Normalize condition for comparison
+  const normalizeCondition = (cond: string) => {
+    const lower = cond.toLowerCase();
+    if (lower.includes('rain') || lower.includes('drizzle') || lower.includes('shower')) return 'rain';
+    if (lower.includes('thunder') || lower.includes('storm')) return 'storm';
+    if (lower.includes('cloud') || lower.includes('overcast') || lower.includes('cloudy')) return 'cloudy';
+    if (lower.includes('partly')) return 'partly cloudy';
+    if (lower.includes('clear') || lower.includes('sunny')) return 'clear';
+    return lower;
+  };
+
   // Find next different weather condition from hourly forecast
   const getNextDifferentCondition = (): { nextCondition: string; timeToChange: number; forecastTime: string } | null => {
     if (!weather?.hourlyForecast || weather.hourlyForecast.length === 0) {
-      if (weather?.forecast) {
-        const hrs = Math.floor(weather.forecast.timeToChange / 60);
-        const mins = weather.forecast.timeToChange % 60;
+      if (weather?.forecast && weather.forecast.timeToChange > 0) {
         const forecastDate = new Date(currentTime);
         forecastDate.setMinutes(forecastDate.getMinutes() + weather.forecast.timeToChange);
-        const forecastTime = forecastDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: settings.timeFormat === '12h' });
-        return { ...weather.forecast, forecastTime };
+        const forecastTime = forecastDate.toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          hour12: settings.timeFormat === '12h' 
+        });
+        return { 
+          nextCondition: weather.forecast.nextCondition, 
+          timeToChange: weather.forecast.timeToChange, 
+          forecastTime 
+        };
       }
       return null;
     }
     
-    const currentCondition = weather.condition.toLowerCase();
-    const normalizeCondition = (cond: string) => {
-      const lower = cond.toLowerCase();
-      if (lower.includes('rain') || lower.includes('drizzle') || lower.includes('shower')) return 'rain';
-      if (lower.includes('cloud') || lower.includes('overcast')) return 'cloudy';
-      if (lower.includes('clear') || lower.includes('sunny')) return 'clear';
-      if (lower.includes('thunder') || lower.includes('storm')) return 'storm';
-      return lower;
-    };
-    
+    const currentCondition = weather.condition;
     const normalizedCurrent = normalizeCondition(currentCondition);
     
     for (const hourData of weather.hourlyForecast) {
       const normalizedForecast = normalizeCondition(hourData.condition);
       if (normalizedForecast !== normalizedCurrent) {
-        const hourTime = parseInt(hourData.time.split(':')[0]);
-        const currentHour = currentTime.getHours();
-        const currentMin = currentTime.getMinutes();
-        let minutesUntil = (hourTime * 60) - (currentHour * 60 + currentMin);
-        if (minutesUntil <= 0) minutesUntil += 24 * 60;
+        // Parse ISO time from forecast
+        let minutesUntil: number;
+        if (hourData.time.includes('T')) {
+          const forecastDate = new Date(hourData.time);
+          minutesUntil = Math.round((forecastDate.getTime() - currentTime.getTime()) / (1000 * 60));
+        } else {
+          const hourTime = parseInt(hourData.time.split(':')[0]);
+          const currentHour = currentTime.getHours();
+          const currentMin = currentTime.getMinutes();
+          minutesUntil = (hourTime * 60) - (currentHour * 60 + currentMin);
+          if (minutesUntil <= 0) minutesUntil += 24 * 60;
+        }
+        
+        if (minutesUntil <= 0) continue;
         
         const forecastDate = new Date(currentTime);
         forecastDate.setMinutes(forecastDate.getMinutes() + minutesUntil);
-        const forecastTime = forecastDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: settings.timeFormat === '12h' });
+        const forecastTime = forecastDate.toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          hour12: settings.timeFormat === '12h' 
+        });
         
         return {
           nextCondition: hourData.condition,
@@ -146,11 +159,25 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
     return null;
   };
   
-  // Calculate weather duration (time until change)
+  // Calculate weather duration (time until change) - show as "Clear for 2h 15m"
   const getWeatherDuration = (): string => {
     const nextCondition = getNextDifferentCondition();
-    if (!nextCondition) return '';
-    return formatDuration(nextCondition.timeToChange);
+    if (!nextCondition || nextCondition.timeToChange <= 0) return '';
+    
+    const hrs = Math.floor(nextCondition.timeToChange / 60);
+    const mins = Math.floor(nextCondition.timeToChange % 60);
+    
+    // Capitalize first letter of current condition
+    const conditionName = weather?.condition 
+      ? weather.condition.charAt(0).toUpperCase() + weather.condition.slice(1).toLowerCase()
+      : 'Weather';
+    
+    if (hrs > 0 && mins > 0) {
+      return `${conditionName} for ${hrs}h ${mins}m`;
+    } else if (hrs > 0) {
+      return `${conditionName} for ${hrs}h`;
+    }
+    return `${conditionName} for ${mins}m`;
   };
 
   // Calculate sunrise/sunset countdown

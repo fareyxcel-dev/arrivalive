@@ -50,6 +50,39 @@ export type Database = {
         }
         Relationships: []
       }
+      app_updates: {
+        Row: {
+          created_at: string | null
+          description: string
+          id: string
+          is_public: boolean | null
+          release_date: string
+          title: string
+          updated_at: string | null
+          version: string
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          id?: string
+          is_public?: boolean | null
+          release_date: string
+          title: string
+          updated_at?: string | null
+          version: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          id?: string
+          is_public?: boolean | null
+          release_date?: string
+          title?: string
+          updated_at?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
       custom_fonts: {
         Row: {
           approved: boolean | null

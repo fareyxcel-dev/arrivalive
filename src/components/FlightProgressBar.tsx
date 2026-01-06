@@ -67,7 +67,7 @@ const calculateProgress = (
   return { progress, minutesRemaining };
 };
 
-// Generate CSS filter to colorize white image to target color
+// Generate CSS filter to colorize white image to target color (same as airline logos)
 const getColorFilter = (hexColor: string): string => {
   const hex = hexColor.replace('#', '');
   const r = parseInt(hex.substr(0, 2), 16) / 255;
@@ -107,7 +107,7 @@ const FlightProgressBar = ({
   const [minutesRemaining, setMinutesRemaining] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const [isLandingPulse, setIsLandingPulse] = useState(false);
-  const [barHeight, setBarHeight] = useState(100); // Percentage of original height
+  const [fadeProgress, setFadeProgress] = useState(1); // 1 = fully visible, 0 = hidden
   const [iconScale, setIconScale] = useState(1);
 
   const isLanded = status.toUpperCase() === 'LANDED';
@@ -143,10 +143,11 @@ const FlightProgressBar = ({
       if (minutesSinceLanding < 20) {
         setIsVisible(true);
         setProgress(100);
-        // Gradually shrink bar height and icon over 20 minutes
-        const shrinkProgress = minutesSinceLanding / 20;
-        setBarHeight(100 * (1 - shrinkProgress));
-        setIconScale(1 - (shrinkProgress * 0.6)); // Scale down to 0.4
+        // Gradual fade from 1 to 0 over 20 minutes
+        const fadeValue = Math.max(0, 1 - (minutesSinceLanding / 20));
+        setFadeProgress(fadeValue);
+        // Icon shrinks as it fades
+        setIconScale(0.4 + fadeValue * 0.6);
       } else {
         setIsVisible(false);
       }
@@ -156,8 +157,7 @@ const FlightProgressBar = ({
     const shouldShow = (trackingProgress !== undefined && trackingProgress > 0) || 
                        (hoursUntilLanding <= 4 && hoursUntilLanding > 0);
     setIsVisible(shouldShow);
-    setBarHeight(100);
-    setIconScale(1);
+    setFadeProgress(1);
   }, [isCancelled, isLanded, trackingProgress, hoursUntilLanding, minutesSinceLanding]);
 
   // Update icon scale based on progress (grow as approaching landing)
@@ -181,9 +181,9 @@ const FlightProgressBar = ({
       // Activate landing pulse in final 5 minutes
       setIsLandingPulse(newMinutes <= 5 && newMinutes > 0);
       
-      // Icon grows as it approaches landing (from 0.7 to 1.0)
+      // Icon grows as it approaches landing (from 0.8 to 1.2)
       const growProgress = Math.min(newProgress / 100, 1);
-      setIconScale(0.7 + (growProgress * 0.3));
+      setIconScale(0.8 + (growProgress * 0.4));
     };
 
     updateProgress();
@@ -204,8 +204,8 @@ const FlightProgressBar = ({
   const colorFilter = getColorFilter(textColor);
   const planePosition = Math.min(progress, 98);
   
-  // Calculate actual height (slimmer bar: h-3 = 12px base)
-  const actualHeight = (12 * barHeight) / 100;
+  // Dynamic height: 8px base, shrinks during post-landing fade
+  const barHeight = 8 * fadeProgress;
 
   return (
     <div 
@@ -213,14 +213,18 @@ const FlightProgressBar = ({
         "relative rounded-full overflow-visible transition-all duration-500",
         isLandingPulse && "flight-progress-pulse"
       )}
-      style={{ height: `${Math.max(actualHeight, 2)}px` }}
+      style={{ 
+        height: `${Math.max(barHeight, 2)}px`,
+        opacity: fadeProgress,
+        transform: `scaleY(${fadeProgress})`,
+        transformOrigin: 'center',
+      }}
     >
-      {/* Inactive track with transparency and blur */}
+      {/* Inactive track with live blur tint and transparency */}
       <div 
-        className="absolute inset-0 rounded-full backdrop-blur-sm"
+        className="absolute inset-0 rounded-full live-blur-tint"
         style={{ 
-          backgroundColor: trackInactiveColor,
-          opacity: 0.6,
+          background: `linear-gradient(90deg, ${trackInactiveColor}40, ${trackInactiveColor}60)`,
         }}
       />
       
@@ -229,11 +233,11 @@ const FlightProgressBar = ({
         className="absolute inset-y-0 left-0 rounded-full transition-all duration-1000 ease-out"
         style={{ 
           width: `${progress}%`,
-          background: `linear-gradient(90deg, ${trackActiveColor}90, ${trackActiveColor})`,
+          background: `linear-gradient(90deg, ${trackActiveColor}80, ${trackActiveColor})`,
         }}
       />
       
-      {/* Aircraft icon with dynamic scaling */}
+      {/* Aircraft icon with dynamic scaling and color matching */}
       <div 
         className={cn(
           "absolute top-1/2 -translate-y-1/2 transition-all duration-1000 ease-out z-10",

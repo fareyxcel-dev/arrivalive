@@ -3,6 +3,8 @@ import { Bell, BellRing } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
 import FlightProgressBar from './FlightProgressBar';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export interface Flight {
   id: string;
@@ -98,17 +100,14 @@ const formatTime = (time: string, format: '12h' | '24h') => {
 
 // Generate CSS filter to colorize white image to target color
 const getColorFilter = (hexColor: string): string => {
-  // Convert hex to RGB
   const hex = hexColor.replace('#', '');
   const r = parseInt(hex.substr(0, 2), 16) / 255;
   const g = parseInt(hex.substr(2, 2), 16) / 255;
   const b = parseInt(hex.substr(4, 2), 16) / 255;
   
-  // Calculate luminance for brightness adjustment
   const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
   const brightness = luminance * 100;
   
-  // Calculate hue from RGB
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   let h = 0;
@@ -119,8 +118,6 @@ const getColorFilter = (hexColor: string): string => {
     else h = ((r - g) / d + 4) / 6;
   }
   const hue = Math.round(h * 360);
-  
-  // Calculate saturation
   const saturation = max === 0 ? 0 : ((max - min) / max) * 100;
   
   return `brightness(0) saturate(100%) invert(1) sepia(100%) saturate(${Math.max(100, saturation * 10)}%) hue-rotate(${hue}deg) brightness(${Math.max(80, brightness)}%)`;
@@ -130,7 +127,6 @@ const getColorFilter = (hexColor: string): string => {
 const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: string }) => {
   const [imageError, setImageError] = useState(false);
   
-  // Get airline name for full filename format: "EK (Emirates).png"
   const airlineName = AIRLINE_NAMES[airlineCode] || airlineCode;
   const filename = `${airlineCode} (${airlineName}).png`;
   const logoUrl = `https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/${encodeURIComponent(filename)}`;
@@ -159,11 +155,77 @@ const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: strin
   );
 };
 
+// VAPID public key for push notifications
+const VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
+
+// Subscribe to push notifications
+const subscribeToPush = async (userId: string, flightId: string, flightDate: string): Promise<boolean> => {
+  try {
+    // Check if service worker and push are supported
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      toast.error('Push notifications not supported');
+      return false;
+    }
+
+    // Request notification permission
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      toast.error('Notification permission denied');
+      return false;
+    }
+
+    // Get service worker registration
+    const registration = await navigator.serviceWorker.ready;
+
+    // Subscribe to push
+    let subscription = await registration.pushManager.getSubscription();
+    
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: VAPID_PUBLIC_KEY,
+      });
+    }
+
+    // Save subscription to profile
+    const subscriptionJSON = subscription.toJSON();
+    await supabase
+      .from('profiles')
+      .update({ 
+        push_subscription: subscriptionJSON as any
+      })
+      .eq('user_id', userId);
+
+    // Create notification subscription for this flight
+    const { error } = await supabase
+      .from('notification_subscriptions')
+      .upsert({
+        user_id: userId,
+        flight_id: flightId,
+        flight_date: flightDate,
+        notify_push: true,
+      }, {
+        onConflict: 'user_id,flight_id,flight_date',
+      });
+
+    if (error) {
+      console.error('Subscription error:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Push subscription error:', error);
+    return false;
+  }
+};
+
 const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Props) => {
   const { settings } = useSettings();
   const [showAirlineName, setShowAirlineName] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [countdown, setCountdown] = useState('');
+  const [isSubscribing, setIsSubscribing] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const theme = getStatusTheme(flight.status);
@@ -200,6 +262,49 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
+
+  // Handle notification toggle with push subscription
+  const handleBellClick = async () => {
+    if (isSubscribing) return;
+    
+    setIsSubscribing(true);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error('Please sign in to enable notifications');
+        setIsSubscribing(false);
+        return;
+      }
+
+      if (isNotificationEnabled) {
+        // Unsubscribe
+        await supabase
+          .from('notification_subscriptions')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('flight_id', flight.flightId)
+          .eq('flight_date', flight.date);
+        
+        onToggleNotification(flight.id);
+        toast.success(`Notifications disabled for ${flight.flightId}`);
+      } else {
+        // Subscribe with push
+        const success = await subscribeToPush(user.id, flight.flightId, flight.date);
+        
+        if (success) {
+          onToggleNotification(flight.id);
+          toast.success(`Notifications enabled for ${flight.flightId}`);
+        }
+      }
+    } catch (error) {
+      console.error('Notification toggle error:', error);
+      toast.error('Failed to update notifications');
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
 
   // Handle countdown updates from progress bar
   const handleCountdownChange = (newCountdown: string) => {
@@ -272,10 +377,12 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             
             {showBellRow1 && (
               <button
-                onClick={() => onToggleNotification(flight.id)}
+                onClick={handleBellClick}
+                disabled={isSubscribing}
                 className={cn(
-                  "p-1 rounded-full flex-shrink-0",
-                  isNotificationEnabled ? "active-selection" : "hover:bg-white/10"
+                  "p-1 rounded-full flex-shrink-0 transition-all",
+                  isNotificationEnabled ? "active-selection" : "hover:bg-white/10",
+                  isSubscribing && "opacity-50"
                 )}
               >
                 {isNotificationEnabled ? (
@@ -295,10 +402,12 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             
             {showBellRow2 && (
               <button
-                onClick={() => onToggleNotification(flight.id)}
+                onClick={handleBellClick}
+                disabled={isSubscribing}
                 className={cn(
-                  "p-0.5 rounded-full flex-shrink-0",
-                  isNotificationEnabled ? "active-selection" : "hover:bg-white/10"
+                  "p-0.5 rounded-full flex-shrink-0 transition-all",
+                  isNotificationEnabled ? "active-selection" : "hover:bg-white/10",
+                  isSubscribing && "opacity-50"
                 )}
               >
                 {isNotificationEnabled ? (

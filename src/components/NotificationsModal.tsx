@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { X, Bell, AlertTriangle, Plane, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { X, Bell, AlertTriangle, Plane, Clock, CheckCircle, XCircle, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useSettings } from '@/contexts/SettingsContext';
+import headerLogo from '@/assets/header-logo.png';
 
 interface Props {
   isOpen: boolean;
@@ -35,13 +36,23 @@ interface PushNotificationEntry {
   subscription_id: string;
 }
 
+interface AppUpdate {
+  id: string;
+  version: string;
+  title: string;
+  description: string;
+  release_date: string;
+}
+
 const NotificationsModal = ({ isOpen, onClose }: Props) => {
   const { settings } = useSettings();
-  const [activeTab, setActiveTab] = useState<'notifications' | 'alerts'>('notifications');
+  const [activeTab, setActiveTab] = useState<'alerts' | 'notifications' | 'updates'>('alerts');
   const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
   const [alerts, setAlerts] = useState<AlertEntry[]>([]);
   const [pushLogs, setPushLogs] = useState<PushNotificationEntry[]>([]);
+  const [appUpdate, setAppUpdate] = useState<AppUpdate | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showUpdatesTab, setShowUpdatesTab] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -84,15 +95,34 @@ const NotificationsModal = ({ isOpen, onClose }: Props) => {
         }
       }
 
-      // Load all flight alerts (public)
+      // Load all flight alerts (public) - today's alerts only
+      const today = new Date().toISOString().split('T')[0];
       const { data: alertsData } = await supabase
         .from('flight_alerts')
         .select('id, flight_id, origin, alert_type, new_status, created_at')
+        .gte('created_at', today)
         .order('created_at', { ascending: false })
         .limit(100);
 
       if (alertsData) {
         setAlerts(alertsData);
+      }
+
+      // Load today's app update (if any)
+      const { data: updates } = await supabase
+        .from('app_updates')
+        .select('id, version, title, description, release_date')
+        .eq('is_public', true)
+        .eq('release_date', today)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (updates && updates.length > 0) {
+        setAppUpdate(updates[0]);
+        setShowUpdatesTab(true);
+      } else {
+        setAppUpdate(null);
+        setShowUpdatesTab(false);
       }
     } catch (error) {
       console.error('Error loading notifications:', error);
@@ -120,16 +150,42 @@ const NotificationsModal = ({ isOpen, onClose }: Props) => {
     });
   };
 
+  const getTimeSince = (dateStr: string) => {
+    const now = new Date();
+    const date = new Date(dateStr);
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return formatDate(dateStr);
+  };
+
   const getAlertIcon = (alertType: string) => {
     switch (alertType) {
       case 'landed':
         return <Plane className="w-4 h-4 text-accent" />;
       case 'delayed':
-        return <Clock className="w-4 h-4 text-delayed" />;
+        return <Clock className="w-4 h-4 text-orange-400" />;
       case 'cancelled':
-        return <XCircle className="w-4 h-4 text-cancelled" />;
+        return <XCircle className="w-4 h-4 text-red-400" />;
       default:
         return <CheckCircle className="w-4 h-4 text-foreground" />;
+    }
+  };
+
+  const getAlertBorderColor = (alertType: string) => {
+    switch (alertType) {
+      case 'landed':
+        return 'border-l-accent';
+      case 'delayed':
+        return 'border-l-orange-400';
+      case 'cancelled':
+        return 'border-l-red-400';
+      default:
+        return 'border-l-foreground/30';
     }
   };
 
@@ -154,18 +210,6 @@ const NotificationsModal = ({ isOpen, onClose }: Props) => {
         {/* Tabs */}
         <div className="flex border-b border-white/10">
           <button
-            onClick={() => setActiveTab('notifications')}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-3 text-sm transition-colors",
-              activeTab === 'notifications'
-                ? "text-foreground border-b-2 border-foreground/50"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Bell className="w-4 h-4" />
-            <span>Notifications</span>
-          </button>
-          <button
             onClick={() => setActiveTab('alerts')}
             className={cn(
               "flex-1 flex items-center justify-center gap-2 py-3 text-sm transition-colors",
@@ -177,6 +221,32 @@ const NotificationsModal = ({ isOpen, onClose }: Props) => {
             <AlertTriangle className="w-4 h-4" />
             <span>Alerts</span>
           </button>
+          <button
+            onClick={() => setActiveTab('notifications')}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 py-3 text-sm transition-colors",
+              activeTab === 'notifications'
+                ? "text-foreground border-b-2 border-foreground/50"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Bell className="w-4 h-4" />
+            <span>Notifications</span>
+          </button>
+          {showUpdatesTab && (
+            <button
+              onClick={() => setActiveTab('updates')}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-3 text-sm transition-colors",
+                activeTab === 'updates'
+                  ? "text-foreground border-b-2 border-foreground/50"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Updates</span>
+            </button>
+          )}
         </div>
 
         {/* Content */}
@@ -185,11 +255,51 @@ const NotificationsModal = ({ isOpen, onClose }: Props) => {
             <div className="text-center text-muted-foreground py-8 animate-pulse">
               Loading...
             </div>
+          ) : activeTab === 'alerts' ? (
+            <div className="space-y-2 animate-fade-in">
+              {alerts.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  No flight alerts today
+                </p>
+              ) : (
+                alerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className={cn(
+                      "glass rounded-lg p-3 flex items-center gap-3 border-l-2",
+                      getAlertBorderColor(alert.alert_type)
+                    )}
+                  >
+                    {getAlertIcon(alert.alert_type)}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-foreground">
+                          {alert.flight_id}
+                        </p>
+                        <span className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded uppercase font-semibold",
+                          alert.alert_type === 'landed' && "bg-accent/20 text-accent",
+                          alert.alert_type === 'delayed' && "bg-orange-500/20 text-orange-400",
+                          alert.alert_type === 'cancelled' && "bg-red-500/20 text-red-400"
+                        )}>
+                          {alert.alert_type}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {alert.origin && `${alert.origin} • `}
+                        {getTimeSince(alert.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           ) : activeTab === 'notifications' ? (
             <div className="space-y-2 animate-fade-in">
               {notifications.length === 0 && pushLogs.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
-                  No notification subscriptions yet
+                  No notification subscriptions yet.<br />
+                  <span className="text-xs">Tap the bell icon on a flight to subscribe.</span>
                 </p>
               ) : (
                 <>
@@ -216,8 +326,8 @@ const NotificationsModal = ({ isOpen, onClose }: Props) => {
                     <div
                       key={log.id}
                       className={cn(
-                        "glass rounded-lg p-3 flex items-center gap-3",
-                        log.success ? "border-l-2 border-accent" : "border-l-2 border-destructive"
+                        "glass rounded-lg p-3 flex items-center gap-3 border-l-2",
+                        log.success ? "border-l-accent" : "border-l-destructive"
                       )}
                     >
                       {log.success ? (
@@ -230,7 +340,7 @@ const NotificationsModal = ({ isOpen, onClose }: Props) => {
                           {log.notification_type}: {log.status_change}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {formatDate(log.sent_at)} at {formatTime(log.sent_at)}
+                          {getTimeSince(log.sent_at)}
                         </p>
                       </div>
                     </div>
@@ -239,39 +349,35 @@ const NotificationsModal = ({ isOpen, onClose }: Props) => {
               )}
             </div>
           ) : (
-            <div className="space-y-2 animate-fade-in">
-              {alerts.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  No flight alerts yet
-                </p>
-              ) : (
-                alerts.map((alert) => (
-                  <div
-                    key={alert.id}
-                    className="glass rounded-lg p-3 flex items-center gap-3"
-                  >
-                    {getAlertIcon(alert.alert_type)}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-foreground">
-                          {alert.flight_id}
-                        </p>
-                        <span className={cn(
-                          "text-[10px] px-1.5 py-0.5 rounded uppercase font-semibold",
-                          alert.alert_type === 'landed' && "bg-accent/20 text-accent",
-                          alert.alert_type === 'delayed' && "bg-orange-500/20 text-orange-400",
-                          alert.alert_type === 'cancelled' && "bg-red-500/20 text-red-400"
-                        )}>
-                          {alert.alert_type}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {alert.origin && `${alert.origin} • `}
-                        {formatDate(alert.created_at)} at {formatTime(alert.created_at)}
-                      </p>
+            /* Updates tab */
+            <div className="animate-fade-in">
+              {appUpdate ? (
+                <div className="text-center space-y-4">
+                  <p className="text-muted-foreground text-sm">What's new for</p>
+                  <img 
+                    src={headerLogo} 
+                    alt="Arriva.MV" 
+                    className="h-10 mx-auto object-contain"
+                  />
+                  <div className="glass rounded-lg p-4 text-left">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded">
+                        v{appUpdate.version}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(appUpdate.release_date)}
+                      </span>
                     </div>
+                    <h3 className="text-foreground font-semibold mb-2">{appUpdate.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {appUpdate.description}
+                    </p>
                   </div>
-                ))
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  No updates today
+                </p>
               )}
             </div>
           )}
