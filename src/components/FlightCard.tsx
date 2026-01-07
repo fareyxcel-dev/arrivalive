@@ -5,6 +5,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import FlightProgressBar from './FlightProgressBar';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { subscribeToNotifications, addFlightTag, removeFlightTag, setExternalUserId, loadOneSignalScript } from '@/lib/onesignal';
 
 export interface Flight {
   id: string;
@@ -42,48 +43,52 @@ const AIRLINE_NAMES: Record<string, string> = {
   'W6': 'Wizz Air', 'WK': 'Edelweiss Air', 'WY': 'Oman Air', 'XY': 'Flynas', 'ZF': 'Azur Air',
 };
 
-// Status-based theme colors with subtle live blur tints
+// Status-based theme colors with enhanced glassmorphism tints
 const getStatusTheme = (status: string) => {
   switch (status.toUpperCase()) {
     case 'LANDED':
       return {
-        cardBg: 'rgba(16, 232, 185, 0.08)',
-        cardBorder: 'rgba(16, 232, 185, 0.2)',
+        cardTint: 'rgba(16, 232, 185, 0.12)',
+        cardScrim: 'rgba(0, 0, 0, 0.25)',
         trackInactive: '#0f6955',
         trackActive: '#30c2a2',
         textColor: '#81f0d8',
-        statusBg: 'rgba(16, 232, 185, 0.15)',
-        filterHue: '160deg',
+        statusBg: 'rgba(16, 232, 185, 0.2)',
+        bellColor: '#81f0d8',
+        bellGlow: 'rgba(16, 232, 185, 0.3)',
       };
     case 'DELAYED':
       return {
-        cardBg: 'rgba(235, 82, 12, 0.08)',
-        cardBorder: 'rgba(235, 82, 12, 0.2)',
+        cardTint: 'rgba(235, 82, 12, 0.12)',
+        cardScrim: 'rgba(0, 0, 0, 0.25)',
         trackInactive: '#a1441a',
         trackActive: '#c25e30',
         textColor: '#f2763d',
-        statusBg: 'rgba(235, 82, 12, 0.15)',
-        filterHue: '20deg',
+        statusBg: 'rgba(235, 82, 12, 0.2)',
+        bellColor: '#f7a26f',
+        bellGlow: 'rgba(242, 118, 61, 0.35)',
       };
     case 'CANCELLED':
       return {
-        cardBg: 'rgba(191, 15, 36, 0.08)',
-        cardBorder: 'rgba(191, 15, 36, 0.2)',
+        cardTint: 'rgba(191, 15, 36, 0.12)',
+        cardScrim: 'rgba(0, 0, 0, 0.25)',
         trackInactive: '#5a0a15',
         trackActive: '#bf0f24',
         textColor: '#f7485d',
-        statusBg: 'rgba(191, 15, 36, 0.15)',
-        filterHue: '350deg',
+        statusBg: 'rgba(191, 15, 36, 0.2)',
+        bellColor: '#f7485d',
+        bellGlow: 'rgba(247, 72, 93, 0.3)',
       };
     default:
       return {
-        cardBg: 'rgba(255, 255, 255, 0.03)',
-        cardBorder: 'rgba(255, 255, 255, 0.08)',
-        trackInactive: 'rgba(255, 255, 255, 0.1)',
-        trackActive: 'rgba(255, 255, 255, 0.3)',
-        textColor: '#dce0de',
-        statusBg: 'rgba(255, 255, 255, 0.1)',
-        filterHue: '0deg',
+        cardTint: 'rgba(191, 239, 255, 0.08)',
+        cardScrim: 'rgba(0, 0, 0, 0.2)',
+        trackInactive: 'rgba(127, 220, 255, 0.3)',
+        trackActive: 'rgba(255, 255, 255, 0.6)',
+        textColor: '#ffffff',
+        statusBg: 'rgba(255, 255, 255, 0.12)',
+        bellColor: '#bfefff',
+        bellGlow: 'rgba(127, 220, 255, 0.3)',
       };
   }
 };
@@ -155,46 +160,32 @@ const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: strin
   );
 };
 
-// VAPID public key for push notifications
-const VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
-
-// Subscribe to push notifications
-const subscribeToPush = async (userId: string, flightId: string, flightDate: string): Promise<boolean> => {
+// Subscribe to push notifications via OneSignal
+const subscribeToFlightNotifications = async (userId: string, flightId: string, flightDate: string): Promise<boolean> => {
   try {
-    // Check if service worker and push are supported
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      toast.error('Push notifications not supported');
-      return false;
-    }
-
-    // Request notification permission
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      toast.error('Notification permission denied');
-      return false;
-    }
-
-    // Get service worker registration
-    const registration = await navigator.serviceWorker.ready;
-
-    // Subscribe to push
-    let subscription = await registration.pushManager.getSubscription();
+    // Initialize OneSignal and get permission
+    const playerId = await subscribeToNotifications();
     
-    if (!subscription) {
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: VAPID_PUBLIC_KEY,
-      });
+    if (!playerId) {
+      toast.error('Push notification permission denied');
+      return false;
     }
 
-    // Save subscription to profile
-    const subscriptionJSON = subscription.toJSON();
+    // Set external user ID for targeting
+    await setExternalUserId(userId);
+    
+    // Add flight tag for this subscription
+    await addFlightTag(flightId, flightDate);
+
+    // Save player ID to profile
     await supabase
       .from('profiles')
-      .update({ 
-        push_subscription: subscriptionJSON as any
-      })
-      .eq('user_id', userId);
+      .upsert({ 
+        user_id: userId,
+        onesignal_player_id: playerId,
+      }, {
+        onConflict: 'user_id',
+      });
 
     // Create notification subscription for this flight
     const { error } = await supabase
@@ -280,6 +271,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
 
       if (isNotificationEnabled) {
         // Unsubscribe
+        await removeFlightTag(flight.flightId, flight.date);
         await supabase
           .from('notification_subscriptions')
           .delete()
@@ -290,8 +282,8 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
         onToggleNotification(flight.id);
         toast.success(`Notifications disabled for ${flight.flightId}`);
       } else {
-        // Subscribe with push
-        const success = await subscribeToPush(user.id, flight.flightId, flight.date);
+        // Subscribe with OneSignal push
+        const success = await subscribeToFlightNotifications(user.id, flight.flightId, flight.date);
         
         if (success) {
           onToggleNotification(flight.id);
@@ -316,20 +308,30 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
 
   return (
     <div 
-      className="rounded-xl p-3 backdrop-blur-md"
+      className="rounded-[20px] overflow-hidden"
       style={{ 
-        backgroundColor: theme.cardBg,
-        borderColor: theme.cardBorder,
-        borderWidth: '1px',
-        borderStyle: 'solid',
+        // Strong glassmorphism with status tint
+        background: `linear-gradient(135deg, ${theme.cardTint} 0%, ${theme.cardScrim} 100%)`,
+        backdropFilter: 'blur(24px) saturate(1.3)',
+        WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
+        // Polished glass edge effects
+        boxShadow: `
+          0 8px 32px 0 rgba(0, 0, 0, 0.15),
+          inset 0 4px 8px -4px rgba(255, 255, 255, 0.25),
+          inset 0 -4px 8px -4px rgba(0, 0, 0, 0.2),
+          inset 4px 0 8px -6px rgba(255, 255, 255, 0.15),
+          inset -4px 0 8px -6px rgba(0, 0, 0, 0.15)
+        `,
+        padding: '10px 12px',
+        maxHeight: '110px',
       }}
     >
-      {/* TOP SECTION - Compact 2 Rows */}
-      <div className="flex gap-2.5 items-center">
-        {/* Airline Logo - Transparent Container */}
+      {/* TOP SECTION - Ultra Compact 2 Rows */}
+      <div className="flex gap-2 items-center">
+        {/* Airline Logo - Spans 2 rows visually */}
         <button
           onClick={handleLogoClick}
-          className="w-12 h-9 flex-shrink-0 flex items-center justify-center overflow-hidden transition-all duration-300"
+          className="w-10 h-8 flex-shrink-0 flex items-center justify-center transition-all duration-300"
         >
           {showAirlineName ? (
             <div 
@@ -340,7 +342,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
               style={{ backgroundColor: `${theme.textColor}15` }}
             >
               <span 
-                className="text-[7px] font-medium text-center leading-tight block"
+                className="text-[6px] font-medium text-center leading-tight block drop-shadow-md"
                 style={{ color: theme.textColor }}
               >
                 {airlineName}
@@ -351,24 +353,30 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           )}
         </button>
 
-        {/* Separator */}
-        <span className="text-lg font-light opacity-40 flex-shrink-0" style={{ color: theme.textColor }}>|</span>
+        {/* Separator with glow */}
+        <span 
+          className="text-base font-light flex-shrink-0 drop-shadow-sm" 
+          style={{ color: theme.textColor, opacity: 0.4 }}
+        >|</span>
 
-        {/* Flight Info + Status/Bell */}
-        <div className="flex-1 flex flex-col justify-center min-w-0">
+        {/* Flight Info + Status/Bell in Grid */}
+        <div className="flex-1 flex flex-col justify-center min-w-0 gap-0">
           {/* Row 1: Flight Number + Status Badge OR Bell */}
           <div className="flex items-center justify-between">
-            <span className="font-bold text-sm leading-none" style={{ color: theme.textColor }}>
+            <span 
+              className="font-bold text-[13px] leading-none drop-shadow-md" 
+              style={{ color: theme.textColor }}
+            >
               {flight.flightId}
             </span>
             
             {showStatusBadge && (
               <div 
-                className="px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide"
+                className="px-1.5 py-0.5 rounded-full text-[8px] font-semibold uppercase tracking-wide drop-shadow-sm animate-pulse"
                 style={{ 
                   backgroundColor: theme.statusBg,
                   color: theme.textColor,
-                  border: `1px solid ${theme.textColor}30`
+                  boxShadow: `0 0 8px ${theme.bellGlow}`,
                 }}
               >
                 {flight.status}
@@ -380,15 +388,18 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
                 onClick={handleBellClick}
                 disabled={isSubscribing}
                 className={cn(
-                  "p-1 rounded-full flex-shrink-0 transition-all",
-                  isNotificationEnabled ? "active-selection" : "hover:bg-white/10",
+                  "p-0.5 rounded-full flex-shrink-0 transition-all duration-300",
+                  isNotificationEnabled && "animate-pulse",
                   isSubscribing && "opacity-50"
                 )}
+                style={{
+                  boxShadow: isNotificationEnabled ? `0 0 12px ${theme.bellGlow}` : 'none',
+                }}
               >
                 {isNotificationEnabled ? (
-                  <BellRing className="w-3.5 h-3.5" style={{ color: theme.textColor }} />
+                  <BellRing className="w-3 h-3 drop-shadow-md" style={{ color: theme.bellColor }} />
                 ) : (
-                  <Bell className="w-3.5 h-3.5" style={{ color: theme.textColor }} />
+                  <Bell className="w-3 h-3 drop-shadow-md" style={{ color: theme.bellColor, opacity: 0.65 }} />
                 )}
               </button>
             )}
@@ -396,7 +407,10 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           
           {/* Row 2: Origin + Bell (for delayed) */}
           <div className="flex items-center justify-between -mt-0.5">
-            <span className="text-xs truncate opacity-80 leading-none" style={{ color: theme.textColor }}>
+            <span 
+              className="text-[11px] truncate opacity-80 leading-none drop-shadow-sm" 
+              style={{ color: theme.textColor }}
+            >
               {flight.origin}
             </span>
             
@@ -405,15 +419,18 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
                 onClick={handleBellClick}
                 disabled={isSubscribing}
                 className={cn(
-                  "p-0.5 rounded-full flex-shrink-0 transition-all",
-                  isNotificationEnabled ? "active-selection" : "hover:bg-white/10",
+                  "p-0.5 rounded-full flex-shrink-0 transition-all duration-300",
+                  isNotificationEnabled && "animate-pulse",
                   isSubscribing && "opacity-50"
                 )}
+                style={{
+                  boxShadow: isNotificationEnabled ? `0 0 10px ${theme.bellGlow}` : 'none',
+                }}
               >
                 {isNotificationEnabled ? (
-                  <BellRing className="w-3 h-3" style={{ color: theme.textColor }} />
+                  <BellRing className="w-2.5 h-2.5 drop-shadow-md" style={{ color: theme.bellColor }} />
                 ) : (
-                  <Bell className="w-3 h-3" style={{ color: theme.textColor }} />
+                  <Bell className="w-2.5 h-2.5 drop-shadow-md" style={{ color: theme.bellColor, opacity: 0.7 }} />
                 )}
               </button>
             )}
@@ -421,22 +438,22 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
         </div>
       </div>
 
-      {/* BOTTOM SECTION */}
-      <div className="mt-2">
+      {/* BOTTOM SECTION - Rows 3-4 */}
+      <div className="mt-1.5">
         {/* Labels with countdown */}
-        <div className="flex items-center justify-between text-[10px] mb-0.5" style={{ color: `${theme.textColor}70` }}>
-          <span>Scheduled</span>
+        <div className="flex items-center justify-between text-[9px] mb-0.5" style={{ color: `${theme.textColor}70` }}>
+          <span className="drop-shadow-sm">Scheduled</span>
           {showProgressBar && countdown && (
-            <span className="text-[10px] font-medium" style={{ color: theme.textColor }}>
+            <span className="text-[9px] font-medium drop-shadow-sm" style={{ color: theme.textColor }}>
               {countdown}
             </span>
           )}
-          <span>Estimated</span>
+          <span className="drop-shadow-sm">Estimated</span>
         </div>
         
-        {/* Times + Progress Bar */}
-        <div className="flex items-center gap-1.5">
-          <span className="font-semibold text-xs flex-shrink-0 w-14 text-left" style={{ color: theme.textColor }}>
+        {/* Times + Progress Bar - Compact */}
+        <div className="flex items-center gap-1">
+          <span className="font-bold text-[11px] flex-shrink-0 w-12 text-left drop-shadow-md" style={{ color: theme.textColor }}>
             {scheduledTimeFormatted}
           </span>
           
@@ -456,7 +473,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             </div>
           )}
           
-          <span className="font-semibold text-xs flex-shrink-0 w-14 text-right" style={{ color: theme.textColor }}>
+          <span className="font-bold text-[11px] flex-shrink-0 w-12 text-right drop-shadow-md" style={{ color: theme.textColor }}>
             {estimatedTimeFormatted}
           </span>
         </div>

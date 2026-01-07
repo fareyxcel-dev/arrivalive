@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.track-flight]
 verify_jwt = false
+
+[functions.send-onesignal-push]
+verify_jwt = false
+
+[functions.scrape-browse-ai]
+verify_jwt = false

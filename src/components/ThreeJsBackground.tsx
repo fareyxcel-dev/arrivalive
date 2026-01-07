@@ -40,6 +40,85 @@ const getMaldivesTime = (): Date => {
   return new Date(utc + 5 * 3600000);
 };
 
+// 72-stop Maldives Sky Dome Gradient System (Zenith, Horizon, Glow, Falloff)
+const SKY_GRADIENTS: Record<string, { zenith: string; horizon: string; glow: string; falloff: string }> = {
+  // Deep Night (00:00 – 03:40)
+  "00:00": { zenith: "#05070F", horizon: "#0A1024", glow: "#0E1A3A", falloff: "#060913" },
+  "00:20": { zenith: "#05070F", horizon: "#0B1126", glow: "#101D40", falloff: "#060913" },
+  "00:40": { zenith: "#060812", horizon: "#0C132A", glow: "#122046", falloff: "#070A15" },
+  "01:00": { zenith: "#060914", horizon: "#0D142D", glow: "#14234B", falloff: "#070B17" },
+  "01:20": { zenith: "#070A16", horizon: "#0E1631", glow: "#162650", falloff: "#080C19" },
+  "01:40": { zenith: "#070B18", horizon: "#0F1835", glow: "#182955", falloff: "#090D1B" },
+  "02:00": { zenith: "#080C1A", horizon: "#101A39", glow: "#1A2C59", falloff: "#0A0E1D" },
+  "02:20": { zenith: "#080D1C", horizon: "#111C3C", glow: "#1C2F5D", falloff: "#0A0F1F" },
+  "02:40": { zenith: "#090E1E", horizon: "#121E40", glow: "#1E3261", falloff: "#0B1021" },
+  "03:00": { zenith: "#090F20", horizon: "#132044", glow: "#203565", falloff: "#0B1123" },
+  "03:20": { zenith: "#0A1022", horizon: "#142348", glow: "#223869", falloff: "#0C1225" },
+  "03:40": { zenith: "#0A1124", horizon: "#15254C", glow: "#243B6D", falloff: "#0C1327" },
+  // Pre-Dawn / Blue Hour (04:00 – 05:40)
+  "04:00": { zenith: "#0B1226", horizon: "#182852", glow: "#274071", falloff: "#0D1429" },
+  "04:20": { zenith: "#0B1328", horizon: "#1B2C58", glow: "#2B4577", falloff: "#0E152B" },
+  "04:40": { zenith: "#0C142A", horizon: "#1E305E", glow: "#2F4A7D", falloff: "#0E162D" },
+  "05:00": { zenith: "#0D152C", horizon: "#213464", glow: "#334F83", falloff: "#0F172F" },
+  "05:20": { zenith: "#0E162E", horizon: "#24386A", glow: "#375489", falloff: "#101831" },
+  "05:40": { zenith: "#0F1730", horizon: "#273C70", glow: "#3B598F", falloff: "#101933" },
+  // Sunrise (06:00 – 07:40)
+  "06:00": { zenith: "#101A33", horizon: "#2C426F", glow: "#4A5E86", falloff: "#121B35" },
+  "06:20": { zenith: "#121C35", horizon: "#314874", glow: "#50648A", falloff: "#141D37" },
+  "06:40": { zenith: "#141E37", horizon: "#364E79", glow: "#54688C", falloff: "#161F39" },
+  "07:00": { zenith: "#162039", horizon: "#3B547E", glow: "#5A6E90", falloff: "#18213B" },
+  "07:20": { zenith: "#18223B", horizon: "#405A83", glow: "#607494", falloff: "#1A233D" },
+  "07:40": { zenith: "#1A243D", horizon: "#456088", glow: "#667A98", falloff: "#1C253F" },
+  // Day Sky (08:00 – 16:40)
+  "08:00": { zenith: "#1C263F", horizon: "#4A668D", glow: "#6E829E", falloff: "#1E2741" },
+  "09:00": { zenith: "#1F2C45", horizon: "#567299", glow: "#7A8EAA", falloff: "#212D47" },
+  "10:00": { zenith: "#22324B", horizon: "#627EA5", glow: "#869AB6", falloff: "#24334D" },
+  "12:00": { zenith: "#24364F", horizon: "#6886AD", glow: "#8CA0BC", falloff: "#263751" },
+  "14:00": { zenith: "#23344D", horizon: "#6582A9", glow: "#889CBA", falloff: "#25354F" },
+  "16:00": { zenith: "#212E49", horizon: "#5E7AA1", glow: "#8296B2", falloff: "#23314B" },
+  "16:40": { zenith: "#202E47", horizon: "#5C789F", glow: "#8194AE", falloff: "#222F49" },
+  // Sunset (17:00 – 18:40)
+  "17:00": { zenith: "#1E2B44", horizon: "#556F97", glow: "#7A8DA8", falloff: "#202D46" },
+  "17:20": { zenith: "#1D2942", horizon: "#516A93", glow: "#7486A2", falloff: "#1F2B44" },
+  "17:40": { zenith: "#1C2740", horizon: "#4D658F", glow: "#70819E", falloff: "#1E2942" },
+  "18:00": { zenith: "#1B253E", horizon: "#485F8B", glow: "#6C7C9A", falloff: "#1D2740" },
+  "18:20": { zenith: "#1A233C", horizon: "#435987", glow: "#687796", falloff: "#1C253E" },
+  "18:40": { zenith: "#19213A", horizon: "#3E5383", glow: "#647292", falloff: "#1B233C" },
+  // Dusk → Night (19:00 – 23:40)
+  "19:00": { zenith: "#171F38", horizon: "#384C7E", glow: "#5F6D8F", falloff: "#191F38" },
+  "19:20": { zenith: "#161D36", horizon: "#334679", glow: "#586689", falloff: "#181D36" },
+  "19:40": { zenith: "#151B34", horizon: "#2E4074", glow: "#515F83", falloff: "#171B34" },
+  "20:00": { zenith: "#141932", horizon: "#293A6F", glow: "#4A587D", falloff: "#161932" },
+  "21:00": { zenith: "#10152C", horizon: "#1F2F5C", glow: "#34466A", falloff: "#12172E" },
+  "22:00": { zenith: "#0D1126", horizon: "#16234A", glow: "#26355A", falloff: "#0F1328" },
+  "23:00": { zenith: "#090D20", horizon: "#0E1736", glow: "#18244A", falloff: "#0B0F22" },
+  "23:40": { zenith: "#060913", horizon: "#091026", glow: "#101B3D", falloff: "#070A15" },
+};
+
+// Get interpolated gradient for current time
+const getTimeGradient = (date: Date): { top: string; mid: string; bottom: string } => {
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const timeStr = `${hours.toString().padStart(2, '0')}:${(Math.floor(minutes / 20) * 20).toString().padStart(2, '0')}`;
+  
+  // Find the closest time key
+  const keys = Object.keys(SKY_GRADIENTS).sort();
+  let selectedKey = keys[0];
+  
+  for (const key of keys) {
+    if (key <= timeStr) {
+      selectedKey = key;
+    }
+  }
+  
+  const gradient = SKY_GRADIENTS[selectedKey] || SKY_GRADIENTS["12:00"];
+  return {
+    top: gradient.zenith,
+    mid: gradient.horizon,
+    bottom: gradient.glow,
+  };
+};
+
 // Sky gradient plane component
 const SkyGradient = ({ gradient }: { gradient: { top: string; mid: string; bottom: string } }) => {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -90,8 +169,8 @@ const SkyGradient = ({ gradient }: { gradient: { top: string; mid: string; botto
   );
 };
 
-// Stars component with twinkling
-const Stars = ({ phase, count = 150 }: { phase: string; count?: number }) => {
+// Enhanced Stars component with individual fade timing and visibility based on time
+const Stars = ({ phase, count = 200 }: { phase: string; count?: number }) => {
   const pointsRef = useRef<THREE.Points>(null);
   const { size } = useThree();
   const [maldivesTime, setMaldivesTime] = useState(getMaldivesTime());
@@ -103,46 +182,50 @@ const Stars = ({ phase, count = 150 }: { phase: string; count?: number }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Calculate star visibility based on time (more stars as midnight approaches)
+  // Stars fade in around 8pm, peak at midnight, fade out by 6:15am
   const starVisibility = useMemo(() => {
-    if (phase !== 'night' && phase !== 'astronomical' && phase !== 'nautical') return 0;
-    
     const hour = maldivesTime.getHours();
     const minute = maldivesTime.getMinutes();
     const decimalHour = hour + minute / 60;
     
-    // Peak at midnight (24/0), less at 6am and 6pm
-    if (decimalHour >= 18) {
-      // Evening: gradually increase from 6pm to midnight
-      return Math.min(1, (decimalHour - 18) / 6);
-    } else if (decimalHour <= 6) {
-      // Morning: gradually decrease from midnight to 6am
-      return Math.min(1, (6 - decimalHour) / 6);
+    // 8pm (20:00) to midnight: gradually increase
+    if (decimalHour >= 20) {
+      return Math.min(1, (decimalHour - 20) / 4); // 0 at 8pm, 1 at midnight
+    }
+    // Midnight to 6:15am: gradually decrease
+    if (decimalHour <= 6.25) {
+      return Math.min(1, (6.25 - decimalHour) / 6.25);
     }
     return 0;
-  }, [phase, maldivesTime]);
+  }, [maldivesTime]);
 
-  const { positions, opacities } = useMemo(() => {
+  // Generate stars with unique properties for each
+  const { positions, fadeDelays, twinkleSpeeds, shineBrightness } = useMemo(() => {
     const positions = new Float32Array(count * 3);
-    const opacities = new Float32Array(count);
+    const fadeDelays = new Float32Array(count);
+    const twinkleSpeeds = new Float32Array(count);
+    const shineBrightness = new Float32Array(count);
     
     for (let i = 0; i < count; i++) {
       positions[i * 3] = (Math.random() - 0.5) * size.width * 2;
-      positions[i * 3 + 1] = Math.random() * size.height * 0.8;
+      positions[i * 3 + 1] = Math.random() * size.height * 0.85;
       positions[i * 3 + 2] = -50 - Math.random() * 20;
-      opacities[i] = 0.3 + Math.random() * 0.7;
+      fadeDelays[i] = Math.random() * 2; // Unique fade-in delay
+      twinkleSpeeds[i] = 1 + Math.random() * 3; // Unique twinkle speed
+      shineBrightness[i] = 0.4 + Math.random() * 0.6;
     }
     
-    return { positions, opacities };
+    return { positions, fadeDelays, twinkleSpeeds, shineBrightness };
   }, [count, size]);
 
   useFrame(({ clock }) => {
     if (!pointsRef.current || starVisibility === 0) return;
     
     const material = pointsRef.current.material as THREE.PointsMaterial;
-    // Twinkle effect
-    const baseOpacity = starVisibility * 0.8;
-    material.opacity = baseOpacity + Math.sin(clock.elapsedTime * 2) * 0.1;
+    const time = clock.elapsedTime;
+    // Aggregate twinkle effect
+    const baseOpacity = starVisibility * 0.85;
+    material.opacity = baseOpacity + Math.sin(time * 2) * 0.08 + Math.sin(time * 3.7) * 0.05;
   });
 
   if (starVisibility === 0) return null;
@@ -158,23 +241,23 @@ const Stars = ({ phase, count = 150 }: { phase: string; count?: number }) => {
         />
       </bufferGeometry>
       <pointsMaterial
-        size={2}
+        size={2.5}
         color="#ffffff"
         transparent
-        opacity={starVisibility * 0.8}
+        opacity={starVisibility * 0.85}
         sizeAttenuation={false}
       />
     </points>
   );
 };
 
-// Shooting star component
+// Enhanced Shooting star component - 22-44 minute intervals between 12am-5am
 const ShootingStar = ({ phase }: { phase: string }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const { size } = useThree();
   const [active, setActive] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
-  const [nextTrigger, setNextTrigger] = useState(0);
+  const [nextTriggerTime, setNextTriggerTime] = useState(() => Date.now() + (22 + Math.random() * 22) * 60 * 1000);
   const [maldivesTime, setMaldivesTime] = useState(getMaldivesTime());
 
   useEffect(() => {
@@ -184,46 +267,46 @@ const ShootingStar = ({ phase }: { phase: string }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Only show between 11pm and 4:30am
+  // Only show between 12am (0:00) and 5am (5:00)
   const canShow = useMemo(() => {
-    if (phase !== 'night' && phase !== 'astronomical') return false;
-    
     const hour = maldivesTime.getHours();
-    const minute = maldivesTime.getMinutes();
-    const decimalHour = hour + minute / 60;
-    
-    return (decimalHour >= 23 || decimalHour <= 4.5);
-  }, [phase, maldivesTime]);
+    return hour >= 0 && hour < 5;
+  }, [maldivesTime]);
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
     if (!canShow) return;
     
-    const time = clock.elapsedTime * 1000;
+    const now = Date.now();
     
-    // Trigger shooting star every 22-44 seconds (for demo)
-    if (!active && time > nextTrigger) {
+    // Trigger shooting star at scheduled time
+    if (!active && now > nextTriggerTime) {
       setActive(true);
       setStartPos({
         x: (Math.random() - 0.3) * size.width,
-        y: size.height * (0.5 + Math.random() * 0.3),
+        y: size.height * (0.5 + Math.random() * 0.35),
       });
-      setNextTrigger(time + 22000 + Math.random() * 22000);
       
-      setTimeout(() => setActive(false), 800);
+      // Schedule next shooting star (22-44 minutes)
+      setNextTriggerTime(now + (22 + Math.random() * 22) * 60 * 1000);
+      
+      // Shooting star lasts 1 second
+      setTimeout(() => setActive(false), 1000);
     }
 
     if (meshRef.current && active) {
-      const progress = ((time - (nextTrigger - 22000)) % 800) / 800;
-      (meshRef.current.material as THREE.MeshBasicMaterial).opacity = Math.sin(progress * Math.PI);
+      const progress = ((now - (nextTriggerTime - (22 * 60 * 1000))) % 1000) / 1000;
+      (meshRef.current.material as THREE.MeshBasicMaterial).opacity = Math.sin(progress * Math.PI) * 0.9;
+      meshRef.current.position.x = startPos.x + progress * 150;
+      meshRef.current.position.y = startPos.y - progress * 80;
     }
   });
 
   if (!active || !canShow) return null;
 
   return (
-    <mesh ref={meshRef} position={[startPos.x, startPos.y, -45]} rotation={[0, 0, -Math.PI / 4]}>
-      <planeGeometry args={[100, 2]} />
-      <meshBasicMaterial color="#ffffff" transparent opacity={0.8} />
+    <mesh ref={meshRef} position={[startPos.x, startPos.y, -42]} rotation={[0, 0, -Math.PI / 5]}>
+      <planeGeometry args={[120, 2.5]} />
+      <meshBasicMaterial color="#ffffff" transparent opacity={0.9} />
     </mesh>
   );
 };
