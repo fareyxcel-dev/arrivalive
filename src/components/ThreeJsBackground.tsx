@@ -71,7 +71,11 @@ const SKY_GRADIENTS: Record<string, { zenith: string; horizon: string; glow: str
   "07:40": { zenith: "#1A243D", horizon: "#456088", glow: "#667A98", falloff: "#1C253F" },
   // Day Sky (08:00 – 16:40)
   "08:00": { zenith: "#1C263F", horizon: "#4A668D", glow: "#6E829E", falloff: "#1E2741" },
+  "08:20": { zenith: "#1D2841", horizon: "#4E6A91", glow: "#7286A2", falloff: "#1F2943" },
+  "08:40": { zenith: "#1E2A43", horizon: "#526E95", glow: "#768AA6", falloff: "#202B45" },
   "09:00": { zenith: "#1F2C45", horizon: "#567299", glow: "#7A8EAA", falloff: "#212D47" },
+  "09:20": { zenith: "#202E47", horizon: "#5A769D", glow: "#7E92AE", falloff: "#222F49" },
+  "09:40": { zenith: "#213049", horizon: "#5E7AA1", glow: "#8296B2", falloff: "#23314B" },
   "10:00": { zenith: "#22324B", horizon: "#627EA5", glow: "#869AB6", falloff: "#24334D" },
   "12:00": { zenith: "#24364F", horizon: "#6886AD", glow: "#8CA0BC", falloff: "#263751" },
   "14:00": { zenith: "#23344D", horizon: "#6582A9", glow: "#889CBA", falloff: "#25354F" },
@@ -95,8 +99,103 @@ const SKY_GRADIENTS: Record<string, { zenith: string; horizon: string; glow: str
   "23:40": { zenith: "#060913", horizon: "#091026", glow: "#101B3D", falloff: "#070A15" },
 };
 
-// Get interpolated gradient for current time
-const getTimeGradient = (date: Date): { top: string; mid: string; bottom: string } => {
+// Weather condition HSL modifiers
+interface WeatherModifier {
+  hueDelta: number;
+  satMult: number;
+  lightMult: number;
+  overlay: string;
+  intensity: number;
+}
+
+const WEATHER_MODIFIERS: Record<string, WeatherModifier> = {
+  'clear': { hueDelta: 0, satMult: 1.0, lightMult: 1.0, overlay: '', intensity: 0 },
+  'few clouds': { hueDelta: -2, satMult: 0.95, lightMult: 0.92, overlay: 'rgba(255,255,255,0.03)', intensity: 0.15 },
+  'scattered clouds': { hueDelta: -4, satMult: 0.90, lightMult: 0.88, overlay: 'rgba(255,255,255,0.06)', intensity: 0.30 },
+  'broken clouds': { hueDelta: -6, satMult: 0.82, lightMult: 0.80, overlay: 'rgba(220,230,255,0.10)', intensity: 0.45 },
+  'overcast': { hueDelta: -8, satMult: 0.70, lightMult: 0.72, overlay: 'rgba(200,210,220,0.18)', intensity: 0.65 },
+  'light rain': { hueDelta: -10, satMult: 0.75, lightMult: 0.70, overlay: 'rgba(180,200,220,0.22)', intensity: 0.75 },
+  'heavy rain': { hueDelta: -14, satMult: 0.65, lightMult: 0.62, overlay: 'rgba(160,180,200,0.30)', intensity: 0.75 },
+  'thunderstorm': { hueDelta: -18, satMult: 0.60, lightMult: 0.55, overlay: 'rgba(120,140,160,0.35)', intensity: 0.85 },
+  'haze': { hueDelta: -6, satMult: 0.78, lightMult: 0.82, overlay: 'rgba(220,210,190,0.18)', intensity: 0.35 },
+  'mist': { hueDelta: -8, satMult: 0.70, lightMult: 0.85, overlay: 'rgba(200,200,210,0.20)', intensity: 0.40 },
+  'fog': { hueDelta: -8, satMult: 0.65, lightMult: 0.88, overlay: 'rgba(180,180,190,0.25)', intensity: 0.50 },
+  'rain': { hueDelta: -12, satMult: 0.70, lightMult: 0.65, overlay: 'rgba(170,190,210,0.25)', intensity: 0.75 },
+  'drizzle': { hueDelta: -8, satMult: 0.80, lightMult: 0.75, overlay: 'rgba(190,200,220,0.18)', intensity: 0.50 },
+  'cloudy': { hueDelta: -6, satMult: 0.75, lightMult: 0.78, overlay: 'rgba(200,210,220,0.15)', intensity: 0.55 },
+  'partly cloudy': { hueDelta: -3, satMult: 0.92, lightMult: 0.90, overlay: 'rgba(255,255,255,0.04)', intensity: 0.20 },
+};
+
+// Convert hex to HSL
+const hexToHsl = (hex: string): { h: number; s: number; l: number } => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return { h: 0, s: 0, l: 0 };
+  
+  let r = parseInt(result[1], 16) / 255;
+  let g = parseInt(result[2], 16) / 255;
+  let b = parseInt(result[3], 16) / 255;
+  
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+
+  return { h: h * 360, s: s * 100, l: l * 100 };
+};
+
+// Convert HSL to hex
+const hslToHex = (h: number, s: number, l: number): string => {
+  h = ((h % 360) + 360) % 360;
+  s = Math.max(0, Math.min(100, s)) / 100;
+  l = Math.max(0, Math.min(100, l)) / 100;
+
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const m = l - c / 2;
+  let r = 0, g = 0, b = 0;
+
+  if (h < 60) { r = c; g = x; b = 0; }
+  else if (h < 120) { r = x; g = c; b = 0; }
+  else if (h < 180) { r = 0; g = c; b = x; }
+  else if (h < 240) { r = 0; g = x; b = c; }
+  else if (h < 300) { r = x; g = 0; b = c; }
+  else { r = c; g = 0; b = x; }
+
+  const toHex = (n: number) => Math.round((n + m) * 255).toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+};
+
+// Apply weather modifiers to hex color
+const applyWeatherModifier = (hex: string, modifier: WeatherModifier): string => {
+  const hsl = hexToHsl(hex);
+  let newH = hsl.h + modifier.hueDelta;
+  let newS = hsl.s * modifier.satMult;
+  let newL = Math.min(48, hsl.l * modifier.lightMult); // Clamp lightness ≤ 48%
+  return hslToHex(newH, newS, newL);
+};
+
+// Get weather modifier for condition
+const getWeatherModifier = (condition: string): WeatherModifier => {
+  const lowerCondition = condition.toLowerCase();
+  for (const [key, modifier] of Object.entries(WEATHER_MODIFIERS)) {
+    if (lowerCondition.includes(key)) {
+      return modifier;
+    }
+  }
+  return WEATHER_MODIFIERS['clear'];
+};
+
+// Get interpolated gradient for current time with weather overlay
+const getTimeGradient = (date: Date, weatherCondition: string = 'clear'): { top: string; mid: string; bottom: string; falloff: string } => {
   const hours = date.getHours();
   const minutes = date.getMinutes();
   const timeStr = `${hours.toString().padStart(2, '0')}:${(Math.floor(minutes / 20) * 20).toString().padStart(2, '0')}`;
@@ -112,17 +211,21 @@ const getTimeGradient = (date: Date): { top: string; mid: string; bottom: string
   }
   
   const gradient = SKY_GRADIENTS[selectedKey] || SKY_GRADIENTS["12:00"];
+  const modifier = getWeatherModifier(weatherCondition);
+  
   return {
-    top: gradient.zenith,
-    mid: gradient.horizon,
-    bottom: gradient.glow,
+    top: applyWeatherModifier(gradient.zenith, modifier),
+    mid: applyWeatherModifier(gradient.horizon, modifier),
+    bottom: applyWeatherModifier(gradient.glow, modifier),
+    falloff: applyWeatherModifier(gradient.falloff, modifier),
   };
 };
 
-// Sky gradient plane component
-const SkyGradient = ({ gradient }: { gradient: { top: string; mid: string; bottom: string } }) => {
+// Sky gradient plane component with weather overlay
+const SkyGradient = ({ gradient, weatherCondition }: { gradient: { top: string; mid: string; bottom: string }; weatherCondition: string }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const { size } = useThree();
+  const modifier = getWeatherModifier(weatherCondition);
 
   const material = useMemo(() => {
     const topColor = hexToThreeColor(gradient.top);
@@ -134,6 +237,7 @@ const SkyGradient = ({ gradient }: { gradient: { top: string; mid: string; botto
         topColor: { value: topColor },
         midColor: { value: midColor },
         bottomColor: { value: bottomColor },
+        overlayIntensity: { value: modifier.intensity },
       },
       vertexShader: `
         varying vec2 vUv;
@@ -146,6 +250,7 @@ const SkyGradient = ({ gradient }: { gradient: { top: string; mid: string; botto
         uniform vec3 topColor;
         uniform vec3 midColor;
         uniform vec3 bottomColor;
+        uniform float overlayIntensity;
         varying vec2 vUv;
         void main() {
           vec3 color;
@@ -154,12 +259,15 @@ const SkyGradient = ({ gradient }: { gradient: { top: string; mid: string; botto
           } else {
             color = mix(bottomColor, midColor, vUv.y * 2.0);
           }
+          // Apply weather overlay tint
+          vec3 overlayColor = vec3(0.7, 0.75, 0.85);
+          color = mix(color, overlayColor, overlayIntensity * 0.3);
           gl_FragColor = vec4(color, 1.0);
         }
       `,
       depthWrite: false,
     });
-  }, [gradient]);
+  }, [gradient, modifier.intensity]);
 
   return (
     <mesh ref={meshRef} position={[0, 0, -100]}>
@@ -190,7 +298,7 @@ const Stars = ({ phase, count = 200 }: { phase: string; count?: number }) => {
     
     // 8pm (20:00) to midnight: gradually increase
     if (decimalHour >= 20) {
-      return Math.min(1, (decimalHour - 20) / 4); // 0 at 8pm, 1 at midnight
+      return Math.min(1, (decimalHour - 20) / 4);
     }
     // Midnight to 6:15am: gradually decrease
     if (decimalHour <= 6.25) {
@@ -200,22 +308,18 @@ const Stars = ({ phase, count = 200 }: { phase: string; count?: number }) => {
   }, [maldivesTime]);
 
   // Generate stars with unique properties for each
-  const { positions, fadeDelays, twinkleSpeeds, shineBrightness } = useMemo(() => {
+  const { positions, sizes } = useMemo(() => {
     const positions = new Float32Array(count * 3);
-    const fadeDelays = new Float32Array(count);
-    const twinkleSpeeds = new Float32Array(count);
-    const shineBrightness = new Float32Array(count);
+    const sizes = new Float32Array(count);
     
     for (let i = 0; i < count; i++) {
       positions[i * 3] = (Math.random() - 0.5) * size.width * 2;
       positions[i * 3 + 1] = Math.random() * size.height * 0.85;
       positions[i * 3 + 2] = -50 - Math.random() * 20;
-      fadeDelays[i] = Math.random() * 2; // Unique fade-in delay
-      twinkleSpeeds[i] = 1 + Math.random() * 3; // Unique twinkle speed
-      shineBrightness[i] = 0.4 + Math.random() * 0.6;
+      sizes[i] = 1.5 + Math.random() * 2;
     }
     
-    return { positions, fadeDelays, twinkleSpeeds, shineBrightness };
+    return { positions, sizes };
   }, [count, size]);
 
   useFrame(({ clock }) => {
@@ -223,7 +327,6 @@ const Stars = ({ phase, count = 200 }: { phase: string; count?: number }) => {
     
     const material = pointsRef.current.material as THREE.PointsMaterial;
     const time = clock.elapsedTime;
-    // Aggregate twinkle effect
     const baseOpacity = starVisibility * 0.85;
     material.opacity = baseOpacity + Math.sin(time * 2) * 0.08 + Math.sin(time * 3.7) * 0.05;
   });
@@ -267,7 +370,6 @@ const ShootingStar = ({ phase }: { phase: string }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Only show between 12am (0:00) and 5am (5:00)
   const canShow = useMemo(() => {
     const hour = maldivesTime.getHours();
     return hour >= 0 && hour < 5;
@@ -278,7 +380,6 @@ const ShootingStar = ({ phase }: { phase: string }) => {
     
     const now = Date.now();
     
-    // Trigger shooting star at scheduled time
     if (!active && now > nextTriggerTime) {
       setActive(true);
       setStartPos({
@@ -286,10 +387,7 @@ const ShootingStar = ({ phase }: { phase: string }) => {
         y: size.height * (0.5 + Math.random() * 0.35),
       });
       
-      // Schedule next shooting star (22-44 minutes)
       setNextTriggerTime(now + (22 + Math.random() * 22) * 60 * 1000);
-      
-      // Shooting star lasts 1 second
       setTimeout(() => setActive(false), 1000);
     }
 
@@ -311,9 +409,9 @@ const ShootingStar = ({ phase }: { phase: string }) => {
   );
 };
 
-// Cloud component with Disney-style softness
+// Enhanced Cloud component with multi-layer parallax
 const Cloud = ({ 
-  x, y, width, opacity, layer, windSpeed 
+  x, y, width, opacity, layer, windSpeed, weatherCondition 
 }: { 
   x: number; 
   y: number; 
@@ -321,31 +419,41 @@ const Cloud = ({
   opacity: number; 
   layer: string;
   windSpeed: number;
+  weatherCondition: string;
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const { size } = useThree();
   const initialX = useRef(x * size.width - size.width / 2);
   
-  const layerDepth = layer === 'high' ? -30 : layer === 'mid' ? -20 : -10;
-  const layerSpeed = layer === 'high' ? 0.3 : layer === 'mid' ? 0.5 : 0.8;
-  const cloudWidth = width * 200;
-  const cloudHeight = cloudWidth * 0.4;
+  const layerDepth = layer === 'high' ? -35 : layer === 'mid' ? -25 : -15;
+  const layerSpeed = layer === 'high' ? 0.2 : layer === 'mid' ? 0.4 : 0.7;
+  const cloudWidth = width * 250;
+  const cloudHeight = cloudWidth * 0.35;
 
-  useFrame(({ clock }) => {
+  // Cloud color based on weather
+  const cloudColor = useMemo(() => {
+    const lowerCondition = weatherCondition.toLowerCase();
+    if (lowerCondition.includes('rain') || lowerCondition.includes('storm')) {
+      return '#808090';
+    }
+    if (lowerCondition.includes('overcast') || lowerCondition.includes('cloudy')) {
+      return '#a0a5b0';
+    }
+    return '#e8eaf0';
+  }, [weatherCondition]);
+
+  useFrame(() => {
     if (!groupRef.current) return;
     
-    // Move cloud with wind
-    const speed = layerSpeed * (1 + windSpeed * 0.02) * 0.5;
+    const speed = layerSpeed * (1 + windSpeed * 0.015) * 0.4;
     groupRef.current.position.x += speed;
     
-    // Wrap around
     if (groupRef.current.position.x > size.width / 2 + cloudWidth) {
       groupRef.current.position.x = -size.width / 2 - cloudWidth;
     }
   });
 
-  // Create fluffy cloud shape with multiple circles
-  const segments = 5 + Math.floor(Math.random() * 3);
+  const segments = 6 + Math.floor(Math.random() * 3);
 
   return (
     <group 
@@ -354,17 +462,17 @@ const Cloud = ({
     >
       {Array.from({ length: segments }).map((_, i) => {
         const progress = i / (segments - 1);
-        const offsetX = (progress - 0.5) * cloudWidth * 0.7;
-        const offsetY = Math.sin(progress * Math.PI) * cloudHeight * 0.3;
-        const radius = (cloudHeight / 2) * (0.6 + Math.sin(progress * Math.PI) * 0.4);
+        const offsetX = (progress - 0.5) * cloudWidth * 0.75;
+        const offsetY = Math.sin(progress * Math.PI) * cloudHeight * 0.35;
+        const radius = (cloudHeight / 2) * (0.55 + Math.sin(progress * Math.PI) * 0.45);
         
         return (
           <mesh key={i} position={[offsetX, offsetY, 0]}>
             <circleGeometry args={[radius, 32]} />
             <meshBasicMaterial 
-              color="#ffffff" 
+              color={cloudColor} 
               transparent 
-              opacity={opacity * 0.7}
+              opacity={opacity * 0.65}
             />
           </mesh>
         );
@@ -373,18 +481,18 @@ const Cloud = ({
   );
 };
 
-// Rain component
+// Enhanced Rain component with layered droplets
 const Rain = ({ intensity, windSpeed, windDirection }: { intensity: number; windSpeed: number; windDirection: number }) => {
   const pointsRef = useRef<THREE.Points>(null);
   const { size } = useThree();
-  const count = Math.floor(intensity * 300) + 50;
+  const count = Math.floor(intensity * 500) + 100;
 
   const positions = useMemo(() => {
     const positions = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * size.width * 2;
-      positions[i * 3 + 1] = Math.random() * size.height * 1.5;
-      positions[i * 3 + 2] = -5 - Math.random() * 10;
+      positions[i * 3] = (Math.random() - 0.5) * size.width * 2.5;
+      positions[i * 3 + 1] = Math.random() * size.height * 1.8;
+      positions[i * 3 + 2] = -3 - Math.random() * 12;
     }
     return positions;
   }, [count, size]);
@@ -393,15 +501,15 @@ const Rain = ({ intensity, windSpeed, windDirection }: { intensity: number; wind
     if (!pointsRef.current) return;
     
     const positionArray = pointsRef.current.geometry.attributes.position.array as Float32Array;
-    const windOffset = Math.sin((windDirection * Math.PI) / 180) * windSpeed * 0.1;
+    const windOffset = Math.sin((windDirection * Math.PI) / 180) * windSpeed * 0.12;
     
     for (let i = 0; i < count; i++) {
-      positionArray[i * 3 + 1] -= (8 + intensity * 4);
+      positionArray[i * 3 + 1] -= (10 + intensity * 6);
       positionArray[i * 3] += windOffset;
       
       if (positionArray[i * 3 + 1] < -size.height / 2) {
-        positionArray[i * 3 + 1] = size.height;
-        positionArray[i * 3] = (Math.random() - 0.5) * size.width * 2;
+        positionArray[i * 3 + 1] = size.height * 1.2;
+        positionArray[i * 3] = (Math.random() - 0.5) * size.width * 2.5;
       }
     }
     
@@ -421,13 +529,56 @@ const Rain = ({ intensity, windSpeed, windDirection }: { intensity: number; wind
         />
       </bufferGeometry>
       <pointsMaterial
-        size={3}
-        color="#a0b0c0"
+        size={4}
+        color="#9ab0c8"
         transparent
-        opacity={0.4 + intensity * 0.3}
+        opacity={0.35 + intensity * 0.35}
         sizeAttenuation
       />
     </points>
+  );
+};
+
+// Lightning flash component
+const Lightning = ({ active, intensity }: { active: boolean; intensity: number }) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const { size } = useThree();
+  const [flashActive, setFlashActive] = useState(false);
+  const [flashPosition, setFlashPosition] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (!active) return;
+    
+    const triggerFlash = () => {
+      if (Math.random() < 0.03 * intensity) {
+        setFlashActive(true);
+        setFlashPosition({
+          x: (Math.random() - 0.5) * size.width,
+          y: size.height * 0.3 + Math.random() * size.height * 0.4,
+        });
+        setTimeout(() => setFlashActive(false), 100 + Math.random() * 150);
+      }
+    };
+    
+    const interval = setInterval(triggerFlash, 500);
+    return () => clearInterval(interval);
+  }, [active, intensity, size]);
+
+  if (!flashActive) return null;
+
+  return (
+    <>
+      {/* Lightning bolt */}
+      <mesh position={[flashPosition.x, flashPosition.y, -8]}>
+        <planeGeometry args={[3, 120]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.9} />
+      </mesh>
+      {/* Screen flash */}
+      <mesh ref={meshRef} position={[0, 0, 5]}>
+        <planeGeometry args={[size.width * 2, size.height * 2]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.15} />
+      </mesh>
+    </>
   );
 };
 
@@ -438,7 +589,6 @@ const Sun = ({ visible, position, brightness }: { visible: boolean; position: { 
 
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
-    // Subtle pulse effect
     const scale = 1 + Math.sin(clock.elapsedTime * 0.5) * 0.05;
     meshRef.current.scale.set(scale, scale, 1);
   });
@@ -450,17 +600,14 @@ const Sun = ({ visible, position, brightness }: { visible: boolean; position: { 
 
   return (
     <group position={[sunX, sunY, -40]}>
-      {/* Outer glow */}
       <mesh>
         <circleGeometry args={[80, 32]} />
         <meshBasicMaterial color="#fffaf0" transparent opacity={0.2 * brightness} />
       </mesh>
-      {/* Inner glow */}
       <mesh>
         <circleGeometry args={[50, 32]} />
         <meshBasicMaterial color="#fff5e0" transparent opacity={0.4 * brightness} />
       </mesh>
-      {/* Sun body */}
       <mesh ref={meshRef}>
         <circleGeometry args={[30, 32]} />
         <meshBasicMaterial color="#fffef0" transparent opacity={brightness} />
@@ -469,7 +616,7 @@ const Sun = ({ visible, position, brightness }: { visible: boolean; position: { 
   );
 };
 
-// Moon component with phase shadow that blends with sky
+// Moon component with phase shadow
 const Moon = ({ 
   visible, 
   position, 
@@ -488,7 +635,6 @@ const Moon = ({
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
-    // Subtle float effect
     groupRef.current.position.y += Math.sin(clock.elapsedTime * 0.3) * 0.1;
   });
 
@@ -498,14 +644,12 @@ const Moon = ({
   const moonY = (1 - position.y) * size.height - size.height / 2;
   const radius = 20;
 
-  // Calculate shadow offset based on phase
   const shadowOffset = phase < 0.5 
     ? -(1 - phase * 2) * radius * 1.2 
     : (phase - 0.5) * 2 * radius * 1.2;
 
   return (
     <group ref={groupRef} position={[moonX, moonY, -40]}>
-      {/* Moon glow */}
       <mesh>
         <circleGeometry args={[radius * 2.5, 32]} />
         <meshBasicMaterial 
@@ -514,12 +658,10 @@ const Moon = ({
           opacity={0.15 * (illumination / 100)} 
         />
       </mesh>
-      {/* Moon body */}
       <mesh>
         <circleGeometry args={[radius, 32]} />
         <meshBasicMaterial color="#f0f5ff" />
       </mesh>
-      {/* Phase shadow - uses sky color to blend */}
       {phase !== 0.5 && (
         <mesh position={[shadowOffset, 0, 0.1]}>
           <circleGeometry args={[radius * 1.1, 32]} />
@@ -527,6 +669,95 @@ const Moon = ({
         </mesh>
       )}
     </group>
+  );
+};
+
+// 3D Ocean with realistic reflections
+const Ocean = ({ gradient, weatherCondition }: { gradient: { top: string; mid: string; bottom: string }; weatherCondition: string }) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const { size } = useThree();
+
+  // Ocean takes bottom 20% of screen
+  const oceanHeight = size.height * 0.2;
+  const oceanY = -size.height / 2 + oceanHeight / 2;
+
+  const material = useMemo(() => {
+    const skyColor = hexToThreeColor(gradient.mid);
+    const deepColor = new THREE.Color('#0a1428');
+    
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        time: { value: 0 },
+        skyColor: { value: skyColor },
+        deepColor: { value: deepColor },
+        waveIntensity: { value: weatherCondition.toLowerCase().includes('storm') ? 0.15 : 0.05 },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        varying float vElevation;
+        uniform float time;
+        uniform float waveIntensity;
+        
+        void main() {
+          vUv = uv;
+          vec3 pos = position;
+          
+          // Multiple wave layers for realistic ocean
+          float wave1 = sin(pos.x * 0.05 + time * 0.8) * waveIntensity;
+          float wave2 = sin(pos.x * 0.08 + time * 1.2) * waveIntensity * 0.5;
+          float wave3 = cos(pos.x * 0.03 + time * 0.5) * waveIntensity * 0.3;
+          
+          vElevation = wave1 + wave2 + wave3;
+          pos.y += vElevation * 20.0;
+          
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 skyColor;
+        uniform vec3 deepColor;
+        uniform float time;
+        varying vec2 vUv;
+        varying float vElevation;
+        
+        void main() {
+          // Gradient from deep to sky reflection
+          float reflectionStrength = smoothstep(0.0, 0.8, vUv.y) * 0.6;
+          
+          // Add wave-based highlights
+          float highlight = (vElevation + 0.1) * 2.0;
+          highlight = clamp(highlight, 0.0, 1.0);
+          
+          vec3 oceanColor = mix(deepColor, skyColor, reflectionStrength);
+          oceanColor += vec3(highlight * 0.15);
+          
+          // Subtle animated shimmer
+          float shimmer = sin(vUv.x * 50.0 + time * 2.0) * 0.03;
+          oceanColor += vec3(shimmer);
+          
+          // Fresnel-like edge effect
+          float fresnel = pow(1.0 - vUv.y, 2.0) * 0.3;
+          oceanColor = mix(oceanColor, skyColor, fresnel);
+          
+          gl_FragColor = vec4(oceanColor, 0.85);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+    });
+  }, [gradient.mid, weatherCondition]);
+
+  useFrame(({ clock }) => {
+    if (meshRef.current) {
+      (meshRef.current.material as THREE.ShaderMaterial).uniforms.time.value = clock.elapsedTime;
+    }
+  });
+
+  return (
+    <mesh ref={meshRef} position={[0, oceanY, -5]}>
+      <planeGeometry args={[size.width * 2, oceanHeight, 64, 16]} />
+      <primitive object={material} attach="material" />
+    </mesh>
   );
 };
 
@@ -556,8 +787,8 @@ const FilmGrain = () => {
         }
         
         void main() {
-          float grain = random(vUv + time * 0.01) * 0.08;
-          gl_FragColor = vec4(vec3(grain), grain * 0.5);
+          float grain = random(vUv + time * 0.01) * 0.06;
+          gl_FragColor = vec4(vec3(grain), grain * 0.4);
         }
       `,
       transparent: true,
@@ -581,18 +812,32 @@ const FilmGrain = () => {
 
 // Main scene component
 const Scene = ({ weatherData }: { weatherData: WeatherData }) => {
-  const gradient = weatherData.gradient || { top: '#0c0c0e', mid: '#141416', bottom: '#1c1c1f' };
+  const maldivesTime = getMaldivesTime();
+  const weatherCondition = weatherData?.weather?.condition || 'clear';
+  const timeGradient = getTimeGradient(maldivesTime, weatherCondition);
+  
+  const gradient = {
+    top: timeGradient.top,
+    mid: timeGradient.mid,
+    bottom: timeGradient.bottom,
+  };
+  
   const phase = weatherData.skyPhase || 'night';
   const sun = weatherData.celestialObjects?.sun || { visible: false, position: { x: 0.5, y: 0.5 }, brightness: 0 };
   const moon = weatherData.celestialObjects?.moon || { visible: false, position: { x: 0.5, y: 0.5 }, phase: 0.5, illumination: 50 };
   const clouds = weatherData.clouds || [];
   const rain = weatherData.rain || { active: false, intensity: 0, windSpeed: 5, windDirection: 180 };
   const windSpeed = weatherData.weather?.windSpeed || 5;
+  
+  // Determine if lightning should be active
+  const isThunderstorm = weatherCondition.toLowerCase().includes('thunder') || weatherCondition.toLowerCase().includes('storm');
+  const rainIntensity = rain.active ? rain.intensity : 
+    (weatherCondition.toLowerCase().includes('rain') ? 0.6 : 0);
 
   return (
     <>
-      {/* Sky gradient */}
-      <SkyGradient gradient={gradient} />
+      {/* Sky gradient with weather overlay */}
+      <SkyGradient gradient={gradient} weatherCondition={weatherCondition} />
       
       {/* Stars */}
       <Stars phase={phase} count={180} />
@@ -603,7 +848,7 @@ const Scene = ({ weatherData }: { weatherData: WeatherData }) => {
       {/* Sun */}
       <Sun visible={sun.visible} position={sun.position} brightness={sun.brightness} />
       
-      {/* Moon with sky-blended shadow */}
+      {/* Moon */}
       <Moon 
         visible={moon.visible} 
         position={moon.position} 
@@ -612,7 +857,7 @@ const Scene = ({ weatherData }: { weatherData: WeatherData }) => {
         skyMidColor={gradient.mid}
       />
       
-      {/* Clouds */}
+      {/* Clouds with weather-based coloring */}
       {clouds.map((cloud, i) => (
         <Cloud 
           key={i}
@@ -622,30 +867,37 @@ const Scene = ({ weatherData }: { weatherData: WeatherData }) => {
           opacity={cloud.opacity}
           layer={cloud.layer}
           windSpeed={windSpeed}
+          weatherCondition={weatherCondition}
         />
       ))}
       
-      {/* Rain */}
-      {rain.active && (
+      {/* Rain - show if active or if weather condition indicates rain */}
+      {rainIntensity > 0 && (
         <Rain 
-          intensity={rain.intensity} 
-          windSpeed={rain.windSpeed} 
-          windDirection={rain.windDirection} 
+          intensity={rainIntensity} 
+          windSpeed={rain.windSpeed || windSpeed} 
+          windDirection={rain.windDirection || 180} 
         />
       )}
       
-      {/* Film grain overlay for vintage look */}
+      {/* Lightning for thunderstorms */}
+      <Lightning active={isThunderstorm} intensity={rain.intensity || 0.7} />
+      
+      {/* 3D Ocean at bottom 20% */}
+      <Ocean gradient={gradient} weatherCondition={weatherCondition} />
+      
+      {/* Film grain overlay */}
       <FilmGrain />
     </>
   );
 };
 
-// Main component with error boundary fallback
+// Main component
 const ThreeJsBackground = ({ weatherData }: Props) => {
   const [hasError, setHasError] = useState(false);
 
   if (hasError || !weatherData) {
-    return null; // Fallback to DisneyWeatherBackground
+    return null;
   }
 
   return (

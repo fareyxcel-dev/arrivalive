@@ -47,6 +47,22 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    
+    <!-- OneSignal Push Notifications SDK -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.init({
+          appId: "86275d4b-ecc9-408f-8bf8-256243e254c6",
+          safari_web_id: "web.onesignal.auto.47d572d6-ef9d-4d9d-8962-815db43f4beb",
+          notifyButton: {
+            enable: false,
+          },
+          allowLocalhostAsSecureOrigin: true,
+        });
+      });
+    </script>
   </head>
 
   <body>

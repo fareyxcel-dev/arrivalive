@@ -252,7 +252,7 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
     setShowSunCountdown(true);
     const timeout = setTimeout(() => {
       setShowSunCountdown(false);
-    }, 30000);
+    }, 11000);
     setSunCountdownTimeout(timeout);
   };
 
@@ -266,7 +266,7 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
     setShowForecast(true);
     const timeout = setTimeout(() => {
       setShowForecast(false);
-    }, 30000);
+    }, 11000);
     setForecastTimeout(timeout);
   };
 

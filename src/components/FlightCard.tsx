@@ -131,11 +131,37 @@ const getColorFilter = (hexColor: string): string => {
 // Airline Icon Component with color matching
 const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: string }) => {
   const [imageError, setImageError] = useState(false);
+  const [fallbackTried, setFallbackTried] = useState(false);
   
   const airlineName = AIRLINE_NAMES[airlineCode] || airlineCode;
   const filename = `${airlineCode} (${airlineName}).png`;
   const logoUrl = `https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/${encodeURIComponent(filename)}`;
+  
+  // Alternative URL patterns for airlines like AK (AirAsia) that might use different naming
+  const altFilename = `${airlineCode}%20(${encodeURIComponent(airlineName)}).png`;
+  const altLogoUrl = `https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/${altFilename}`;
+  
+  // Direct URL for known problematic airlines
+  const directUrls: Record<string, string> = {
+    'AK': 'https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/AK%20(AirAsia).png',
+    'FD': 'https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/FD%20(Thai%20AirAsia).png',
+  };
+  
   const colorFilter = getColorFilter(color);
+  
+  const getCurrentUrl = () => {
+    if (directUrls[airlineCode]) return directUrls[airlineCode];
+    if (fallbackTried) return altLogoUrl;
+    return logoUrl;
+  };
+  
+  const handleError = () => {
+    if (!fallbackTried && !directUrls[airlineCode]) {
+      setFallbackTried(true);
+    } else {
+      setImageError(true);
+    }
+  };
   
   if (imageError) {
     return (
@@ -150,11 +176,11 @@ const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: strin
   return (
     <div className="w-full h-full flex items-center justify-center">
       <img 
-        src={logoUrl}
+        src={getCurrentUrl()}
         alt={airlineName}
         className="max-w-[48px] max-h-[24px] object-contain"
         style={{ filter: colorFilter }}
-        onError={() => setImageError(true)}
+        onError={handleError}
       />
     </div>
   );
@@ -308,7 +334,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
 
   return (
     <div 
-      className="rounded-[20px] overflow-hidden"
+      className="rounded-[18px] overflow-hidden"
       style={{ 
         // Strong glassmorphism with status tint
         background: `linear-gradient(135deg, ${theme.cardTint} 0%, ${theme.cardScrim} 100%)`,
@@ -316,14 +342,14 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
         WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
         // Polished glass edge effects
         boxShadow: `
-          0 8px 32px 0 rgba(0, 0, 0, 0.15),
-          inset 0 4px 8px -4px rgba(255, 255, 255, 0.25),
-          inset 0 -4px 8px -4px rgba(0, 0, 0, 0.2),
-          inset 4px 0 8px -6px rgba(255, 255, 255, 0.15),
-          inset -4px 0 8px -6px rgba(0, 0, 0, 0.15)
+          0 6px 24px 0 rgba(0, 0, 0, 0.15),
+          inset 0 3px 6px -3px rgba(255, 255, 255, 0.25),
+          inset 0 -3px 6px -3px rgba(0, 0, 0, 0.2),
+          inset 3px 0 6px -4px rgba(255, 255, 255, 0.15),
+          inset -3px 0 6px -4px rgba(0, 0, 0, 0.15)
         `,
-        padding: '10px 12px',
-        maxHeight: '110px',
+        padding: '8px 10px',
+        maxHeight: '95px',
       }}
     >
       {/* TOP SECTION - Ultra Compact 2 Rows */}
@@ -364,7 +390,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           {/* Row 1: Flight Number + Status Badge OR Bell */}
           <div className="flex items-center justify-between">
             <span 
-              className="font-bold text-[13px] leading-none drop-shadow-md" 
+              className="font-bold text-[11px] leading-none drop-shadow-md" 
               style={{ color: theme.textColor }}
             >
               {flight.flightId}
@@ -372,11 +398,11 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             
             {showStatusBadge && (
               <div 
-                className="px-1.5 py-0.5 rounded-full text-[8px] font-semibold uppercase tracking-wide drop-shadow-sm animate-pulse"
+                className="px-1.5 py-0.5 rounded-full text-[7px] font-semibold uppercase tracking-wide drop-shadow-sm animate-pulse"
                 style={{ 
                   backgroundColor: theme.statusBg,
                   color: theme.textColor,
-                  boxShadow: `0 0 8px ${theme.bellGlow}`,
+                  boxShadow: `0 0 6px ${theme.bellGlow}`,
                 }}
               >
                 {flight.status}
@@ -393,13 +419,13 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
                   isSubscribing && "opacity-50"
                 )}
                 style={{
-                  boxShadow: isNotificationEnabled ? `0 0 12px ${theme.bellGlow}` : 'none',
+                  boxShadow: isNotificationEnabled ? `0 0 10px ${theme.bellGlow}` : 'none',
                 }}
               >
                 {isNotificationEnabled ? (
-                  <BellRing className="w-3 h-3 drop-shadow-md" style={{ color: theme.bellColor }} />
+                  <BellRing className="w-2.5 h-2.5 drop-shadow-md" style={{ color: theme.bellColor }} />
                 ) : (
-                  <Bell className="w-3 h-3 drop-shadow-md" style={{ color: theme.bellColor, opacity: 0.65 }} />
+                  <Bell className="w-2.5 h-2.5 drop-shadow-md" style={{ color: theme.bellColor, opacity: 0.65 }} />
                 )}
               </button>
             )}
@@ -408,7 +434,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           {/* Row 2: Origin + Bell (for delayed) */}
           <div className="flex items-center justify-between -mt-0.5">
             <span 
-              className="text-[11px] truncate opacity-80 leading-none drop-shadow-sm" 
+              className="text-[10px] truncate opacity-80 leading-none drop-shadow-sm" 
               style={{ color: theme.textColor }}
             >
               {flight.origin}
@@ -439,12 +465,12 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
       </div>
 
       {/* BOTTOM SECTION - Rows 3-4 */}
-      <div className="mt-1.5">
+      <div className="mt-1">
         {/* Labels with countdown */}
-        <div className="flex items-center justify-between text-[9px] mb-0.5" style={{ color: `${theme.textColor}70` }}>
+        <div className="flex items-center justify-between text-[8px] mb-0.5" style={{ color: `${theme.textColor}70` }}>
           <span className="drop-shadow-sm">Scheduled</span>
           {showProgressBar && countdown && (
-            <span className="text-[9px] font-medium drop-shadow-sm" style={{ color: theme.textColor }}>
+            <span className="text-[8px] font-medium drop-shadow-sm" style={{ color: theme.textColor }}>
               {countdown}
             </span>
           )}
@@ -453,7 +479,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
         
         {/* Times + Progress Bar - Compact */}
         <div className="flex items-center gap-1">
-          <span className="font-bold text-[11px] flex-shrink-0 w-12 text-left drop-shadow-md" style={{ color: theme.textColor }}>
+          <span className="font-bold text-[10px] flex-shrink-0 w-11 text-left drop-shadow-md" style={{ color: theme.textColor }}>
             {scheduledTimeFormatted}
           </span>
           
@@ -473,7 +499,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             </div>
           )}
           
-          <span className="font-bold text-[11px] flex-shrink-0 w-12 text-right drop-shadow-md" style={{ color: theme.textColor }}>
+          <span className="font-bold text-[10px] flex-shrink-0 w-11 text-right drop-shadow-md" style={{ color: theme.textColor }}>
             {estimatedTimeFormatted}
           </span>
         </div>

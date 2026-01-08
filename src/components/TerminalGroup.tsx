@@ -23,9 +23,18 @@ const groupFlightsByDate = (flights: Flight[]) => {
     grouped[date].push(flight);
   });
   
-  // Sort flights within each date by scheduled time
+  // Sort flights within each date: LANDED flights first, then by scheduled time
   Object.keys(grouped).forEach(date => {
     grouped[date].sort((a, b) => {
+      const aLanded = a.status.toUpperCase() === 'LANDED' ? 0 : 1;
+      const bLanded = b.status.toUpperCase() === 'LANDED' ? 0 : 1;
+      
+      // Landed flights come first
+      if (aLanded !== bLanded) {
+        return aLanded - bLanded;
+      }
+      
+      // Then sort by scheduled time
       const timeA = a.scheduledTime.replace(':', '');
       const timeB = b.scheduledTime.replace(':', '');
       return parseInt(timeA) - parseInt(timeB);
@@ -163,7 +172,7 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
 
                   {/* Flights for this date */}
                   {expandedDates.has(date) && (
-                    <div className="space-y-2 pl-2">
+                    <div className="space-y-1.5 pl-2">
                       {groupedFlights[date].map(flight => (
                         <FlightCard
                           key={flight.id}

@@ -16,7 +16,7 @@ export const initOneSignal = (): Promise<void> => {
     window.OneSignalDeferred.push(async function(OneSignal: any) {
       await OneSignal.init({
         appId: ONESIGNAL_APP_ID,
-        safari_web_id: "web.onesignal.auto.arrivamv",
+        safari_web_id: "web.onesignal.auto.47d572d6-ef9d-4d9d-8962-815db43f4beb",
         notifyButton: {
           enable: false,
         },
