@@ -389,7 +389,7 @@ const Index = () => {
     }
   };
 
-  // Filter flights: remove flights scheduled 1.5+ hours ago, handle delayed flights by estimated time
+  // Filter flights: remove flights scheduled 1+ hours ago OR landed 1+ hour ago
   const filteredFlights = flights.filter(flight => {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
@@ -400,8 +400,8 @@ const Index = () => {
     // Keep all future days' flights
     if (flight.date > todayStr) return true;
     
-    // For today's flights, apply 1.5-hour cutoff
-    const cutoffTime = new Date(now.getTime() - 90 * 60 * 1000); // 1.5 hours ago
+    // For today's flights, apply 1-hour cutoff
+    const cutoffTime = new Date(now.getTime() - 60 * 60 * 1000); // 1 hour ago
     
     // Parse scheduled time
     const [schHours, schMinutes] = flight.scheduledTime.split(':').map(Number);
@@ -416,7 +416,7 @@ const Index = () => {
       return estimatedDateTime >= cutoffTime;
     }
     
-    // For landed/cancelled flights, hide after 1.5 hours from scheduled time
+    // For landed/cancelled flights, hide after 1 hour from scheduled time
     return scheduledDateTime >= cutoffTime;
   });
 
