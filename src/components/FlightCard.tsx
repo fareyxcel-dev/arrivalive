@@ -27,12 +27,12 @@ interface Props {
   onToggleNotification: (flightId: string) => void;
 }
 
-// Airline name mapping
+// Airline name mapping - names must match ImageKit file naming exactly
 const AIRLINE_NAMES: Record<string, string> = {
   '3U': 'Sichuan Airlines', '4Y': 'Discover Airlines', '6E': 'IndiGo', '8D': 'FitsAir',
-  'AF': 'Air France', 'AI': 'Air India', 'AK': 'AirAsia', 'AZ': 'ITA Airways',
+  'AF': 'Air France', 'AI': 'Air India', 'AK': 'Air Asia', 'AZ': 'ITA Airways',
   'B4': 'beOnd', 'BA': 'British Airways', 'BS': 'US-Bangla Airlines', 'DE': 'Condor',
-  'EK': 'Emirates', 'EY': 'Etihad Airways', 'FD': 'Thai AirAsia', 'FZ': 'FlyDubai',
+  'EK': 'Emirates', 'EY': 'Etihad Airways', 'FD': 'Thai Air Asia', 'FZ': 'FlyDubai',
   'G9': 'Air Arabia', 'GF': 'Gulf Air', 'HX': 'Hong Kong Airlines', 'HY': 'Uzbekistan Airways',
   'IB': 'Iberia', 'J2': 'Azerbaijan Airlines', 'J9': 'Jazeera Airways', 'JD': 'Beijing Capital Airlines',
   'KC': 'Air Astana', 'KU': 'Kuwait Airways', 'LO': 'LOT Polish Airlines', 'MH': 'Malaysia Airlines',
