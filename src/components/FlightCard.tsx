@@ -131,33 +131,35 @@ const getColorFilter = (hexColor: string): string => {
 // Airline Icon Component with color matching
 const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: string }) => {
   const [imageError, setImageError] = useState(false);
-  const [fallbackTried, setFallbackTried] = useState(false);
+  const [urlIndex, setUrlIndex] = useState(0);
   
   const airlineName = AIRLINE_NAMES[airlineCode] || airlineCode;
-  const filename = `${airlineCode} (${airlineName}).png`;
-  const logoUrl = `https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/${encodeURIComponent(filename)}`;
-  
-  // Alternative URL patterns for airlines like AK (AirAsia) that might use different naming
-  const altFilename = `${airlineCode}%20(${encodeURIComponent(airlineName)}).png`;
-  const altLogoUrl = `https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/${altFilename}`;
-  
-  // Direct URL for known problematic airlines
-  const directUrls: Record<string, string> = {
-    'AK': 'https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/AK%20(AirAsia).png',
-    'FD': 'https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/FD%20(Thai%20AirAsia).png',
-  };
-  
   const colorFilter = getColorFilter(color);
   
-  const getCurrentUrl = () => {
-    if (directUrls[airlineCode]) return directUrls[airlineCode];
-    if (fallbackTried) return altLogoUrl;
-    return logoUrl;
+  // Multiple URL patterns to try for each airline
+  const getUrlPatterns = () => {
+    const base = 'https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/';
+    
+    // Standard pattern: "AK (AirAsia).png" encoded
+    const standardUrl = `${base}${airlineCode}%20(${encodeURIComponent(airlineName)}).png`;
+    
+    // Pattern with spaces: "AK (AirAsia).png" with space as %20
+    const spaceUrl = `${base}${airlineCode}%20%28${encodeURIComponent(airlineName)}%29.png`;
+    
+    // Simple pattern: just airline code
+    const simpleUrl = `${base}${airlineCode}.png`;
+    
+    // Pattern without parentheses encoding
+    const altUrl = `${base}${airlineCode}%20(${airlineName.replace(/ /g, '%20')}).png`;
+    
+    return [standardUrl, spaceUrl, altUrl, simpleUrl];
   };
   
+  const urls = getUrlPatterns();
+  
   const handleError = () => {
-    if (!fallbackTried && !directUrls[airlineCode]) {
-      setFallbackTried(true);
+    if (urlIndex < urls.length - 1) {
+      setUrlIndex(urlIndex + 1);
     } else {
       setImageError(true);
     }
@@ -176,7 +178,7 @@ const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: strin
   return (
     <div className="w-full h-full flex items-center justify-center">
       <img 
-        src={getCurrentUrl()}
+        src={urls[urlIndex]}
         alt={airlineName}
         className="max-w-[48px] max-h-[24px] object-contain"
         style={{ filter: colorFilter }}
