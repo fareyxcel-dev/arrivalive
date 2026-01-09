@@ -79,8 +79,7 @@ const ThreeJsBackground = ({ weatherData }: Props) => {
     <div 
       ref={containerRef}
       className="absolute inset-0 w-full h-full"
-      style={{ 
-        filter: 'grayscale(100%)',
+      style={{
         zIndex: 0 
       }}
     />

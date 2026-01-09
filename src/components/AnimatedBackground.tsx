@@ -1,10 +1,10 @@
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, lazy } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { lazy } from 'react';
 
 // Lazy load Three.js background to avoid blocking initial render
 const ThreeJsBackground = lazy(() => import('./ThreeJsBackground'));
 const DisneyWeatherBackground = lazy(() => import('./DisneyWeatherBackground'));
+const WeatherAnimationLayer = lazy(() => import('./WeatherAnimationLayer'));
 
 interface WeatherPayload {
   gradient: { top: string; mid: string; bottom: string };
@@ -81,13 +81,12 @@ const AnimatedBackground = ({ weather }: Props) => {
 
   return (
     <div className="fixed inset-0 z-0 overflow-hidden">
-      {/* Animated Weather Background */}
+      {/* Layer 0: Shader-based Sky + Ocean Background */}
       <Suspense fallback={
         <div 
           className="absolute inset-0" 
           style={{ 
             background: `linear-gradient(180deg, ${weatherData?.gradient?.top || '#0c0c0e'} 0%, ${weatherData?.gradient?.mid || '#141416'} 50%, ${weatherData?.gradient?.bottom || '#1c1c1f'} 100%)`,
-            filter: 'grayscale(100%)'
           }} 
         />
       }>
@@ -98,13 +97,21 @@ const AnimatedBackground = ({ weather }: Props) => {
         )}
       </Suspense>
 
+      {/* Layer 1: Weather Animation Layer (clouds, rain, fog, lightning) */}
+      <Suspense fallback={null}>
+        {weatherData && (
+          <WeatherAnimationLayer weatherData={weatherData} />
+        )}
+      </Suspense>
+
       {/* Glass-like reflection overlay */}
-      <div className="absolute inset-0 glass-reflect pointer-events-none" />
+      <div className="absolute inset-0 glass-reflect pointer-events-none" style={{ zIndex: 2 }} />
 
       {/* Subtle vignette */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
+          zIndex: 2,
           background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.5) 100%)',
         }}
       />
