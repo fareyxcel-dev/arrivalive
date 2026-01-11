@@ -63,29 +63,44 @@ const calculateProgress = (
   return { progress, minutesRemaining };
 };
 
-// Generate CSS filter to colorize white image to target color
+// Generate CSS filter to colorize white image to EXACT target color
 const getColorFilter = (hexColor: string): string => {
+  // For white (#ffffff), no filter needed
+  if (hexColor.toLowerCase() === '#ffffff' || hexColor.toLowerCase() === '#fff') {
+    return 'brightness(1)';
+  }
+  
   const hex = hexColor.replace('#', '');
-  const r = parseInt(hex.substr(0, 2), 16) / 255;
-  const g = parseInt(hex.substr(2, 2), 16) / 255;
-  const b = parseInt(hex.substr(4, 2), 16) / 255;
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
   
-  const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-  const brightness = luminance * 100;
+  // Convert to HSL for accurate color matching
+  const rNorm = r / 255;
+  const gNorm = g / 255;
+  const bNorm = b / 255;
   
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
+  const max = Math.max(rNorm, gNorm, bNorm);
+  const min = Math.min(rNorm, gNorm, bNorm);
+  const l = (max + min) / 2;
+  
   let h = 0;
+  let s = 0;
+  
   if (max !== min) {
     const d = max - min;
-    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-    else if (max === g) h = ((b - r) / d + 2) / 6;
-    else h = ((r - g) / d + 4) / 6;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    
+    if (max === rNorm) h = ((gNorm - bNorm) / d + (gNorm < bNorm ? 6 : 0)) / 6;
+    else if (max === gNorm) h = ((bNorm - rNorm) / d + 2) / 6;
+    else h = ((rNorm - gNorm) / d + 4) / 6;
   }
-  const hue = Math.round(h * 360);
-  const saturation = max === 0 ? 0 : ((max - min) / max) * 100;
   
-  return `brightness(0) saturate(100%) invert(1) sepia(100%) saturate(${Math.max(100, saturation * 10)}%) hue-rotate(${hue}deg) brightness(${Math.max(80, brightness)}%)`;
+  const hue = Math.round(h * 360);
+  const saturation = Math.round(s * 100);
+  const lightness = Math.round(l * 100);
+  
+  return `brightness(0) saturate(100%) invert(${lightness > 50 ? 1 : 0.5}) sepia(1) saturate(${Math.max(1, saturation / 50) * 100}%) hue-rotate(${hue - 50}deg) brightness(${lightness > 50 ? 1 : 0.8})`;
 };
 
 // Helper to convert hex to rgb values
