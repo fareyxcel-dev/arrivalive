@@ -1,9 +1,8 @@
 import { useEffect, useState, Suspense, lazy } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-// Lazy load Three.js background to avoid blocking initial render
-const ThreeJsBackground = lazy(() => import('./ThreeJsBackground'));
-const DisneyWeatherBackground = lazy(() => import('./DisneyWeatherBackground'));
+// Lazy load components
+const SkyIframeBackground = lazy(() => import('./SkyIframeBackground'));
 const WeatherAnimationLayer = lazy(() => import('./WeatherAnimationLayer'));
 
 interface WeatherPayload {
@@ -34,7 +33,6 @@ interface Props {
 
 const AnimatedBackground = ({ weather }: Props) => {
   const [weatherData, setWeatherData] = useState<WeatherPayload | null>(null);
-  const [useThreeJs, setUseThreeJs] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch full weather astronomy data
@@ -66,53 +64,26 @@ const AnimatedBackground = ({ weather }: Props) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Check if WebGL is supported
-  useEffect(() => {
-    try {
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-      if (!gl) {
-        setUseThreeJs(false);
-      }
-    } catch (e) {
-      setUseThreeJs(false);
-    }
-  }, []);
-
   return (
     <div className="fixed inset-0 z-0 overflow-hidden">
-      {/* Layer 0: Shader-based Sky + Ocean Background */}
+      {/* Layer 0: Full-screen iframe shader background */}
       <Suspense fallback={
-        <div 
-          className="absolute inset-0" 
-          style={{ 
-            background: `linear-gradient(180deg, ${weatherData?.gradient?.top || '#0c0c0e'} 0%, ${weatherData?.gradient?.mid || '#141416'} 50%, ${weatherData?.gradient?.bottom || '#1c1c1f'} 100%)`,
-          }} 
-        />
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900" />
       }>
-        {useThreeJs && weatherData ? (
-          <ThreeJsBackground weatherData={weatherData} />
-        ) : (
-          <DisneyWeatherBackground weatherData={weatherData} />
-        )}
+        <SkyIframeBackground weatherData={weatherData} />
       </Suspense>
 
-      {/* Layer 1: Weather Animation Layer (clouds, rain, fog, lightning) */}
+      {/* Layer 1: Weather Animation Layer (clouds, sun, moon, rain, fog, lightning) */}
       <Suspense fallback={null}>
-        {weatherData && (
-          <WeatherAnimationLayer weatherData={weatherData} />
-        )}
+        <WeatherAnimationLayer weatherData={weatherData} />
       </Suspense>
 
-      {/* Glass-like reflection overlay */}
-      <div className="absolute inset-0 glass-reflect pointer-events-none" style={{ zIndex: 2 }} />
-
-      {/* Subtle vignette */}
+      {/* Layer 2: Subtle vignette for depth */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           zIndex: 2,
-          background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.5) 100%)',
+          background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.4) 100%)',
         }}
       />
     </div>
