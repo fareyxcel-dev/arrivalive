@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Maldives Sky + Ocean Shader</title>
+<style>
+html,body{margin:0;padding:0;overflow:hidden;background:#000;height:100%;}
+canvas{display:block;width:100%;height:100%;}
+</style>
+</head>
+<body>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+
+<!-- VERTEX -->
+<script id="v" type="x-shader/x-vertex">
+varying vec2 vUv;
+void main(){
+  vUv = uv;
+  gl_Position = vec4(position,1.0);
+}
+</script>
+
+<!-- FRAGMENT -->
+<script id="f" type="x-shader/x-fragment">
+precision highp float;
+
+varying vec2 vUv;
+uniform float iTime;
+uniform vec2 iRes;
+uniform float iDay;
+
+const float PI = 3.14159265;
+
+/* --------- noise --------- */
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float noise(vec2 p){
+ vec2 i=floor(p),f=fract(p);
+ vec2 u=f*f*(3.-2.*f);
+ return mix(mix(hash(i),hash(i+vec2(1,0)),u.x),
+            mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x),u.y);
+}
+float fbm(vec2 p){
+ float v=0.,a=.5;
+ for(int i=0;i<6;i++){v+=a*noise(p);p*=2.1;a*=.5;}
+ return v;
+}
+
+/* --------- sun --------- */
+vec3 sunDir(){
+ float a=(iDay-0.25)*2.0*PI;
+ return normalize(vec3(cos(a),sin(a),-0.15));
+}
+
+/* --------- sky colors by phase --------- */
+vec3 night   = vec3(0.10, 0.09, 0.16);
+vec3 dawn    = vec3(0.95, 0.55, 0.7);
+vec3 day     = vec3(0.25, 0.55, 0.95);
+vec3 golden  = vec3(1.0, 0.82, 0.55);
+vec3 dusk    = vec3(0.5, 0.35, 0.8);
+
+vec3 skyPhase(float t){
+  vec3 col = night;
+  col = mix(col, dawn,    smoothstep(0.17, 0.23, t));
+  col = mix(col, day,     smoothstep(0.23, 0.30, t));
+  col = mix(col, golden,  smoothstep(0.68, 0.75, t));
+  col = mix(col, dusk,    smoothstep(0.73, 0.80, t));
+  col = mix(col, night,   smoothstep(0.80, 0.88, t));
+  return col;
+}
+
+/* --------- sky dome --------- */
+vec3 sky(vec3 rd){
+ vec3 s = sunDir();
+ float sunY = s.y;
+ float mu = clamp(rd.y * 0.5 + 0.5, 0.0, 1.0);
+ vec3 zen = skyPhase(iDay);
+
+ float darkness = 1.0 - smoothstep(-0.3, 0.2, sunY);
+ vec3 dayHor = vec3(0.9, 0.95, 1.0);
+ vec3 nightHor = vec3(0.07, 0.06, 0.12);
+ vec3 hor = mix(dayHor, nightHor, darkness);
+
+ vec3 col = mix(hor, zen, pow(mu, 0.5));
+
+ float sunGlow = pow(max(dot(rd, s), 0.0), 180.0);
+ col += vec3(1.0, 0.85, 0.6) * sunGlow * 1.8;
+
+ // Reduced warm horizon glow
+ float lowSun = 1.0 - smoothstep(0.0, 0.25, abs(sunY));
+ float warmVar = 0.5 + 0.5 * sin(iTime * 0.03);
+ float warmMultiplier = 1.0 + 1.2 * warmVar;
+ vec3 warmColor = vec3(0.9, 0.65, 0.5);
+ float horizonWarm = pow(1.0 - mu, 5.0) * lowSun * warmMultiplier;
+ col += warmColor * horizonWarm;
+
+ return col;
+}
+
+/* --------- stars --------- */
+float star(vec2 p){
+ vec2 gv = fract(p) - 0.5;
+ vec2 id = floor(p);
+ float n = hash(id);
+ if(n < 0.975) return 0.0;
+
+ float d = length(gv);
+ float bright_base = smoothstep(0.045, 0.0, d);
+
+ float level = (n > 0.995) ? 2.0 : 0.8;
+
+ float phase = hash(id + vec2(37.5, 47.8)) * 6.283185;
+ float freq = 1.0 + hash(id + vec2(73.2, 97.1)) * 10.0;
+ float twinkle = 0.8 + 0.5 * (0.5 + 0.5 * sin(iTime * freq + phase));
+
+ return bright_base * level * twinkle;
+}
+
+float starVis(){
+ float y = sunDir().y;
+ return 1.0 - smoothstep(-0.3, 0.1, y);
+}
+
+/* --------- shooting stars helpers --------- */
+float sdSegment(vec2 p, vec2 a, vec2 b){
+  vec2 pa = p - a;
+  vec2 ba = b - a;
+  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+  return length(pa - ba * h);
+}
+
+/* --------- ocean --------- */
+float waves(vec2 p){
+ float h = 0.0;
+ h += fbm(p * 1.2 + vec2(iTime * 0.3, iTime * 0.15)) * 0.9;
+ h += fbm(p * 3.5 + vec2(iTime * 0.9, -iTime * 0.7)) * 0.35;
+ h += fbm(p * 10.0 + vec2(iTime * 2.2, iTime * 1.8)) * 0.12;
+ return h;
+}
+vec3 nrm(vec2 p){
+ float e = 0.04;
+ return normalize(vec3(
+   waves(p) - waves(p + vec2(e, 0.0)),
+   e * 5.0,
+   waves(p) - waves(p + vec2(0.0, e))
+ ));
+}
+
+vec3 ocean(vec3 rd, vec3 skyCol){
+ if(rd.y >= 0.0) return skyCol;
+
+ float h = 3.0;
+ float t = -h / rd.y;
+ vec3 pos = vec3(0.0, h, 0.0) + rd * t;
+ vec2 uv = pos.xz * 0.25;
+
+ vec3 n = nrm(uv);
+
+ float d = length(pos.xz);
+
+ float sunHeight = sunDir().y;
+ float darkness = 1.0 - smoothstep(-0.3, 0.2, sunHeight);
+
+ vec3 shallow = vec3(0.35, 1.0, 0.9);
+ vec3 deep = vec3(0.04, 0.18, 0.45);
+ vec3 base = mix(shallow, deep, smoothstep(4.0, 45.0, d));
+ base *= mix(1.0, 0.25, darkness);
+
+ float fres = pow(1.0 - max(dot(-rd, n), 0.0), 4.0);
+ vec3 col = mix(base, skyCol, fres);
+
+ vec3 r = reflect(rd, n);
+ float spec = pow(max(dot(r, sunDir()), 0.0), 140.0) * max(sunHeight + 0.1, 0.0);
+ col += vec3(1.0, 0.9, 0.7) * spec;
+
+ float fog = 1.0 - exp(-d * 0.015);
+ return mix(col, skyCol, fog);
+}
+
+/* --------- main --------- */
+void main(){
+ vec2 uv = (gl_FragCoord.xy - 0.5 * iRes.xy) / iRes.y;
+ uv.y += 0.22;
+
+ vec3 rd = normalize(vec3(uv, -1.0));
+
+ float pitch = -0.12;
+ rd.yz = mat2(cos(pitch), sin(pitch), -sin(pitch), cos(pitch)) * rd.yz;
+
+ vec3 col = sky(rd);
+ col = ocean(rd, col);
+
+ float visibility = starVis();
+
+ // Reduce overall brightness at night (base sky + ocean darkened, stars/meteors remain bright)
+ col *= mix(1.0, 0.65, visibility);
+
+ // Stars
+ if(rd.y > 0.0){
+   float phi = atan(rd.x, rd.z);
+   float ct = rd.y;
+   vec2 angular = vec2(phi / (2.0 * PI) + 0.5, ct);
+   float scale = 60.0;
+
+   vec3 starColor = vec3(1.3, 1.3, 1.7);
+
+   float starsTotal = 0.0;
+   starsTotal += star(angular * scale * 1.0);
+   starsTotal += star(angular * scale * 2.73);
+   starsTotal += star(angular * scale * 7.1);
+   starsTotal += star(angular * scale * 19.3);
+   starsTotal += star(angular * scale * 50.0) * 0.7;
+   starsTotal += pow(star(angular * scale * 120.0), 3.0) * 0.5;
+
+   col += starsTotal * visibility * starColor;
+ }
+
+ // Occasional shooting stars
+ if(rd.y > 0.1 && visibility > 0.01){
+   float meteor = 0.0;
+
+   #define ADD_METEOR(offset, period, dur, startX, startY, endX, endY, trailLen) \
+   { \
+     float mt = mod(iTime + offset, period); \
+     if(mt < dur){ \
+       float prog = mt / dur; \
+       vec2 a = vec2(startX, startY); \
+       vec2 b = vec2(endX, endY); \
+       vec2 head = mix(a, b, prog); \
+       vec2 dir = normalize(b - a); \
+       vec2 tail = head - dir * trailLen; \
+       float dist = sdSegment(uv, tail, head); \
+       meteor += exp(-dist * 40.0) * 2.5; \
+       meteor += exp(-dist * 120.0) * 4.0; \
+       meteor += exp(-length(uv - head) * 50.0) * 7.0; \
+       meteor *= smoothstep(0.0, 0.15, mt) * smoothstep(dur, dur-0.15, mt); \
+     } \
+   }
+
+   ADD_METEOR(0.0,   72.0, 1.4, -1.3, 1.1,  1.2, 0.4, 0.7)
+   ADD_METEOR(15.8,  89.0, 1.6,  1.4, 1.0, -1.1, 0.5, 0.8)
+   ADD_METEOR(28.3, 101.0, 1.2, -0.7, 1.3,  0.9, 0.1, 0.6)
+   ADD_METEOR(41.7, 117.0, 1.5,  0.9, 1.2, -0.8, 0.3, 0.9)
+
+   col += meteor * visibility * vec3(1.4, 1.5, 1.9);
+ }
+
+ gl_FragColor = vec4(pow(col, vec3(0.95)), 1.0);
+}
+</script>
+
+<script>
+const renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+const uniforms = {
+  iTime: {value: 0},
+  iRes: {value: new THREE.Vector2(innerWidth, innerHeight)},
+  iDay: {value: 0}
+};
+
+scene.add(new THREE.Mesh(
+  new THREE.PlaneGeometry(2, 2),
+  new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: document.getElementById("v").textContent,
+    fragmentShader: document.getElementById("f").textContent
+  })
+));
+
+const clock = new THREE.Clock();
+
+function animate(){
+  requestAnimationFrame(animate);
+
+  let delta = clock.getDelta();
+  uniforms.iTime.value += delta;
+
+  // Real-time accurate to Maldives (UTC+5)
+  let now = new Date();
+  let utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  let maldivesTime = new Date(utc + 5 * 3600000);
+  let dayFraction = (maldivesTime.getHours() +
+                     maldivesTime.getMinutes() / 60 +
+                     maldivesTime.getSeconds() / 3600 +
+                     maldivesTime.getMilliseconds() / 3600000) / 24;
+  uniforms.iDay.value = dayFraction;
+
+  renderer.render(scene, camera);
+}
+animate();
+
+addEventListener("resize", () => {
+  renderer.setSize(innerWidth, innerHeight);
+  uniforms.iRes.value.set(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>

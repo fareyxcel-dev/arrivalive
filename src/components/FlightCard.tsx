@@ -5,7 +5,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import FlightProgressBar from './FlightProgressBar';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { subscribeToNotifications, addFlightTag, removeFlightTag, setExternalUserId, loadOneSignalScript } from '@/lib/onesignal';
+import { subscribeToNotifications, addFlightTag, removeFlightTag, setExternalUserId } from '@/lib/onesignal';
 
 export interface Flight {
   id: string;
@@ -43,50 +43,42 @@ const AIRLINE_NAMES: Record<string, string> = {
   'W6': 'Wizz Air', 'WK': 'Edelweiss Air', 'WY': 'Oman Air', 'XY': 'Flynas', 'ZF': 'Azur Air',
 };
 
-// Status-based theme colors with enhanced glassmorphism tints
+// Theme colors per status - subtle glass tints
 const getStatusTheme = (status: string) => {
   switch (status.toUpperCase()) {
     case 'LANDED':
       return {
-        cardTint: 'rgba(16, 232, 185, 0.12)',
-        cardScrim: 'rgba(0, 0, 0, 0.25)',
-        trackInactive: '#0f6955',
-        trackActive: '#30c2a2',
+        cardTint: '#10e8b9',
+        progressInactive: '#0f6955',
+        progressActive: '#30c2a2',
         textColor: '#81f0d8',
-        statusBg: 'rgba(16, 232, 185, 0.2)',
         bellColor: '#81f0d8',
         bellGlow: 'rgba(16, 232, 185, 0.3)',
       };
     case 'DELAYED':
       return {
-        cardTint: 'rgba(235, 82, 12, 0.12)',
-        cardScrim: 'rgba(0, 0, 0, 0.25)',
-        trackInactive: '#a1441a',
-        trackActive: '#c25e30',
+        cardTint: '#eb520c',
+        progressInactive: '#a1441a',
+        progressActive: '#c25e30',
         textColor: '#f2763d',
-        statusBg: 'rgba(235, 82, 12, 0.2)',
         bellColor: '#f7a26f',
         bellGlow: 'rgba(242, 118, 61, 0.35)',
       };
     case 'CANCELLED':
       return {
-        cardTint: 'rgba(191, 15, 36, 0.12)',
-        cardScrim: 'rgba(0, 0, 0, 0.25)',
-        trackInactive: '#5a0a15',
-        trackActive: '#bf0f24',
+        cardTint: '#bf0f24',
+        progressInactive: '#5a0a15',
+        progressActive: '#bf0f24',
         textColor: '#f7485d',
-        statusBg: 'rgba(191, 15, 36, 0.2)',
         bellColor: '#f7485d',
         bellGlow: 'rgba(247, 72, 93, 0.3)',
       };
-    default:
+    default: // NORMAL
       return {
-        cardTint: 'rgba(191, 239, 255, 0.08)',
-        cardScrim: 'rgba(0, 0, 0, 0.2)',
-        trackInactive: 'rgba(127, 220, 255, 0.3)',
-        trackActive: 'rgba(255, 255, 255, 0.6)',
+        cardTint: '#bfefff',
+        progressInactive: '#7fdcff',
+        progressActive: '#ffffff',
         textColor: '#ffffff',
-        statusBg: 'rgba(255, 255, 255, 0.12)',
         bellColor: '#bfefff',
         bellGlow: 'rgba(127, 220, 255, 0.3)',
       };
@@ -128,7 +120,7 @@ const getColorFilter = (hexColor: string): string => {
   return `brightness(0) saturate(100%) invert(1) sepia(100%) saturate(${Math.max(100, saturation * 10)}%) hue-rotate(${hue}deg) brightness(${Math.max(80, brightness)}%)`;
 };
 
-// Airline Icon Component with color matching
+// Airline Icon Component with color matching and drop shadow
 const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: string }) => {
   const [imageError, setImageError] = useState(false);
   const [urlIndex, setUrlIndex] = useState(0);
@@ -139,17 +131,9 @@ const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: strin
   // Multiple URL patterns to try for each airline
   const getUrlPatterns = () => {
     const base = 'https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/';
-    
-    // Standard pattern: "AK (AirAsia).png" encoded
     const standardUrl = `${base}${airlineCode}%20(${encodeURIComponent(airlineName)}).png`;
-    
-    // Pattern with spaces: "AK (AirAsia).png" with space as %20
     const spaceUrl = `${base}${airlineCode}%20%28${encodeURIComponent(airlineName)}%29.png`;
-    
-    // Simple pattern: just airline code
     const simpleUrl = `${base}${airlineCode}.png`;
-    
-    // Pattern without parentheses encoding
     const altUrl = `${base}${airlineCode}%20(${airlineName.replace(/ /g, '%20')}).png`;
     
     return [standardUrl, spaceUrl, altUrl, simpleUrl];
@@ -167,31 +151,31 @@ const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: strin
   
   if (imageError) {
     return (
-      <div className="w-full h-full flex items-center justify-center">
-        <span className="text-xs font-semibold" style={{ color }}>
-          {airlineCode}
-        </span>
-      </div>
+      <span 
+        className="text-sm font-bold drop-shadow-md"
+        style={{ color, textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}
+      >
+        {airlineCode}
+      </span>
     );
   }
   
   return (
-    <div className="w-full h-full flex items-center justify-center">
-      <img 
-        src={urls[urlIndex]}
-        alt={airlineName}
-        className="max-w-[48px] max-h-[24px] object-contain"
-        style={{ filter: colorFilter }}
-        onError={handleError}
-      />
-    </div>
+    <img 
+      src={urls[urlIndex]}
+      alt={airlineName}
+      className="max-w-[42px] max-h-[38px] object-contain"
+      style={{ 
+        filter: `${colorFilter} drop-shadow(0 1px 4px rgba(0,0,0,0.5))`,
+      }}
+      onError={handleError}
+    />
   );
 };
 
 // Subscribe to push notifications via OneSignal
 const subscribeToFlightNotifications = async (userId: string, flightId: string, flightDate: string): Promise<boolean> => {
   try {
-    // Initialize OneSignal and get permission
     const playerId = await subscribeToNotifications();
     
     if (!playerId) {
@@ -199,13 +183,9 @@ const subscribeToFlightNotifications = async (userId: string, flightId: string, 
       return false;
     }
 
-    // Set external user ID for targeting
     await setExternalUserId(userId);
-    
-    // Add flight tag for this subscription
     await addFlightTag(flightId, flightDate);
 
-    // Save player ID to profile
     await supabase
       .from('profiles')
       .upsert({ 
@@ -215,7 +195,6 @@ const subscribeToFlightNotifications = async (userId: string, flightId: string, 
         onConflict: 'user_id',
       });
 
-    // Create notification subscription for this flight
     const { error } = await supabase
       .from('notification_subscriptions')
       .upsert({
@@ -245,7 +224,9 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [countdown, setCountdown] = useState('');
   const [isSubscribing, setIsSubscribing] = useState(false);
+  const [bellPulse, setBellPulse] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const bellPulseRef = useRef<NodeJS.Timeout | null>(null);
   
   const theme = getStatusTheme(flight.status);
   const airlineName = AIRLINE_NAMES[flight.airlineCode] || flight.airlineCode;
@@ -253,12 +234,32 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   const isCancelled = flight.status.toUpperCase() === 'CANCELLED';
   const isDelayed = flight.status.toUpperCase() === 'DELAYED';
   
-  // Status/Bell logic
-  const hasTerminalStatus = isLanded || isCancelled || isDelayed;
-  const showStatusBadge = hasTerminalStatus;
-  const showBellRow1 = !hasTerminalStatus;
+  // Layout logic per spec
+  const showBellRow1 = !isLanded && !isCancelled && !isDelayed;
   const showBellRow2 = isDelayed;
+  const showStatusBadge = isLanded || isCancelled || isDelayed;
   const showProgressBar = !isCancelled;
+
+  // Bell pulse animation (every 6-8 seconds for normal, 7-9 for delayed)
+  useEffect(() => {
+    if (isLanded || isCancelled) return;
+    
+    const pulseInterval = isDelayed ? 
+      7000 + Math.random() * 2000 : 
+      6000 + Math.random() * 2000;
+    
+    const doPulse = () => {
+      setBellPulse(true);
+      setTimeout(() => setBellPulse(false), 800);
+      bellPulseRef.current = setTimeout(doPulse, pulseInterval);
+    };
+    
+    bellPulseRef.current = setTimeout(doPulse, pulseInterval);
+    
+    return () => {
+      if (bellPulseRef.current) clearTimeout(bellPulseRef.current);
+    };
+  }, [isLanded, isCancelled, isDelayed]);
 
   const handleLogoClick = () => {
     if (showAirlineName) return;
@@ -279,10 +280,10 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (bellPulseRef.current) clearTimeout(bellPulseRef.current);
     };
   }, []);
 
-  // Handle notification toggle with push subscription
   const handleBellClick = async () => {
     if (isSubscribing) return;
     
@@ -298,7 +299,6 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
       }
 
       if (isNotificationEnabled) {
-        // Unsubscribe
         await removeFlightTag(flight.flightId, flight.date);
         await supabase
           .from('notification_subscriptions')
@@ -310,7 +310,6 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
         onToggleNotification(flight.id);
         toast.success(`Notifications disabled for ${flight.flightId}`);
       } else {
-        // Subscribe with OneSignal push
         const success = await subscribeToFlightNotifications(user.id, flight.flightId, flight.date);
         
         if (success) {
@@ -326,7 +325,6 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
     }
   };
 
-  // Handle countdown updates from progress bar
   const handleCountdownChange = (newCountdown: string) => {
     setCountdown(newCountdown);
   };
@@ -334,44 +332,55 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   const scheduledTimeFormatted = formatTime(flight.scheduledTime, settings.timeFormat);
   const estimatedTimeFormatted = formatTime(flight.estimatedTime, settings.timeFormat);
 
+  // Glass card styles with 10% transparency and live background tint
+  const cardStyle = {
+    background: `linear-gradient(145deg, 
+      rgba(${hexToRgb(theme.cardTint)}, 0.08) 0%, 
+      rgba(0, 0, 0, 0.25) 100%)`,
+    backdropFilter: 'blur(24px) saturate(1.3) brightness(1.1)',
+    WebkitBackdropFilter: 'blur(24px) saturate(1.3) brightness(1.1)',
+    border: `1px solid rgba(${hexToRgb(theme.cardTint)}, 0.15)`,
+    boxShadow: `
+      0 4px 20px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.15)
+    `,
+  };
+
   return (
     <div 
-      className="rounded-[18px] overflow-hidden"
-      style={{ 
-        // Strong glassmorphism with status tint
-        background: `linear-gradient(135deg, ${theme.cardTint} 0%, ${theme.cardScrim} 100%)`,
-        backdropFilter: 'blur(24px) saturate(1.3)',
-        WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
-        // Polished glass edge effects
-        boxShadow: `
-          0 6px 24px 0 rgba(0, 0, 0, 0.15),
-          inset 0 3px 6px -3px rgba(255, 255, 255, 0.25),
-          inset 0 -3px 6px -3px rgba(0, 0, 0, 0.2),
-          inset 3px 0 6px -4px rgba(255, 255, 255, 0.15),
-          inset -3px 0 6px -4px rgba(0, 0, 0, 0.15)
-        `,
-        padding: '8px 10px',
-        maxHeight: '95px',
-      }}
+      className="rounded-2xl overflow-hidden"
+      style={cardStyle}
     >
-      {/* TOP SECTION - Ultra Compact 2 Rows */}
-      <div className="flex gap-2 items-center">
-        {/* Airline Logo - Spans 2 rows visually */}
+      {/* 4 ROW × 3 COLUMN GRID */}
+      <div 
+        className="grid gap-x-2 gap-y-0 p-2.5"
+        style={{
+          gridTemplateColumns: 'auto 1fr auto',
+          gridTemplateRows: 'auto auto auto auto',
+        }}
+      >
+        {/* LEFT COLUMN (ROWS 1-2): Airline Logo */}
         <button
           onClick={handleLogoClick}
-          className="w-10 h-8 flex-shrink-0 flex items-center justify-center transition-all duration-300"
+          className="row-span-2 flex items-center justify-center transition-all duration-300 pr-1"
+          style={{ gridColumn: '1', gridRow: '1 / 3' }}
         >
           {showAirlineName ? (
             <div 
               className={cn(
-                "backdrop-blur-md rounded px-1 py-0.5 transition-opacity duration-300",
+                "backdrop-blur-md rounded px-1.5 py-0.5 transition-opacity duration-300",
                 isFadingOut && "opacity-0"
               )}
-              style={{ backgroundColor: `${theme.textColor}15` }}
+              style={{ backgroundColor: `rgba(${hexToRgb(theme.textColor)}, 0.1)` }}
             >
               <span 
-                className="text-[6px] font-medium text-center leading-tight block drop-shadow-md"
-                style={{ color: theme.textColor }}
+                className="text-[7px] font-medium text-center leading-tight block"
+                style={{ 
+                  color: theme.textColor, 
+                  opacity: 0.9,
+                  textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+                }}
               >
                 {airlineName}
               </span>
@@ -381,107 +390,160 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           )}
         </button>
 
-        {/* Separator with glow */}
-        <span 
-          className="text-base font-light flex-shrink-0 drop-shadow-sm" 
-          style={{ color: theme.textColor, opacity: 0.4 }}
-        >|</span>
-
-        {/* Flight Info + Status/Bell in Grid */}
-        <div className="flex-1 flex flex-col justify-center min-w-0 gap-0">
-          {/* Row 1: Flight Number + Status Badge OR Bell */}
-          <div className="flex items-center justify-between">
-            <span 
-              className="font-bold text-[11px] leading-none drop-shadow-md" 
-              style={{ color: theme.textColor }}
-            >
-              {flight.flightId}
-            </span>
-            
-            {showStatusBadge && (
-              <div 
-                className="px-1.5 py-0.5 rounded-full text-[7px] font-semibold uppercase tracking-wide drop-shadow-sm animate-pulse"
-                style={{ 
-                  backgroundColor: theme.statusBg,
-                  color: theme.textColor,
-                  boxShadow: `0 0 6px ${theme.bellGlow}`,
-                }}
-              >
-                {flight.status}
-              </div>
-            )}
-            
-            {showBellRow1 && (
-              <button
-                onClick={handleBellClick}
-                disabled={isSubscribing}
-                className={cn(
-                  "p-0.5 rounded-full flex-shrink-0 transition-all duration-300",
-                  isNotificationEnabled && "animate-pulse",
-                  isSubscribing && "opacity-50"
-                )}
-                style={{
-                  boxShadow: isNotificationEnabled ? `0 0 10px ${theme.bellGlow}` : 'none',
-                }}
-              >
-                {isNotificationEnabled ? (
-                  <BellRing className="w-2.5 h-2.5 drop-shadow-md" style={{ color: theme.bellColor }} />
-                ) : (
-                  <Bell className="w-2.5 h-2.5 drop-shadow-md" style={{ color: theme.bellColor, opacity: 0.65 }} />
-                )}
-              </button>
-            )}
-          </div>
-          
-          {/* Row 2: Origin + Bell (for delayed) */}
-          <div className="flex items-center justify-between -mt-0.5">
-            <span 
-              className="text-[10px] truncate opacity-80 leading-none drop-shadow-sm" 
-              style={{ color: theme.textColor }}
-            >
-              {flight.origin}
-            </span>
-            
-            {showBellRow2 && (
-              <button
-                onClick={handleBellClick}
-                disabled={isSubscribing}
-                className={cn(
-                  "p-0.5 rounded-full flex-shrink-0 transition-all duration-300",
-                  isNotificationEnabled && "animate-pulse",
-                  isSubscribing && "opacity-50"
-                )}
-                style={{
-                  boxShadow: isNotificationEnabled ? `0 0 10px ${theme.bellGlow}` : 'none',
-                }}
-              >
-                {isNotificationEnabled ? (
-                  <BellRing className="w-2.5 h-2.5 drop-shadow-md" style={{ color: theme.bellColor }} />
-                ) : (
-                  <Bell className="w-2.5 h-2.5 drop-shadow-md" style={{ color: theme.bellColor, opacity: 0.7 }} />
-                )}
-              </button>
-            )}
-          </div>
+        {/* CENTER COLUMN ROW 1: Flight Number */}
+        <div 
+          className="flex items-center"
+          style={{ gridColumn: '2', gridRow: '1' }}
+        >
+          <span 
+            className="font-bold text-sm leading-tight"
+            style={{ 
+              color: theme.textColor,
+              opacity: 0.9,
+              textShadow: '0 1px 4px rgba(0,0,0,0.5)',
+            }}
+          >
+            {flight.flightId}
+          </span>
         </div>
-      </div>
 
-      {/* BOTTOM SECTION - Rows 3-4 */}
-      <div className="mt-1">
-        {/* Labels with countdown */}
-        <div className="flex items-center justify-between text-[8px] mb-0.5" style={{ color: `${theme.textColor}70` }}>
-          <span className="drop-shadow-sm">Scheduled</span>
+        {/* RIGHT COLUMN ROW 1: Status Badge OR Bell */}
+        <div 
+          className="flex items-center justify-end"
+          style={{ gridColumn: '3', gridRow: '1' }}
+        >
+          {showStatusBadge && !isDelayed && (
+            <div 
+              className="px-1.5 py-0.5 rounded-full text-[8px] font-semibold uppercase tracking-wide animate-pulse"
+              style={{ 
+                backgroundColor: `rgba(${hexToRgb(theme.cardTint)}, 0.2)`,
+                color: theme.textColor,
+                opacity: 0.9,
+                textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                boxShadow: `0 0 8px ${theme.bellGlow}`,
+              }}
+            >
+              {flight.status}
+            </div>
+          )}
+          
+          {isDelayed && (
+            <div 
+              className="px-1.5 py-0.5 rounded-full text-[8px] font-semibold uppercase tracking-wide"
+              style={{ 
+                backgroundColor: `rgba(${hexToRgb(theme.cardTint)}, 0.25)`,
+                color: theme.textColor,
+                opacity: 0.9,
+                textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                boxShadow: `0 0 8px ${theme.bellGlow}`,
+                animation: 'pulse 2s ease-in-out infinite',
+              }}
+            >
+              DELAYED
+            </div>
+          )}
+          
+          {showBellRow1 && (
+            <BellButton
+              isActive={isNotificationEnabled}
+              isPulsing={bellPulse}
+              isSubscribing={isSubscribing}
+              bellColor={theme.bellColor}
+              bellGlow={theme.bellGlow}
+              onClick={handleBellClick}
+            />
+          )}
+        </div>
+
+        {/* CENTER COLUMN ROW 2: Origin City/Country */}
+        <div 
+          className="flex items-center"
+          style={{ gridColumn: '2', gridRow: '2' }}
+        >
+          <span 
+            className="text-[11px] truncate leading-tight"
+            style={{ 
+              color: theme.textColor,
+              opacity: 0.75,
+              textShadow: '0 1px 3px rgba(0,0,0,0.4)',
+            }}
+          >
+            {flight.origin}
+          </span>
+        </div>
+
+        {/* RIGHT COLUMN ROW 2: Bell (for DELAYED only) */}
+        <div 
+          className="flex items-center justify-end"
+          style={{ gridColumn: '3', gridRow: '2' }}
+        >
+          {showBellRow2 && (
+            <BellButton
+              isActive={isNotificationEnabled}
+              isPulsing={bellPulse}
+              isSubscribing={isSubscribing}
+              bellColor={theme.bellColor}
+              bellGlow={theme.bellGlow}
+              onClick={handleBellClick}
+              isDelayed
+            />
+          )}
+        </div>
+
+        {/* ROW 3: Labels */}
+        <div 
+          className="col-span-3 flex items-center justify-between mt-1"
+          style={{ gridColumn: '1 / 4', gridRow: '3' }}
+        >
+          <span 
+            className="text-[8px] font-medium"
+            style={{ 
+              color: theme.textColor,
+              opacity: 0.5,
+              textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+            }}
+          >
+            Scheduled
+          </span>
+          
           {showProgressBar && countdown && (
-            <span className="text-[8px] font-medium drop-shadow-sm" style={{ color: theme.textColor }}>
+            <span 
+              className="text-[8px] font-medium"
+              style={{ 
+                color: theme.textColor,
+                opacity: 0.7,
+                textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+              }}
+            >
               {countdown}
             </span>
           )}
-          <span className="drop-shadow-sm">Estimated</span>
+          
+          <span 
+            className="text-[8px] font-medium"
+            style={{ 
+              color: theme.textColor,
+              opacity: 0.5,
+              textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+            }}
+          >
+            Estimated
+          </span>
         </div>
-        
-        {/* Times + Progress Bar - Compact */}
-        <div className="flex items-center gap-1">
-          <span className="font-bold text-[10px] flex-shrink-0 w-11 text-left drop-shadow-md" style={{ color: theme.textColor }}>
+
+        {/* ROW 4: Times + Progress Bar */}
+        <div 
+          className="col-span-3 flex items-center gap-1.5"
+          style={{ gridColumn: '1 / 4', gridRow: '4' }}
+        >
+          <span 
+            className="font-bold text-[11px] flex-shrink-0 w-12 text-left"
+            style={{ 
+              color: theme.textColor,
+              opacity: 0.9,
+              textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+            }}
+          >
             {scheduledTimeFormatted}
           </span>
           
@@ -494,14 +556,21 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
                 status={flight.status}
                 trackingProgress={flight.trackingProgress}
                 textColor={theme.textColor}
-                trackActiveColor={theme.trackActive}
-                trackInactiveColor={theme.trackInactive}
+                trackActiveColor={theme.progressActive}
+                trackInactiveColor={theme.progressInactive}
                 onCountdownChange={handleCountdownChange}
               />
             </div>
           )}
           
-          <span className="font-bold text-[10px] flex-shrink-0 w-11 text-right drop-shadow-md" style={{ color: theme.textColor }}>
+          <span 
+            className="font-bold text-[11px] flex-shrink-0 w-12 text-right"
+            style={{ 
+              color: theme.textColor,
+              opacity: 0.9,
+              textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+            }}
+          >
             {estimatedTimeFormatted}
           </span>
         </div>
@@ -509,5 +578,68 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
     </div>
   );
 };
+
+// Bell button component with pulse animation
+const BellButton = ({ 
+  isActive, 
+  isPulsing, 
+  isSubscribing, 
+  bellColor, 
+  bellGlow, 
+  onClick,
+  isDelayed = false,
+}: {
+  isActive: boolean;
+  isPulsing: boolean;
+  isSubscribing: boolean;
+  bellColor: string;
+  bellGlow: string;
+  onClick: () => void;
+  isDelayed?: boolean;
+}) => {
+  return (
+    <button
+      onClick={onClick}
+      disabled={isSubscribing}
+      className={cn(
+        "p-1 rounded-full flex-shrink-0 transition-all duration-300",
+        isSubscribing && "opacity-50"
+      )}
+      style={{
+        boxShadow: isActive ? `0 0 12px ${bellGlow}` : 'none',
+        transform: isPulsing && !isActive ? 
+          (isDelayed ? 'scale(1.06)' : 'scale(1.05)') : 
+          'scale(1)',
+        opacity: isPulsing && !isActive ? 1 : undefined,
+      }}
+    >
+      {isActive ? (
+        <BellRing 
+          className="w-3.5 h-3.5" 
+          style={{ 
+            color: bellColor,
+            filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.4))',
+          }} 
+        />
+      ) : (
+        <Bell 
+          className="w-3.5 h-3.5" 
+          style={{ 
+            color: bellColor, 
+            opacity: isPulsing ? 1 : 0.65,
+            filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.4))',
+          }} 
+        />
+      )}
+    </button>
+  );
+};
+
+// Helper to convert hex to rgb values
+function hexToRgb(hex: string): string {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return '255, 255, 255';
+  return `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`;
+}
 
 export default FlightCard;
