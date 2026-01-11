@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface WeatherData {
   weather?: {
@@ -15,13 +15,18 @@ interface WeatherData {
     sun: { visible: boolean; position: { x: number; y: number }; brightness: number };
     moon: { visible: boolean; position: { x: number; y: number }; phase: number; illumination: number };
   };
+  gradient?: {
+    top: string;
+    mid: string;
+    bottom: string;
+  };
 }
 
 interface Props {
   weatherData: WeatherData | null;
 }
 
-// Soft brush stroke cloud with variations
+// Soft brush stroke cloud with background color blending
 interface Cloud {
   id: number;
   x: number;
@@ -33,6 +38,7 @@ interface Cloud {
   variant: 'wispy' | 'fluffy' | 'dark' | 'storm';
   blur: number;
   layer: number;
+  colorOffset: number; // For background blending
 }
 
 // Rain drop with physics
@@ -44,6 +50,25 @@ interface RainDrop {
   opacity: number;
   windOffset: number;
   variant: 'light' | 'medium' | 'heavy';
+}
+
+// Parse hex color to RGB
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return { r: 200, g: 210, b: 225 };
+  return {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16),
+  };
+}
+
+// Blend color with background
+function blendWithBackground(cloudColor: { r: number; g: number; b: number }, bgColor: { r: number; g: number; b: number }, blendAmount: number): string {
+  const r = Math.round(cloudColor.r + (bgColor.r - cloudColor.r) * blendAmount);
+  const g = Math.round(cloudColor.g + (bgColor.g - cloudColor.g) * blendAmount);
+  const b = Math.round(cloudColor.b + (bgColor.b - cloudColor.b) * blendAmount);
+  return `${r}, ${g}, ${b}`;
 }
 
 const WeatherAnimationLayer = ({ weatherData }: Props) => {
@@ -64,6 +89,11 @@ const WeatherAnimationLayer = ({ weatherData }: Props) => {
   const isFoggy = condition.includes('fog') || condition.includes('mist') || condition.includes('haze');
   const isStormy = condition.includes('storm') || condition.includes('thunder');
 
+  // Background gradient colors for cloud blending
+  const bgTop = weatherData?.gradient?.top || '#87ceeb';
+  const bgMid = weatherData?.gradient?.mid || '#b0d4e8';
+  const bgBottom = weatherData?.gradient?.bottom || '#d4e8f0';
+
   // Sun/Moon data
   const sunVisible = weatherData?.celestialObjects?.sun?.visible ?? false;
   const sunPos = weatherData?.celestialObjects?.sun?.position ?? { x: 0.5, y: 0.3 };
@@ -73,7 +103,7 @@ const WeatherAnimationLayer = ({ weatherData }: Props) => {
   const moonPhase = weatherData?.celestialObjects?.moon?.phase ?? 0.5;
   const moonIllumination = weatherData?.celestialObjects?.moon?.illumination ?? 0.5;
 
-  // Initialize clouds with variations
+  // Initialize clouds with variations and background color blending
   useEffect(() => {
     const cloudCount = Math.floor(cloudCoverage * 20) + 8;
     const clouds: Cloud[] = [];
@@ -97,6 +127,7 @@ const WeatherAnimationLayer = ({ weatherData }: Props) => {
         variant,
         blur: layer === 0 ? 12 : layer === 1 ? 8 : 4,
         layer,
+        colorOffset: Math.random() * 0.3, // Random blend amount with background
       });
     }
     cloudsRef.current = clouds.sort((a, b) => a.layer - b.layer);
@@ -147,26 +178,53 @@ const WeatherAnimationLayer = ({ weatherData }: Props) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Draw soft brush stroke cloud
+    // Parse background colors
+    const bgTopRgb = hexToRgb(bgTop);
+    const bgMidRgb = hexToRgb(bgMid);
+    const bgBottomRgb = hexToRgb(bgBottom);
+
+    // Draw soft brush stroke cloud with background color blending
     const drawCloud = (cloud: Cloud) => {
       ctx.save();
       ctx.filter = `blur(${cloud.blur}px)`;
       
-      // Cloud color based on variant
-      let baseColor: string;
+      // Get background color based on cloud Y position (interpolate between top/mid/bottom)
+      const yProgress = cloud.y / dimensions.height;
+      let bgColor: { r: number; g: number; b: number };
+      if (yProgress < 0.33) {
+        const t = yProgress / 0.33;
+        bgColor = {
+          r: Math.round(bgTopRgb.r + (bgMidRgb.r - bgTopRgb.r) * t),
+          g: Math.round(bgTopRgb.g + (bgMidRgb.g - bgTopRgb.g) * t),
+          b: Math.round(bgTopRgb.b + (bgMidRgb.b - bgTopRgb.b) * t),
+        };
+      } else {
+        const t = (yProgress - 0.33) / 0.67;
+        bgColor = {
+          r: Math.round(bgMidRgb.r + (bgBottomRgb.r - bgMidRgb.r) * t),
+          g: Math.round(bgMidRgb.g + (bgBottomRgb.g - bgMidRgb.g) * t),
+          b: Math.round(bgMidRgb.b + (bgBottomRgb.b - bgMidRgb.b) * t),
+        };
+      }
+      
+      // Cloud base color based on variant, blended with background
+      let baseCloudColor: { r: number; g: number; b: number };
       switch (cloud.variant) {
         case 'storm':
-          baseColor = 'rgba(50, 55, 70,';
+          baseCloudColor = { r: 50, g: 55, b: 70 };
           break;
         case 'dark':
-          baseColor = 'rgba(100, 110, 130,';
+          baseCloudColor = { r: 100, g: 110, b: 130 };
           break;
         case 'wispy':
-          baseColor = 'rgba(230, 235, 245,';
+          baseCloudColor = { r: 240, g: 245, b: 255 };
           break;
         default:
-          baseColor = 'rgba(200, 210, 225,';
+          baseCloudColor = { r: 220, g: 230, b: 245 };
       }
+      
+      // Blend cloud color with background for "live blurred" effect
+      const blendedColor = blendWithBackground(baseCloudColor, bgColor, cloud.colorOffset + Math.sin(timeRef.current * 0.5) * 0.05);
       
       // Draw multiple soft ellipses for brush stroke effect
       const segments = 9;
@@ -183,9 +241,9 @@ const WeatherAnimationLayer = ({ weatherData }: Props) => {
           cloud.x + offsetX, cloud.y + offsetY, 0,
           cloud.x + offsetX, cloud.y + offsetY, radiusX
         );
-        gradient.addColorStop(0, `${baseColor}${cloud.opacity * 0.8})`);
-        gradient.addColorStop(0.6, `${baseColor}${cloud.opacity * 0.4})`);
-        gradient.addColorStop(1, `${baseColor}0)`);
+        gradient.addColorStop(0, `rgba(${blendedColor}, ${cloud.opacity * 0.8})`);
+        gradient.addColorStop(0.6, `rgba(${blendedColor}, ${cloud.opacity * 0.4})`);
+        gradient.addColorStop(1, `rgba(${blendedColor}, 0)`);
         
         ctx.beginPath();
         ctx.ellipse(cloud.x + offsetX, cloud.y + offsetY, radiusX, radiusY, 0, 0, Math.PI * 2);
@@ -377,7 +435,7 @@ const WeatherAnimationLayer = ({ weatherData }: Props) => {
       // Draw moon
       drawMoon();
       
-      // Draw clouds with parallax
+      // Draw clouds with parallax and background blending
       cloudsRef.current.forEach(cloud => {
         drawCloud(cloud);
         
@@ -388,6 +446,7 @@ const WeatherAnimationLayer = ({ weatherData }: Props) => {
         if (cloud.x > dimensions.width + cloud.width / 2) {
           cloud.x = -cloud.width;
           cloud.y = dimensions.height * (0.02 + Math.random() * 0.4);
+          cloud.colorOffset = Math.random() * 0.3; // Randomize blend on respawn
         }
       });
       
@@ -411,7 +470,8 @@ const WeatherAnimationLayer = ({ weatherData }: Props) => {
       }
     };
   }, [dimensions, condition, windSpeed, windDirection, rainActive, rainIntensity, isFoggy, isStormy,
-      sunVisible, sunPos, sunBrightness, moonVisible, moonPos, moonPhase, moonIllumination, cloudCoverage]);
+      sunVisible, sunPos, sunBrightness, moonVisible, moonPos, moonPhase, moonIllumination, cloudCoverage,
+      bgTop, bgMid, bgBottom]);
 
   return (
     <canvas

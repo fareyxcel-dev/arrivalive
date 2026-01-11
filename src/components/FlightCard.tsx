@@ -95,29 +95,46 @@ const formatTime = (time: string, format: '12h' | '24h') => {
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
 };
 
-// Generate CSS filter to colorize white image to target color
+// Generate CSS filter to colorize white image to EXACT target color
 const getColorFilter = (hexColor: string): string => {
+  // For white (#ffffff), just use brightness(1) - no filter needed
+  if (hexColor.toLowerCase() === '#ffffff' || hexColor.toLowerCase() === '#fff') {
+    return 'brightness(1) drop-shadow(0 1px 4px rgba(0,0,0,0.5))';
+  }
+  
   const hex = hexColor.replace('#', '');
-  const r = parseInt(hex.substr(0, 2), 16) / 255;
-  const g = parseInt(hex.substr(2, 2), 16) / 255;
-  const b = parseInt(hex.substr(4, 2), 16) / 255;
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
   
-  const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-  const brightness = luminance * 100;
+  // Convert to HSL for accurate color matching
+  const rNorm = r / 255;
+  const gNorm = g / 255;
+  const bNorm = b / 255;
   
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
+  const max = Math.max(rNorm, gNorm, bNorm);
+  const min = Math.min(rNorm, gNorm, bNorm);
+  const l = (max + min) / 2;
+  
   let h = 0;
+  let s = 0;
+  
   if (max !== min) {
     const d = max - min;
-    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-    else if (max === g) h = ((b - r) / d + 2) / 6;
-    else h = ((r - g) / d + 4) / 6;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    
+    if (max === rNorm) h = ((gNorm - bNorm) / d + (gNorm < bNorm ? 6 : 0)) / 6;
+    else if (max === gNorm) h = ((bNorm - rNorm) / d + 2) / 6;
+    else h = ((rNorm - gNorm) / d + 4) / 6;
   }
-  const hue = Math.round(h * 360);
-  const saturation = max === 0 ? 0 : ((max - min) / max) * 100;
   
-  return `brightness(0) saturate(100%) invert(1) sepia(100%) saturate(${Math.max(100, saturation * 10)}%) hue-rotate(${hue}deg) brightness(${Math.max(80, brightness)}%)`;
+  const hue = Math.round(h * 360);
+  const saturation = Math.round(s * 100);
+  const lightness = Math.round(l * 100);
+  
+  // Use sepia-based approach for precise color matching
+  // Start with white (invert), then apply sepia to get orange, then hue-rotate to target
+  return `brightness(0) saturate(100%) invert(${lightness > 50 ? 1 : 0.5}) sepia(1) saturate(${Math.max(1, saturation / 50) * 100}%) hue-rotate(${hue - 50}deg) brightness(${lightness > 50 ? 1 : 0.8})`;
 };
 
 // Airline Icon Component with color matching and drop shadow
@@ -455,7 +472,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           )}
         </div>
 
-        {/* CENTER COLUMN ROW 2: Origin City/Country */}
+        {/* CENTER COLUMN ROW 2: Origin City/Country - WHITE text, not grey */}
         <div 
           className="flex items-center"
           style={{ gridColumn: '2', gridRow: '2' }}
@@ -464,7 +481,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             className="text-[11px] truncate leading-tight"
             style={{ 
               color: theme.textColor,
-              opacity: 0.75,
+              opacity: 0.9,
               textShadow: '0 1px 3px rgba(0,0,0,0.4)',
             }}
           >
@@ -490,7 +507,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           )}
         </div>
 
-        {/* ROW 3: Labels */}
+        {/* ROW 3: Labels - WHITE text, not grey */}
         <div 
           className="col-span-3 flex items-center justify-between mt-1"
           style={{ gridColumn: '1 / 4', gridRow: '3' }}
@@ -499,7 +516,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             className="text-[8px] font-medium"
             style={{ 
               color: theme.textColor,
-              opacity: 0.5,
+              opacity: 0.8,
               textShadow: '0 1px 2px rgba(0,0,0,0.3)',
             }}
           >
@@ -511,7 +528,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
               className="text-[8px] font-medium"
               style={{ 
                 color: theme.textColor,
-                opacity: 0.7,
+                opacity: 0.85,
                 textShadow: '0 1px 2px rgba(0,0,0,0.3)',
               }}
             >
@@ -523,7 +540,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             className="text-[8px] font-medium"
             style={{ 
               color: theme.textColor,
-              opacity: 0.5,
+              opacity: 0.8,
               textShadow: '0 1px 2px rgba(0,0,0,0.3)',
             }}
           >

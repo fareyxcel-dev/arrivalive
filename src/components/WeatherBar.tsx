@@ -180,7 +180,7 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
     return `${conditionName} for ${mins}m`;
   };
 
-  // Calculate sunrise/sunset countdown
+  // Calculate sunrise/sunset countdown with expected time
   const getSunCountdown = () => {
     const now = currentTime.getHours() * 60 + currentTime.getMinutes();
     const sunriseMinutes = parseTime(sunrise).hours * 60 + parseTime(sunrise).minutes;
@@ -191,7 +191,7 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
       return { 
         label: 'Sunset', 
         countdown: formatCountdown(minutesToSunset),
-        time: sunset,
+        time: formatSunTime(sunset),
         icon: <Sunset className="w-4 h-4" />
       };
     } else {
@@ -200,10 +200,21 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
       return { 
         label: 'Sunrise', 
         countdown: formatCountdown(minutesToSunrise),
-        time: sunrise,
+        time: formatSunTime(sunrise),
         icon: <Sunrise className="w-4 h-4" />
       };
     }
+  };
+
+  // Format sun time based on user preference
+  const formatSunTime = (time: string) => {
+    const { hours, minutes } = parseTime(time);
+    if (settings.timeFormat === '12h') {
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const hours12 = hours % 12 || 12;
+      return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+    }
+    return time;
   };
   
   const formatTime = (date: Date) => {
@@ -227,12 +238,11 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
     });
   };
 
-  // Full month name instead of abbreviated
+  // Format date as dd-Mmmm
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'long',
-    });
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = date.toLocaleDateString('en-US', { month: 'long' });
+    return `${day}-${month}`;
   };
 
   const convertTemperature = (temp: number, unit: 'C' | 'F') => {
@@ -240,6 +250,16 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
       return Math.round((temp * 9/5) + 32);
     }
     return Math.round(temp);
+  };
+
+  // Get chance of rain text
+  const getChanceOfWeather = (): string => {
+    if (!weather) return '';
+    const chanceOfRain = weather.chanceOfRain || 0;
+    if (chanceOfRain > 0) {
+      return `${chanceOfRain}% chance of rain`;
+    }
+    return 'No rain expected';
   };
 
   const handleDayDateClick = () => {
@@ -252,7 +272,7 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
     setShowSunCountdown(true);
     const timeout = setTimeout(() => {
       setShowSunCountdown(false);
-    }, 11000);
+    }, 30000); // 30 seconds
     setSunCountdownTimeout(timeout);
   };
 
@@ -266,7 +286,7 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
     setShowForecast(true);
     const timeout = setTimeout(() => {
       setShowForecast(false);
-    }, 11000);
+    }, 30000); // 30 seconds
     setForecastTimeout(timeout);
   };
 
@@ -280,138 +300,145 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
   const sunData = getSunCountdown();
   const nextCondition = getNextDifferentCondition();
   const weatherDurationText = getWeatherDuration();
+  const chanceOfWeatherText = getChanceOfWeather();
 
   return (
     <div className="glass rounded-2xl p-4 mx-4 mb-4">
       <div className="flex items-start justify-between">
-        {/* Time Section - Left */}
+        {/* Time Section - Left (3 rows) */}
         <div className="flex items-start gap-3">
+          {/* Sun/Moon Icon */}
+          <div className={cn(
+            "transition-all duration-300 mt-1",
+            showSunCountdown && "opacity-0"
+          )}>
+            {isDay ? (
+              <Sun className="w-5 h-5 text-foreground animate-pulse-soft" />
+            ) : (
+              <Moon className="w-5 h-5 text-foreground animate-pulse-soft" />
+            )}
+          </div>
+          {showSunCountdown && (
+            <div className="absolute animate-fade-in text-foreground mt-1">
+              {sunData.icon}
+            </div>
+          )}
+          
           <div className="space-y-0.5">
-            {/* Row 1: Live Time + Sun/Moon Icon */}
+            {/* Row 1: Live Time (clickable for format toggle) */}
             <button 
               onClick={toggleTimeFormat}
-              className="flex items-center gap-2 hover:bg-white/5 rounded px-1 -mx-1 transition-colors"
+              className="flex items-center hover:bg-white/5 rounded px-1 -mx-1 transition-colors"
             >
               <p className="text-xl font-bold text-foreground">
                 {formatTime(currentTime)}
               </p>
-              <div className={cn(
-                "transition-all duration-300",
-                showSunCountdown && "blur-sm opacity-0"
-              )}>
-                {isDay ? (
-                  <Sun className="w-5 h-5 text-foreground animate-pulse-soft" />
-                ) : (
-                  <Moon className="w-5 h-5 text-foreground animate-pulse-soft" />
-                )}
-              </div>
-              {showSunCountdown && (
-                <div className="absolute ml-[4.5rem] animate-fade-in text-foreground">
-                  {sunData.icon}
-                </div>
-              )}
             </button>
             
-            {/* Row 2 & 3: Day and Date - Full month name */}
-            <button
-              onClick={handleDayDateClick}
-              className={cn(
-                "block text-left hover:bg-white/5 rounded px-1 -mx-1 transition-all duration-300",
-                showSunCountdown && "blur-sm opacity-0"
-              )}
-            >
-              <p className="text-sm font-semibold text-foreground/90">
-                {formatDay(currentTime)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {formatDate(currentTime)}
-              </p>
-            </button>
-
-            {/* Sun countdown overlay */}
-            {showSunCountdown && (
+            {/* Row 2 & 3: Day and Date - clickable for sun countdown */}
+            <div className="relative">
               <button
                 onClick={handleDayDateClick}
-                className="absolute animate-fade-in text-left px-1 -mx-1"
-                style={{ marginTop: '-2.25rem' }}
+                className={cn(
+                  "block text-left hover:bg-white/5 rounded px-1 -mx-1 transition-all duration-300",
+                  showSunCountdown && "blur-sm opacity-0"
+                )}
               >
-                <p className="text-sm font-semibold text-foreground/90">
-                  {sunData.label} at {sunData.time}
+                {/* Row 2: Day (larger font) */}
+                <p className="text-sm font-bold text-foreground">
+                  {formatDay(currentTime)}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  in {sunData.countdown}
+                {/* Row 3: Date (dd-Mmmm) */}
+                <p className="text-xs font-medium text-foreground/90">
+                  {formatDate(currentTime)}
                 </p>
               </button>
-            )}
+
+              {/* Sun countdown overlay */}
+              {showSunCountdown && (
+                <button
+                  onClick={handleDayDateClick}
+                  className="absolute top-0 left-0 animate-fade-in text-left px-1 -mx-1"
+                >
+                  <p className="text-sm font-bold text-foreground">
+                    {sunData.label} in {sunData.countdown}
+                  </p>
+                  <p className="text-xs font-medium text-foreground/90">
+                    at {sunData.time}
+                  </p>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Weather Section - Right */}
+        {/* Weather Section - Right (3 rows) */}
         {weather && (
           <div className="flex items-start gap-3">
             <div className="text-right space-y-0.5">
-              {/* Row 1: Weather Icon + Temperature */}
+              {/* Row 1: Temperature + Weather Icon (clickable for unit toggle) */}
               <button
                 onClick={toggleTemperatureUnit}
                 className="flex items-center justify-end gap-2 ml-auto hover:bg-white/5 rounded px-1 -mx-1 transition-colors"
               >
+                <p className="text-xl font-bold text-foreground">
+                  {convertTemperature(weather.temp, settings.temperatureUnit)}°{settings.temperatureUnit}
+                </p>
                 <div className={cn(
                   "text-foreground transition-all duration-300",
-                  showForecast && "blur-sm opacity-0"
+                  showForecast && "opacity-0"
                 )}>
                   {getWeatherIcon(weather.condition, isDay)}
                 </div>
                 {showForecast && nextCondition && (
-                  <div className="absolute mr-[4rem] animate-fade-in text-foreground">
+                  <div className="absolute animate-fade-in text-foreground" style={{ right: '1rem' }}>
                     {getWeatherIcon(nextCondition.nextCondition, isDay)}
                   </div>
                 )}
-                <p className="text-xl font-bold text-foreground">
-                  {convertTemperature(weather.temp, settings.temperatureUnit)}°{settings.temperatureUnit}
-                </p>
               </button>
               
-              {/* Row 2 & 3: Condition and weather duration */}
-              <button
-                onClick={handleWeatherClick}
-                className={cn(
-                  "block text-right hover:bg-white/5 rounded px-1 -mx-1 transition-all duration-300",
-                  showForecast && "blur-sm opacity-0"
-                )}
-              >
-                <p className="text-sm font-semibold text-foreground/90 capitalize">
-                  {weather.condition}
-                </p>
-                {weatherDurationText && (
-                  <p className="text-xs text-muted-foreground">
-                    {weatherDurationText}
-                  </p>
-                )}
-              </button>
-
-              {/* Forecast overlay - shows next DIFFERENT condition */}
-              {showForecast && (
+              {/* Row 2 & 3: Weather condition + duration + chance */}
+              <div className="relative">
                 <button
                   onClick={handleWeatherClick}
-                  className="absolute animate-fade-in text-right px-1 -mx-1"
-                  style={{ marginTop: '-2.25rem', right: '1.5rem' }}
-                >
-                  {nextCondition ? (
-                    <>
-                      <p className="text-sm font-semibold text-foreground/90 capitalize">
-                        {nextCondition.nextCondition} at {nextCondition.forecastTime}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        in {formatCountdown(nextCondition.timeToChange)}
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-sm font-semibold text-foreground/90">
-                      No change expected
-                    </p>
+                  className={cn(
+                    "block text-right hover:bg-white/5 rounded px-1 -mx-1 transition-all duration-300",
+                    showForecast && "blur-sm opacity-0"
                   )}
+                >
+                  {/* Row 2: Current weather + duration (larger font) */}
+                  <p className="text-sm font-bold text-foreground capitalize">
+                    {weatherDurationText || weather.condition}
+                  </p>
+                  {/* Row 3: Chance of weather */}
+                  <p className="text-xs font-medium text-foreground/90">
+                    {chanceOfWeatherText}
+                  </p>
                 </button>
-              )}
+
+                {/* Forecast overlay - shows next DIFFERENT condition */}
+                {showForecast && (
+                  <button
+                    onClick={handleWeatherClick}
+                    className="absolute top-0 right-0 animate-fade-in text-right px-1 -mx-1"
+                  >
+                    {nextCondition ? (
+                      <>
+                        <p className="text-sm font-bold text-foreground capitalize">
+                          {nextCondition.nextCondition} in {formatCountdown(nextCondition.timeToChange)}
+                        </p>
+                        <p className="text-xs font-medium text-foreground/90">
+                          at {nextCondition.forecastTime}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-sm font-bold text-foreground">
+                        No change expected
+                      </p>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
