@@ -17,6 +17,7 @@ interface NotificationRequest {
       phone?: string;
       notification_email?: string;
       fcm_token?: string;
+      onesignal_player_id?: string;
     };
   };
   flight: {
@@ -24,6 +25,7 @@ interface NotificationRequest {
     origin: string;
     scheduled_time: string;
     status: string;
+    flight_date: string;
   };
   message: string;
   oldStatus: string;
@@ -47,6 +49,8 @@ Deno.serve(async (req) => {
       email: { sent: false, error: null as string | null },
       push: { sent: false, error: null as string | null },
     };
+
+    console.log(`Processing notification for flight ${flight.flight_id}: ${oldStatus} → ${newStatus}`);
 
     // Send SMS via Twilio
     if (subscription.notify_sms && subscription.profiles?.phone) {
@@ -139,50 +143,106 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Send Push Notification via Firebase
-    if (subscription.notify_push && subscription.profiles?.fcm_token) {
-      try {
-        const firebaseApiKey = Deno.env.get("FIREBASE_API_KEY");
-        const firebaseSenderId = Deno.env.get("FIREBASE_SENDER_ID");
+    // Send Push Notification - Try OneSignal first, then Firebase
+    if (subscription.notify_push) {
+      // Try OneSignal first
+      if (subscription.profiles?.onesignal_player_id) {
+        try {
+          const oneSignalAppId = Deno.env.get("ONESIGNAL_APP_ID");
+          const oneSignalRestApiKey = Deno.env.get("ONESIGNAL_REST_API_KEY");
 
-        if (firebaseApiKey) {
-          const response = await fetch(
-            "https://fcm.googleapis.com/fcm/send",
-            {
+          if (oneSignalAppId && oneSignalRestApiKey) {
+            const notificationPayload = {
+              app_id: oneSignalAppId,
+              include_player_ids: [subscription.profiles.onesignal_player_id],
+              headings: { en: `Flight ${flight.flight_id} Update` },
+              contents: { en: message },
+              data: {
+                flightId: flight.flight_id,
+                flightDate: flight.flight_date,
+                status: newStatus,
+                url: "/",
+              },
+              ios_badgeType: "Increase",
+              ios_badgeCount: 1,
+              android_channel_id: "flight-notifications",
+              priority: 10,
+              ttl: 86400,
+            };
+
+            console.log(`Sending OneSignal push to player: ${subscription.profiles.onesignal_player_id}`);
+
+            const pushResponse = await fetch("https://onesignal.com/api/v1/notifications", {
               method: "POST",
               headers: {
-                Authorization: `key=${firebaseApiKey}`,
                 "Content-Type": "application/json",
+                "Authorization": `Basic ${oneSignalRestApiKey}`,
               },
-              body: JSON.stringify({
-                to: subscription.profiles.fcm_token,
-                notification: {
-                  title: `Flight ${flight.flight_id} Update`,
-                  body: message,
-                  icon: "/icon-512.png",
-                },
-                data: {
-                  flight_id: flight.flight_id,
-                  status: newStatus,
-                },
-              }),
-            }
-          );
+              body: JSON.stringify(notificationPayload),
+            });
 
-          if (response.ok) {
-            results.push.sent = true;
-            console.log("Push notification sent successfully");
+            const pushResult = await pushResponse.json();
+
+            if (pushResponse.ok) {
+              results.push.sent = true;
+              console.log("OneSignal push sent successfully:", pushResult.id);
+            } else {
+              console.error("OneSignal push failed:", pushResult);
+              results.push.error = JSON.stringify(pushResult);
+            }
           } else {
-            const error = await response.text();
-            results.push.error = error;
-            console.error("FCM error:", error);
+            results.push.error = "OneSignal credentials not configured";
           }
-        } else {
-          results.push.error = "Firebase credentials not configured";
+        } catch (error: unknown) {
+          results.push.error = error instanceof Error ? error.message : String(error);
+          console.error("OneSignal push error:", error);
         }
-      } catch (error: unknown) {
-        results.push.error = error instanceof Error ? error.message : String(error);
-        console.error("Push error:", error);
+      }
+      
+      // Fallback to Firebase if OneSignal didn't work and FCM token exists
+      if (!results.push.sent && subscription.profiles?.fcm_token) {
+        try {
+          const firebaseApiKey = Deno.env.get("FIREBASE_API_KEY");
+
+          if (firebaseApiKey) {
+            const response = await fetch(
+              "https://fcm.googleapis.com/fcm/send",
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `key=${firebaseApiKey}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  to: subscription.profiles.fcm_token,
+                  notification: {
+                    title: `Flight ${flight.flight_id} Update`,
+                    body: message,
+                    icon: "/icon-512.png",
+                  },
+                  data: {
+                    flight_id: flight.flight_id,
+                    status: newStatus,
+                  },
+                }),
+              }
+            );
+
+            if (response.ok) {
+              results.push.sent = true;
+              console.log("FCM push notification sent successfully");
+            } else {
+              const error = await response.text();
+              results.push.error = error;
+              console.error("FCM error:", error);
+            }
+          } else {
+            results.push.error = "Firebase credentials not configured";
+          }
+        } catch (error: unknown) {
+          results.push.error = error instanceof Error ? error.message : String(error);
+          console.error("FCM push error:", error);
+        }
       }
     }
 
@@ -236,11 +296,11 @@ Deno.serve(async (req) => {
 function getStatusColor(status: string): string {
   switch (status.toUpperCase()) {
     case "LANDED":
-      return "#22c55e";
+      return "#15bd4d";
     case "DELAYED":
-      return "#f59e0b";
+      return "#fca90f";
     case "CANCELLED":
-      return "#ef4444";
+      return "#fc0f37";
     default:
       return "#64748b";
   }

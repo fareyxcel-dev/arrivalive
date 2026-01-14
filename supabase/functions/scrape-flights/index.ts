@@ -249,27 +249,81 @@ async function triggerNotifications(
   oldStatus: string,
   newStatus: string
 ) {
-  const { data: subscriptions } = await supabase
+  // Get subscriptions for this flight
+  const { data: subscriptions, error: subError } = await supabase
     .from("notification_subscriptions")
-    .select("*, profiles(*)")
+    .select("*")
     .eq("flight_id", flight.flight_id)
     .eq("flight_date", flight.flight_date);
 
-  if (!subscriptions || subscriptions.length === 0) return;
+  if (subError) {
+    console.error("Error fetching subscriptions:", subError);
+    return;
+  }
+
+  if (!subscriptions || subscriptions.length === 0) {
+    console.log(`No subscriptions found for flight ${flight.flight_id}`);
+    return;
+  }
+
+  console.log(`Found ${subscriptions.length} subscriptions for flight ${flight.flight_id}`);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
   for (const sub of subscriptions) {
+    // Fetch profile data for this user
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("phone, notification_email, fcm_token, onesignal_player_id")
+      .eq("user_id", sub.user_id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error(`Error fetching profile for user ${sub.user_id}:`, profileError);
+      continue;
+    }
+
     const message = `Flight ${flight.flight_id} from ${flight.origin}: Status changed from ${oldStatus} to ${newStatus}`;
     
-    await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${supabaseServiceKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ subscription: sub, flight, message, oldStatus, newStatus }),
+    console.log(`Sending notification to user ${sub.user_id}, push enabled: ${sub.notify_push}, player_id: ${profile?.onesignal_player_id}`);
+    
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${supabaseServiceKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          subscription: { ...sub, profiles: profile },
+          flight: { ...flight, flight_date: flight.flight_date }, 
+          message, 
+          oldStatus, 
+          newStatus 
+        }),
+      });
+      
+      const result = await response.json();
+      console.log(`Notification result for ${sub.user_id}:`, result);
+    } catch (err) {
+      console.error(`Failed to send notification to ${sub.user_id}:`, err);
+    }
+  }
+
+  // Also create a flight alert entry
+  try {
+    await supabase.from("flight_alerts").insert({
+      flight_id: flight.flight_id,
+      flight_date: flight.flight_date,
+      old_status: oldStatus,
+      new_status: newStatus,
+      alert_type: newStatus.toUpperCase() === "LANDED" ? "landed" : 
+                  newStatus.toUpperCase() === "DELAYED" ? "delayed" : 
+                  newStatus.toUpperCase() === "CANCELLED" ? "cancelled" : "status_change",
+      origin: flight.origin,
     });
+  } catch (alertErr) {
+    console.error("Error creating flight alert:", alertErr);
   }
 }

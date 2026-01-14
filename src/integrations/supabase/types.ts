@@ -272,6 +272,7 @@ export type Database = {
           fcm_token: string | null
           id: string
           notification_email: string | null
+          onesignal_player_id: string | null
           phone: string | null
           push_subscription: Json | null
           updated_at: string
@@ -283,6 +284,7 @@ export type Database = {
           fcm_token?: string | null
           id?: string
           notification_email?: string | null
+          onesignal_player_id?: string | null
           phone?: string | null
           push_subscription?: Json | null
           updated_at?: string
@@ -294,6 +296,7 @@ export type Database = {
           fcm_token?: string | null
           id?: string
           notification_email?: string | null
+          onesignal_player_id?: string | null
           phone?: string | null
           push_subscription?: Json | null
           updated_at?: string
