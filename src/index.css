@@ -19,11 +19,11 @@
     --sky-dusk: 0 1% 22%;
     --sky-night: 0 0% 13%;
 
-    /* Status colors */
-    --status-delayed: 28 98% 49%;
-    --status-landed: 175 97% 57%;
-    --status-cancelled: 351 81% 53%;
-    --status-default: 0 0% 75%;
+    /* Status colors - matching blueprint */
+    --status-delayed: 39 97% 52%;
+    --status-landed: 145 77% 41%;
+    --status-cancelled: 350 97% 52%;
+    --status-default: 0 0% 100%;
 
     /* Core theme - NEUTRAL (no orange) */
     --background: 0 0% 8%;
