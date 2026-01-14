@@ -43,7 +43,7 @@ const AIRLINE_NAMES: Record<string, string> = {
   'W6': 'Wizz Air', 'WK': 'Edelweiss Air', 'WY': 'Oman Air', 'XY': 'Flynas', 'ZF': 'Azur Air',
 };
 
-// Theme colors per status - matching blueprint design system
+// Theme colors per status - matching blueprint design system exactly
 const getStatusTheme = (status: string) => {
   switch (status.toUpperCase()) {
     case 'LANDED':
@@ -51,36 +51,36 @@ const getStatusTheme = (status: string) => {
         cardTint: '#15bd4d',
         progressInactive: '#0a5c26',
         progressActive: '#2dd663',
-        textColor: '#5eed8a',
-        bellColor: '#5eed8a',
-        bellGlow: 'rgba(21, 189, 77, 0.35)',
+        textColor: '#7bff9d', // Bright green for maximum visibility
+        bellColor: '#7bff9d',
+        bellGlow: 'rgba(21, 189, 77, 0.4)',
       };
     case 'DELAYED':
       return {
         cardTint: '#fca90f',
         progressInactive: '#7a5308',
         progressActive: '#fdc54a',
-        textColor: '#fdc54a',
-        bellColor: '#fdc54a',
-        bellGlow: 'rgba(252, 169, 15, 0.35)',
+        textColor: '#ffe066', // Bright yellow for maximum visibility
+        bellColor: '#ffe066',
+        bellGlow: 'rgba(252, 169, 15, 0.4)',
       };
     case 'CANCELLED':
       return {
         cardTint: '#fc0f37',
         progressInactive: '#7a081b',
         progressActive: '#fd4a69',
-        textColor: '#fd6b83',
-        bellColor: '#fd6b83',
-        bellGlow: 'rgba(252, 15, 55, 0.35)',
+        textColor: '#ff8a9c', // Bright red/pink for maximum visibility
+        bellColor: '#ff8a9c',
+        bellGlow: 'rgba(252, 15, 55, 0.4)',
       };
     default: // NORMAL/ON TIME
       return {
         cardTint: '#bfefff',
-        progressInactive: '#7fdcff',
+        progressInactive: '#4dc3ff',
         progressActive: '#ffffff',
         textColor: '#ffffff',
         bellColor: '#bfefff',
-        bellGlow: 'rgba(127, 220, 255, 0.3)',
+        bellGlow: 'rgba(127, 220, 255, 0.35)',
       };
   }
 };
@@ -95,19 +95,20 @@ const formatTime = (time: string, format: '12h' | '24h') => {
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
 };
 
-// Generate CSS filter to colorize white image to EXACT target color
+// Generate CSS filter to colorize white image to match target hex color exactly
 const getColorFilter = (hexColor: string): string => {
-  // For white (#ffffff), just use brightness(1) - no filter needed
-  if (hexColor.toLowerCase() === '#ffffff' || hexColor.toLowerCase() === '#fff') {
-    return 'brightness(1) drop-shadow(0 1px 4px rgba(0,0,0,0.5))';
+  const hex = hexColor.replace('#', '').toLowerCase();
+  
+  // For pure white, minimal processing
+  if (hex === 'ffffff' || hex === 'fff') {
+    return 'none';
   }
   
-  const hex = hexColor.replace('#', '');
   const r = parseInt(hex.substr(0, 2), 16);
   const g = parseInt(hex.substr(2, 2), 16);
   const b = parseInt(hex.substr(4, 2), 16);
   
-  // Convert to HSL for accurate color matching
+  // Convert to HSL
   const rNorm = r / 255;
   const gNorm = g / 255;
   const bNorm = b / 255;
@@ -128,13 +129,20 @@ const getColorFilter = (hexColor: string): string => {
     else h = ((rNorm - gNorm) / d + 4) / 6;
   }
   
-  const hue = Math.round(h * 360);
-  const saturation = Math.round(s * 100);
-  const lightness = Math.round(l * 100);
+  const hue = h * 360;
+  const sat = s * 100;
+  const light = l * 100;
   
-  // Use sepia-based approach for precise color matching
-  // Start with white (invert), then apply sepia to get orange, then hue-rotate to target
-  return `brightness(0) saturate(100%) invert(${lightness > 50 ? 1 : 0.5}) sepia(1) saturate(${Math.max(1, saturation / 50) * 100}%) hue-rotate(${hue - 50}deg) brightness(${lightness > 50 ? 1 : 0.8})`;
+  // For light colors (like our status colors), use invert to start from white
+  // then apply hue rotation and saturation
+  if (light > 60) {
+    // Light colors - start white, tint
+    const hueRotate = hue - 180; // Adjust based on sepia baseline
+    return `brightness(1) sepia(1) saturate(${Math.max(100, sat * 2)}%) hue-rotate(${hueRotate}deg) brightness(${light / 60})`;
+  }
+  
+  // Darker colors
+  return `brightness(0) saturate(100%) invert(${light > 50 ? 1 : 0.6}) sepia(1) saturate(${Math.max(100, sat * 2)}%) hue-rotate(${hue - 50}deg)`;
 };
 
 // Airline Icon Component with color matching and drop shadow

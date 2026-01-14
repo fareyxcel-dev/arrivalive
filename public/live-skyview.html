@@ -1,303 +1,419 @@
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
+
 <meta charset="utf-8"/>
-<title>Maldives Sky + Ocean Shader</title>
+
+<title>Maldives SkyView - Live Live Engine</title>
+
 <style>
-html,body{margin:0;padding:0;overflow:hidden;background:#000;height:100%;}
-canvas{display:block;width:100%;height:100%;}
+
+    html,body{margin:0;padding:0;overflow:hidden;background:#000;height:100%;}
+
+    canvas{display:block;width:100%;height:100%;}
+
+    /* UI Removed */
+
 </style>
+
 </head>
+
 <body>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
 
-<!-- VERTEX -->
 <script id="v" type="x-shader/x-vertex">
+
 varying vec2 vUv;
-void main(){
-  vUv = uv;
-  gl_Position = vec4(position,1.0);
-}
+
+void main(){ vUv = uv; gl_Position = vec4(position,1.0); }
+
 </script>
 
-<!-- FRAGMENT -->
 <script id="f" type="x-shader/x-fragment">
+
 precision highp float;
 
 varying vec2 vUv;
-uniform float iTime;
+
+uniform float iTime, iDay, uMoonPhase, uSeed;
+
 uniform vec2 iRes;
-uniform float iDay;
+
+uniform float uCloudDensity, uRain, uLightning;
 
 const float PI = 3.14159265;
 
-/* --------- noise --------- */
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+
 float noise(vec2 p){
- vec2 i=floor(p),f=fract(p);
- vec2 u=f*f*(3.-2.*f);
- return mix(mix(hash(i),hash(i+vec2(1,0)),u.x),
-            mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x),u.y);
+
+    vec2 i=floor(p), f=fract(p);
+
+    vec2 u=f*f*(3.-2.*f);
+
+    return mix(mix(hash(i),hash(i+vec2(1,0)),u.x), mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x), u.y);
+
 }
+
 float fbm(vec2 p){
- float v=0.,a=.5;
- for(int i=0;i<6;i++){v+=a*noise(p);p*=2.1;a*=.5;}
- return v;
+
+    float v=0., a=.5;
+
+    for(int i=0;i<6;i++){v+=a*noise(p); p*=2.1; a*=.5;}
+
+    return v;
+
 }
 
-/* --------- sun --------- */
-vec3 sunDir(){
- float a=(iDay-0.25)*2.0*PI;
- return normalize(vec3(cos(a),sin(a),-0.15));
+vec3 sunDir(){ float a = (iDay - 0.25) * 2.0 * PI; return normalize(vec3(cos(a), sin(a), -0.15)); }
+
+vec3 moonDir(){ float a = (iDay + 0.25) * 2.0 * PI; return normalize(vec3(cos(a), sin(a), 0.15)); }
+
+vec3 verticalGradient(float y, vec3 c1, vec3 c2, vec3 c3, vec3 c4, vec3 c5, vec3 c6, vec3 c7) {
+
+    float t = y * 6.0;
+
+    if (t < 1.0) return mix(c1, c2, smoothstep(0.0, 1.0, t));
+
+    if (t < 2.0) return mix(c2, c3, smoothstep(0.0, 1.0, t - 1.0));
+
+    if (t < 3.0) return mix(c3, c4, smoothstep(0.0, 1.0, t - 2.0));
+
+    if (t < 4.0) return mix(c4, c5, smoothstep(0.0, 1.0, t - 3.0));
+
+    if (t < 5.0) return mix(c5, c6, smoothstep(0.0, 1.0, t - 4.0));
+
+    return mix(c6, c7, smoothstep(0.0, 1.0, t - 5.0));
+
 }
 
-/* --------- sky colors by phase --------- */
-vec3 night   = vec3(0.10, 0.09, 0.16);
-vec3 dawn    = vec3(0.95, 0.55, 0.7);
-vec3 day     = vec3(0.25, 0.55, 0.95);
-vec3 golden  = vec3(1.0, 0.82, 0.55);
-vec3 dusk    = vec3(0.5, 0.35, 0.8);
+void getNightPalette(out vec3 c[7]) {
 
-vec3 skyPhase(float t){
-  vec3 col = night;
-  col = mix(col, dawn,    smoothstep(0.17, 0.23, t));
-  col = mix(col, day,     smoothstep(0.23, 0.30, t));
-  col = mix(col, golden,  smoothstep(0.68, 0.75, t));
-  col = mix(col, dusk,    smoothstep(0.73, 0.80, t));
-  col = mix(col, night,   smoothstep(0.80, 0.88, t));
-  return col;
+    c[0]=vec3(0.005,0.01,0.02); c[1]=vec3(0.01,0.01,0.03); c[2]=vec3(0.01,0.015,0.04); 
+
+    c[3]=vec3(0.01,0.01,0.05); c[4]=vec3(0.005,0.005,0.04); c[5]=vec3(0.,0.,0.03); c[6]=vec3(0.,0.,0.01);
+
 }
 
-/* --------- sky dome --------- */
-vec3 sky(vec3 rd){
- vec3 s = sunDir();
- float sunY = s.y;
- float mu = clamp(rd.y * 0.5 + 0.5, 0.0, 1.0);
- vec3 zen = skyPhase(iDay);
+void getSunrisePalette(out vec3 c[7]) {
 
- float darkness = 1.0 - smoothstep(-0.3, 0.2, sunY);
- vec3 dayHor = vec3(0.9, 0.95, 1.0);
- vec3 nightHor = vec3(0.07, 0.06, 0.12);
- vec3 hor = mix(dayHor, nightHor, darkness);
+    c[0]=vec3(1.0,0.3,0.1); c[1]=vec3(1.0,0.5,0.2); c[2]=vec3(1.0,0.7,0.4);
 
- vec3 col = mix(hor, zen, pow(mu, 0.5));
+    c[3]=vec3(0.6,0.7,0.8); c[4]=vec3(0.3,0.5,0.8); c[5]=vec3(0.1,0.3,0.6); c[6]=vec3(0.05,0.1,0.3);
 
- float sunGlow = pow(max(dot(rd, s), 0.0), 180.0);
- col += vec3(1.0, 0.85, 0.6) * sunGlow * 1.8;
-
- // Reduced warm horizon glow
- float lowSun = 1.0 - smoothstep(0.0, 0.25, abs(sunY));
- float warmVar = 0.5 + 0.5 * sin(iTime * 0.03);
- float warmMultiplier = 1.0 + 1.2 * warmVar;
- vec3 warmColor = vec3(0.9, 0.65, 0.5);
- float horizonWarm = pow(1.0 - mu, 5.0) * lowSun * warmMultiplier;
- col += warmColor * horizonWarm;
-
- return col;
 }
 
-/* --------- stars --------- */
+void getDayPalette(out vec3 c[7]) {
+
+    c[0]=vec3(0.6,0.85,0.95); c[1]=vec3(0.4,0.75,0.9); c[2]=vec3(0.25,0.6,0.85);
+
+    c[3]=vec3(0.1,0.5,0.8); c[4]=vec3(0.05,0.35,0.7); c[5]=vec3(0.02,0.2,0.6); c[6]=vec3(0.01,0.1,0.4);
+
+}
+
+void getSunsetPalette(out vec3 c[7]) {
+
+    c[0]=vec3(0.8,0.1,0.1); c[1]=vec3(1.0,0.4,0.1); c[2]=vec3(1.0,0.7,0.3);
+
+    c[3]=vec3(0.9,0.5,0.6); c[4]=vec3(0.5,0.3,0.6); c[5]=vec3(0.2,0.2,0.5); c[6]=vec3(0.05,0.05,0.2);
+
+}
+
+vec3 getSkyColor(float mu) {
+
+    vec3 c[7], p1[7], p2[7]; float t = iDay; float mf = 0.0;
+
+    if (t < 0.235) { getNightPalette(p1); getNightPalette(p2); } 
+
+    else if (t < 0.25) { getNightPalette(p1); getSunrisePalette(p2); mf = smoothstep(0.235, 0.25, t); }
+
+    else if (t < 0.265) { getSunrisePalette(p1); getDayPalette(p2); mf = smoothstep(0.25, 0.265, t); }
+
+    else if (t < 0.735) { getDayPalette(p1); getDayPalette(p2); }
+
+    else if (t < 0.75) { getDayPalette(p1); getSunsetPalette(p2); mf = smoothstep(0.735, 0.75, t); }
+
+    else if (t < 0.765) { getSunsetPalette(p1); getNightPalette(p2); mf = smoothstep(0.75, 0.765, t); } 
+
+    else { getNightPalette(p1); getNightPalette(p2); }
+
+    for(int i=0; i<7; i++) c[i] = mix(p1[i], p2[i], mf);
+
+    return verticalGradient(pow(mu, 0.65), c[0], c[1], c[2], c[3], c[4], c[5], c[6]);
+
+}
+
 float star(vec2 p){
- vec2 gv = fract(p) - 0.5;
- vec2 id = floor(p);
- float n = hash(id);
- if(n < 0.975) return 0.0;
 
- float d = length(gv);
- float bright_base = smoothstep(0.045, 0.0, d);
+    vec2 gv = fract(p) - 0.5; vec2 id = floor(p);
 
- float level = (n > 0.995) ? 2.0 : 0.8;
+    float n = hash(id + uSeed); if(n < 0.975) return 0.0;
 
- float phase = hash(id + vec2(37.5, 47.8)) * 6.283185;
- float freq = 1.0 + hash(id + vec2(73.2, 97.1)) * 10.0;
- float twinkle = 0.8 + 0.5 * (0.5 + 0.5 * sin(iTime * freq + phase));
+    float cycle = 1200.0 + hash(id) * 600.0;
 
- return bright_base * level * twinkle;
+    float activity = (fract((iTime + hash(id)*cycle) / cycle) < (2.0/cycle)) ? sin((fract((iTime + hash(id)*cycle) / cycle)/(2.0/cycle)) * PI) : 0.0;
+
+    float intensity = mix(0.3 + 0.3 * hash(id + 5.5), 1.5, activity * (0.5 + 0.5 * sin(iTime * 50.0 + hash(id) * 20.0)));
+
+    return smoothstep(0.04, 0.005, length(gv)) * ((n > 0.995) ? 3.0 : 1.0) * intensity;
+
 }
 
-float starVis(){
- float y = sunDir().y;
- return 1.0 - smoothstep(-0.3, 0.1, y);
+vec3 drawMoon(vec3 rd, vec3 mDir) {
+
+    float d = length(rd - mDir); if (d > 0.04) return vec3(0.0);
+
+    float p = uMoonPhase * 2.0 - 1.0; 
+
+    float mask = smoothstep(p - 0.2, p + 0.2, (rd.x - mDir.x)/0.04);
+
+    if(uMoonPhase > 0.5) mask = 1.0 - smoothstep(p - 1.2, p - 0.8, (rd.x - mDir.x)/0.04);
+
+    return vec3(0.85, 0.9, 1.0) * smoothstep(0.04, 0.038, d) * (1.0 - mask);
+
 }
 
-/* --------- shooting stars helpers --------- */
-float sdSegment(vec2 p, vec2 a, vec2 b){
-  vec2 pa = p - a;
-  vec2 ba = b - a;
-  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-  return length(pa - ba * h);
+float getRain(vec2 uv, float scale, float speed) {
+
+    vec2 p = uv * scale; p.y += iTime * speed; 
+
+    vec2 id = floor(p); vec2 f = fract(p);
+
+    return smoothstep(0.92, 1.0, hash(id + uSeed)) * smoothstep(0.15, 0.0, abs(f.x - 0.5)) * smoothstep(1.0, 0.1, f.y);
+
 }
 
-/* --------- ocean --------- */
+float oceanRipples(vec2 uv, float intensity) {
+
+    vec2 gv = fract(uv) - 0.5; vec2 id = floor(uv);
+
+    float n = hash(id + uSeed); float t = fract(iTime * 2.8 + n * 15.0);
+
+    vec2 center = (vec2(n - 0.5, fract(n * 34.1) - 0.5)) * 0.4;
+
+    float d = length(gv - center);
+
+    return smoothstep(0.0, 0.1, t - d) * smoothstep(0.15, 0.0, t - d) * (1.0 - t) * intensity;
+
+}
+
 float waves(vec2 p){
- float h = 0.0;
- h += fbm(p * 1.2 + vec2(iTime * 0.3, iTime * 0.15)) * 0.9;
- h += fbm(p * 3.5 + vec2(iTime * 0.9, -iTime * 0.7)) * 0.35;
- h += fbm(p * 10.0 + vec2(iTime * 2.2, iTime * 1.8)) * 0.12;
- return h;
+
+    float h = 0.0;
+
+    h += fbm(p * 1.2 + vec2(iTime * 0.3, iTime * 0.15)) * 0.9;
+
+    h += fbm(p * 3.5 + vec2(iTime * 0.9, -iTime * 0.7)) * 0.35;
+
+    h += fbm(p * 10.0 + vec2(iTime * 2.2, iTime * 1.8)) * 0.12;
+
+    return h;
+
 }
+
 vec3 nrm(vec2 p){
- float e = 0.04;
- return normalize(vec3(
-   waves(p) - waves(p + vec2(e, 0.0)),
-   e * 5.0,
-   waves(p) - waves(p + vec2(0.0, e))
- ));
+
+    float e = 0.04;
+
+    return normalize(vec3(waves(p) - waves(p + vec2(e, 0.0)), e * 5.0, waves(p) - waves(p + vec2(0.0, e))));
+
 }
 
-vec3 ocean(vec3 rd, vec3 skyCol){
- if(rd.y >= 0.0) return skyCol;
-
- float h = 3.0;
- float t = -h / rd.y;
- vec3 pos = vec3(0.0, h, 0.0) + rd * t;
- vec2 uv = pos.xz * 0.25;
-
- vec3 n = nrm(uv);
-
- float d = length(pos.xz);
-
- float sunHeight = sunDir().y;
- float darkness = 1.0 - smoothstep(-0.3, 0.2, sunHeight);
-
- vec3 shallow = vec3(0.35, 1.0, 0.9);
- vec3 deep = vec3(0.04, 0.18, 0.45);
- vec3 base = mix(shallow, deep, smoothstep(4.0, 45.0, d));
- base *= mix(1.0, 0.25, darkness);
-
- float fres = pow(1.0 - max(dot(-rd, n), 0.0), 4.0);
- vec3 col = mix(base, skyCol, fres);
-
- vec3 r = reflect(rd, n);
- float spec = pow(max(dot(r, sunDir()), 0.0), 140.0) * max(sunHeight + 0.1, 0.0);
- col += vec3(1.0, 0.9, 0.7) * spec;
-
- float fog = 1.0 - exp(-d * 0.015);
- return mix(col, skyCol, fog);
-}
-
-/* --------- main --------- */
 void main(){
- vec2 uv = (gl_FragCoord.xy - 0.5 * iRes.xy) / iRes.y;
- uv.y += 0.22;
 
- vec3 rd = normalize(vec3(uv, -1.0));
+    vec2 uv = (gl_FragCoord.xy - 0.5 * iRes.xy) / iRes.y;
 
- float pitch = -0.12;
- rd.yz = mat2(cos(pitch), sin(pitch), -sin(pitch), cos(pitch)) * rd.yz;
+    uv.y += 0.22;
 
- vec3 col = sky(rd);
- col = ocean(rd, col);
+    vec3 rd = normalize(vec3(uv, -1.0));
 
- float visibility = starVis();
+    rd.yz = mat2(cos(-0.12), sin(-0.12), -sin(-0.12), cos(-0.12)) * rd.yz;
 
- // Reduce overall brightness at night (base sky + ocean darkened, stars/meteors remain bright)
- col *= mix(1.0, 0.65, visibility);
+    vec3 sD = sunDir(); vec3 mD = moonDir();
 
- // Stars
- if(rd.y > 0.0){
-   float phi = atan(rd.x, rd.z);
-   float ct = rd.y;
-   vec2 angular = vec2(phi / (2.0 * PI) + 0.5, ct);
-   float scale = 60.0;
+    vec3 skyBack = getSkyColor(clamp(rd.y, 0.0, 1.0));
 
-   vec3 starColor = vec3(1.3, 1.3, 1.7);
+    vec3 col = skyBack;
 
-   float starsTotal = 0.0;
-   starsTotal += star(angular * scale * 1.0);
-   starsTotal += star(angular * scale * 2.73);
-   starsTotal += star(angular * scale * 7.1);
-   starsTotal += star(angular * scale * 19.3);
-   starsTotal += star(angular * scale * 50.0) * 0.7;
-   starsTotal += pow(star(angular * scale * 120.0), 3.0) * 0.5;
+    float starVis = 1.0 - smoothstep(-0.3, 0.1, sD.y);
 
-   col += starsTotal * visibility * starColor;
- }
+    if(rd.y > 0.0 && starVis > 0.0) {
 
- // Occasional shooting stars
- if(rd.y > 0.1 && visibility > 0.01){
-   float meteor = 0.0;
+        float rot = (iDay - 0.25) * 2.0 * PI;
 
-   #define ADD_METEOR(offset, period, dur, startX, startY, endX, endY, trailLen) \
-   { \
-     float mt = mod(iTime + offset, period); \
-     if(mt < dur){ \
-       float prog = mt / dur; \
-       vec2 a = vec2(startX, startY); \
-       vec2 b = vec2(endX, endY); \
-       vec2 head = mix(a, b, prog); \
-       vec2 dir = normalize(b - a); \
-       vec2 tail = head - dir * trailLen; \
-       float dist = sdSegment(uv, tail, head); \
-       meteor += exp(-dist * 40.0) * 2.5; \
-       meteor += exp(-dist * 120.0) * 4.0; \
-       meteor += exp(-length(uv - head) * 50.0) * 7.0; \
-       meteor *= smoothstep(0.0, 0.15, mt) * smoothstep(dur, dur-0.15, mt); \
-     } \
-   }
+        mat2 rotM = mat2(cos(rot), sin(rot), -sin(rot), cos(rot));
 
-   ADD_METEOR(0.0,   72.0, 1.4, -1.3, 1.1,  1.2, 0.4, 0.7)
-   ADD_METEOR(15.8,  89.0, 1.6,  1.4, 1.0, -1.1, 0.5, 0.8)
-   ADD_METEOR(28.3, 101.0, 1.2, -0.7, 1.3,  0.9, 0.1, 0.6)
-   ADD_METEOR(41.7, 117.0, 1.5,  0.9, 1.2, -0.8, 0.3, 0.9)
+        vec3 sRd = rd; sRd.xy = rotM * sRd.xy;
 
-   col += meteor * visibility * vec3(1.4, 1.5, 1.9);
- }
+        col += (star(sRd.xz / (1.0 + sRd.y) * 200.0) + star(sRd.xz / (1.0 + sRd.y) * 400.0)) * starVis * vec3(2.5, 2.5, 3.2);
 
- gl_FragColor = vec4(pow(col, vec3(0.95)), 1.0);
+    }
+
+    col += vec3(1.0, 0.9, 0.8) * pow(max(dot(rd, sD), 0.0), 180.0) * (1.8 * (1.0 - uCloudDensity));
+
+    col += drawMoon(rd, mD) * starVis;
+
+    col += uLightning * vec3(0.8, 0.9, 1.0);
+
+    float rainStr = 0.0;
+
+    if(uRain > 0.0) { rainStr += getRain(uv, 35.0, 26.0) * 1.5; rainStr += getRain(uv, 75.0, 19.0) * 1.0; }
+
+    if(rd.y < 0.0) {
+
+        float d = -3.0 / rd.y; vec3 pos = vec3(0.0, 3.0, 0.0) + rd * d;
+
+        vec3 n = nrm(pos.xz * 0.25);
+
+        float ripples = (uRain > 0.05) ? (oceanRipples(pos.xz * 3.0, uRain) + oceanRipples(pos.xz * 5.0 + 1.2, uRain) * 0.6) : 0.0;
+
+        vec3 shallow = vec3(0.0, 0.4, 0.6), deep = vec3(0.01, 0.05, 0.2), nightViolet = vec3(0.05, 0.04, 0.14); 
+
+        vec3 oceanDNA = mix(shallow, deep, smoothstep(4.0, 45.0, d));
+
+        oceanDNA = mix(oceanDNA, nightViolet, 1.0 - smoothstep(-0.2, 0.15, sD.y));
+
+        oceanDNA *= mix(1.0, 0.35, uCloudDensity*0.4 + (1.0-smoothstep(-0.3, 0.2, sD.y))*0.65);
+
+        vec3 base = mix(oceanDNA, oceanDNA * 1.8 + uLightning * 0.5, ripples * 0.4);
+
+        col = mix(base, col, pow(1.0 - max(dot(-rd, n), 0.0), 4.0));
+
+        float specS = pow(max(dot(reflect(rd, n), sD), 0.0), 140.0) * max(sD.y + 0.1, 0.0);
+
+        float specM = pow(max(dot(reflect(rd, n), mD), 0.0), 80.0) * starVis * 0.4;
+
+        specM += ripples * 1.8 * starVis;
+
+        col += vec3(1.0, 0.9, 0.7) * specS + vec3(0.6, 0.7, 1.0) * specM;
+
+        col = mix(col, skyBack, 1.0 - exp(-d * 0.015)); 
+
+        col = mix(col, vec3(0.8, 0.85, 1.0), rainStr * uRain * 0.45);
+
+    } else {
+
+        col = mix(col, vec3(0.9, 0.95, 1.0), rainStr * uRain * 0.75);
+
+    }
+
+    vec2 cUV = rd.xz / (rd.y + 0.5); vec2 drift = vec2(iTime * 0.048, iTime * 0.012); 
+
+    float maskHigh = smoothstep(0.8 - uCloudDensity, 1.15 - uCloudDensity, fbm(cUV * 0.3 + drift * 0.5)); 
+
+    float maskMid = smoothstep(0.95 - uCloudDensity*0.8, 1.3 - uCloudDensity*0.8, fbm(cUV * 0.75 + drift * 0.8));
+
+    float stormN = fbm(cUV * 1.6 + drift * 1.8); float maskStorm = smoothstep(1.25 - uCloudDensity * 1.3, 1.5 - uCloudDensity * 1.3, stormN);
+
+    vec3 ambientSky = getSkyColor(0.2); float sunInf = smoothstep(-0.2, 0.4, sD.y), moonInf = smoothstep(-0.2, 0.4, mD.y) * starVis;
+
+    vec3 sunTint = mix(vec3(1.0, 0.6, 0.2), vec3(1.0, 0.95, 0.85), sD.y), moonTint = vec3(0.7, 0.85, 1.0);
+
+    vec3 colHigh = ambientSky * 1.4 + (sunTint * sunInf * 0.6) + (moonTint * moonInf * 0.5);
+
+    vec3 colMid = ambientSky * 0.88; vec3 colShadow = ambientSky * 0.38 + vec3(0.02, 0.03, 0.06) * (1.0 - sunInf);
+
+    float h = clamp(rd.y * 2.5, 0.0, 1.0);
+
+    col = mix(col, colHigh, maskHigh * h * 0.35); col = mix(col, colMid, maskMid * h * 0.55);   
+
+    if(uCloudDensity > 0.65) col = mix(col, colShadow + (uLightning * smoothstep(0.3, 0.8, stormN) * vec3(0.85, 0.9, 1.0)), maskStorm * h * 0.9); 
+
+    gl_FragColor = vec4(pow(col, vec3(0.95)), 1.0);
+
 }
+
 </script>
 
 <script>
+
 const renderer = new THREE.WebGLRenderer({antialias: true});
+
 renderer.setSize(innerWidth, innerHeight);
+
 document.body.appendChild(renderer.domElement);
 
-const scene = new THREE.Scene();
-const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const scene = new THREE.Scene(), camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
 const uniforms = {
-  iTime: {value: 0},
-  iRes: {value: new THREE.Vector2(innerWidth, innerHeight)},
-  iDay: {value: 0}
+
+  iTime: {value: 0}, iRes: {value: new THREE.Vector2(innerWidth, innerHeight)}, iDay: {value: 0},
+
+  uSeed: {value: Math.random()*1000}, uMoonPhase: {value: 0.5}, uCloudDensity: {value: 0.05}, uRain: {value: 0}, uLightning: {value: 0}
+
 };
 
-scene.add(new THREE.Mesh(
-  new THREE.PlaneGeometry(2, 2),
-  new THREE.ShaderMaterial({
-    uniforms,
-    vertexShader: document.getElementById("v").textContent,
-    fragmentShader: document.getElementById("f").textContent
-  })
-));
+scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({ uniforms, vertexShader: document.getElementById("v").textContent, fragmentShader: document.getElementById("f").textContent })));
 
-const clock = new THREE.Clock();
+let weatherState = { density: 0.05, rain: 0 }; // Baseline
+
+async function updateWeather() {
+
+    try {
+
+        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=4.17&longitude=73.51&current=weather_code,cloud_cover,precipitation&timezone=auto');
+
+        const data = await res.json();
+
+        const cur = data.current;
+
+        const code = cur.weather_code; // WMO codes
+
+        
+
+        weatherState.density = (cur.cloud_cover / 100) * 0.95 + 0.05; // Map to range
+
+        weatherState.rain = (code >= 51) ? Math.min(1.0, cur.precipitation / 5.0) : 0.0;
+
+        
+
+        console.log(`Live Malé Update: Code ${code}, Density ${weatherState.density.toFixed(2)}, Rain ${weatherState.rain.toFixed(2)}`);
+
+    } catch(e) { console.error("Weather Sync Failed", e); }
+
+}
+
+updateWeather(); setInterval(updateWeather, 600000); // Sync every 10 mins
 
 function animate(){
-  requestAnimationFrame(animate);
 
-  let delta = clock.getDelta();
-  uniforms.iTime.value += delta;
+    requestAnimationFrame(animate);
 
-  // Real-time accurate to Maldives (UTC+5)
-  let now = new Date();
-  let utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  let maldivesTime = new Date(utc + 5 * 3600000);
-  let dayFraction = (maldivesTime.getHours() +
-                     maldivesTime.getMinutes() / 60 +
-                     maldivesTime.getSeconds() / 3600 +
-                     maldivesTime.getMilliseconds() / 3600000) / 24;
-  uniforms.iDay.value = dayFraction;
+    let delta = 0.016; uniforms.iTime.value += delta;
 
-  renderer.render(scene, camera);
+    
+
+    // Accurate Maldives Time
+
+    let mTime = new Date(new Date().getTime() + new Date().getTimezoneOffset()*60000 + 5*3600000);
+
+    uniforms.iDay.value = (mTime.getHours() + mTime.getMinutes()/60 + mTime.getSeconds()/3600) / 24;
+
+    uniforms.uMoonPhase.value = ((mTime.getTime() - new Date("2024-12-30T22:00:00Z").getTime()) % 2551442877) / 2551442877;
+
+    uniforms.uCloudDensity.value += (weatherState.density - uniforms.uCloudDensity.value) * 0.01;
+
+    uniforms.uRain.value += (weatherState.rain - uniforms.uRain.value) * 0.01;
+
+    
+
+    if(uniforms.uCloudDensity.value > 0.8 && weatherState.rain > 0.5 && Math.random() > 0.99) uniforms.uLightning.value = 0.6 + Math.random()*0.4;
+
+    else uniforms.uLightning.value *= 0.85;
+
+    renderer.render(scene, camera);
+
 }
+
 animate();
 
-addEventListener("resize", () => {
-  renderer.setSize(innerWidth, innerHeight);
-  uniforms.iRes.value.set(innerWidth, innerHeight);
-});
+window.addEventListener("resize", () => { renderer.setSize(innerWidth, innerHeight); uniforms.iRes.value.set(innerWidth, innerHeight); });
+
 </script>
+
 </body>
+
 </html>

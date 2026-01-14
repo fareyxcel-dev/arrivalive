@@ -63,19 +63,20 @@ const calculateProgress = (
   return { progress, minutesRemaining };
 };
 
-// Generate CSS filter to colorize white image to EXACT target color
+// Generate CSS filter to colorize white image to match target hex color exactly
 const getColorFilter = (hexColor: string): string => {
-  // For white (#ffffff), no filter needed
-  if (hexColor.toLowerCase() === '#ffffff' || hexColor.toLowerCase() === '#fff') {
-    return 'brightness(1)';
+  const hex = hexColor.replace('#', '').toLowerCase();
+  
+  // For pure white, no filter needed
+  if (hex === 'ffffff' || hex === 'fff') {
+    return 'none';
   }
   
-  const hex = hexColor.replace('#', '');
   const r = parseInt(hex.substr(0, 2), 16);
   const g = parseInt(hex.substr(2, 2), 16);
   const b = parseInt(hex.substr(4, 2), 16);
   
-  // Convert to HSL for accurate color matching
+  // Convert to HSL
   const rNorm = r / 255;
   const gNorm = g / 255;
   const bNorm = b / 255;
@@ -96,11 +97,17 @@ const getColorFilter = (hexColor: string): string => {
     else h = ((rNorm - gNorm) / d + 4) / 6;
   }
   
-  const hue = Math.round(h * 360);
-  const saturation = Math.round(s * 100);
-  const lightness = Math.round(l * 100);
+  const hue = h * 360;
+  const sat = s * 100;
+  const light = l * 100;
   
-  return `brightness(0) saturate(100%) invert(${lightness > 50 ? 1 : 0.5}) sepia(1) saturate(${Math.max(1, saturation / 50) * 100}%) hue-rotate(${hue - 50}deg) brightness(${lightness > 50 ? 1 : 0.8})`;
+  // For light colors (like our status colors), use invert to start from white
+  if (light > 60) {
+    const hueRotate = hue - 180;
+    return `brightness(1) sepia(1) saturate(${Math.max(100, sat * 2)}%) hue-rotate(${hueRotate}deg) brightness(${light / 60})`;
+  }
+  
+  return `brightness(0) saturate(100%) invert(${light > 50 ? 1 : 0.6}) sepia(1) saturate(${Math.max(100, sat * 2)}%) hue-rotate(${hue - 50}deg)`;
 };
 
 // Helper to convert hex to rgb values
