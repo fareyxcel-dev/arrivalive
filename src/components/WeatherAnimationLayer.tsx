@@ -52,15 +52,79 @@ interface RainDrop {
   variant: 'light' | 'medium' | 'heavy';
 }
 
-// Parse hex color to RGB
-function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  if (!result) return { r: 200, g: 210, b: 225 };
-  return {
-    r: parseInt(result[1], 16),
-    g: parseInt(result[2], 16),
-    b: parseInt(result[3], 16),
-  };
+// Parse any color format to RGB (hex, rgb, hsl, named colors)
+function parseColorToRgb(color: string): { r: number; g: number; b: number } {
+  // Default fallback color
+  const fallback = { r: 200, g: 210, b: 225 };
+  
+  if (!color || typeof color !== 'string') return fallback;
+  
+  const trimmed = color.trim();
+  
+  // Try 6-digit hex
+  let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(trimmed);
+  if (result) {
+    return {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16),
+    };
+  }
+  
+  // Try 3-digit hex (e.g., #FFF)
+  result = /^#?([a-f\d])([a-f\d])([a-f\d])$/i.exec(trimmed);
+  if (result) {
+    return {
+      r: parseInt(result[1] + result[1], 16),
+      g: parseInt(result[2] + result[2], 16),
+      b: parseInt(result[3] + result[3], 16),
+    };
+  }
+  
+  // Try rgb(r, g, b) or rgba(r, g, b, a)
+  const rgbMatch = /rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(trimmed);
+  if (rgbMatch) {
+    return {
+      r: parseInt(rgbMatch[1], 10),
+      g: parseInt(rgbMatch[2], 10),
+      b: parseInt(rgbMatch[3], 10),
+    };
+  }
+  
+  // Try hsl(h, s%, l%) or hsla
+  const hslMatch = /hsla?\s*\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%/i.exec(trimmed);
+  if (hslMatch) {
+    const h = parseFloat(hslMatch[1]) / 360;
+    const s = parseFloat(hslMatch[2]) / 100;
+    const l = parseFloat(hslMatch[3]) / 100;
+    
+    // HSL to RGB conversion
+    let r, g, b;
+    if (s === 0) {
+      r = g = b = l;
+    } else {
+      const hue2rgb = (p: number, q: number, t: number) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+      };
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1/3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1/3);
+    }
+    return {
+      r: Math.round(r * 255),
+      g: Math.round(g * 255),
+      b: Math.round(b * 255),
+    };
+  }
+  
+  return fallback;
 }
 
 // Blend color with background
@@ -179,9 +243,9 @@ const WeatherAnimationLayer = ({ weatherData }: Props) => {
     if (!ctx) return;
 
     // Parse background colors
-    const bgTopRgb = hexToRgb(bgTop);
-    const bgMidRgb = hexToRgb(bgMid);
-    const bgBottomRgb = hexToRgb(bgBottom);
+    const bgTopRgb = parseColorToRgb(bgTop);
+    const bgMidRgb = parseColorToRgb(bgMid);
+    const bgBottomRgb = parseColorToRgb(bgBottom);
 
     // Draw soft brush stroke cloud with background color blending
     const drawCloud = (cloud: Cloud) => {
