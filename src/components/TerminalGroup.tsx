@@ -115,10 +115,10 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
         className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
       >
         <div className="text-left">
-          <h2 className="text-lg font-bold text-foreground">
+          <h2 className="text-lg font-bold text-white">
             {getTerminalName(terminal)}
           </h2>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">
+          <p className="text-xs text-white/60 uppercase tracking-wider">
             {terminalStats.total} FLIGHTS · {terminalStats.remaining} REMAINING · {terminalStats.landed} LANDED
           </p>
         </div>
@@ -134,7 +134,7 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
       {isExpanded && (
         <div className="px-4 pb-4 space-y-3">
           {dates.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
+            <p className="text-center text-white/50 py-8">
               No flights scheduled
             </p>
           ) : (
@@ -154,11 +154,11 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
                       expandedDates.has(date) && "active-selection"
                     )}
                   >
-                    <span className="font-medium">
+                    <span className="font-medium text-white/90">
                       {formatDateDisplay(date)}
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-white/50">
                         {totalCount} flights · {dateLandedCount} landed · {remainingCount} remaining
                       </span>
                       <ChevronDown
