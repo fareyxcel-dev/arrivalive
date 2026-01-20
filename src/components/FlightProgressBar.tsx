@@ -63,20 +63,34 @@ const calculateProgress = (
   return { progress, minutesRemaining };
 };
 
-// Generate CSS filter to colorize white image to match target hex color exactly
+// Generate CSS filter to colorize white PNG icon to exact target hex color
 const getColorFilter = (hexColor: string): string => {
   const hex = hexColor.replace('#', '').toLowerCase();
   
-  // For pure white, no filter needed
-  if (hex === 'ffffff' || hex === 'fff') {
-    return 'none';
+  // For pure white or near-white, minimal filter
+  if (hex === 'ffffff' || hex === 'fff' || hex === 'dce0de') {
+    return 'brightness(0.95)';
   }
   
+  // Blueprint colors mapping with precise filters
+  // Landed: #81f0d8 (cyan/teal)
+  if (hex === '81f0d8') {
+    return 'brightness(0) saturate(100%) invert(85%) sepia(25%) saturate(600%) hue-rotate(110deg) brightness(1.05)';
+  }
+  // Delayed: #f2763d (orange)
+  if (hex === 'f2763d') {
+    return 'brightness(0) saturate(100%) invert(55%) sepia(80%) saturate(500%) hue-rotate(350deg) brightness(1.1)';
+  }
+  // Cancelled: #f7485d (red/pink)
+  if (hex === 'f7485d') {
+    return 'brightness(0) saturate(100%) invert(45%) sepia(80%) saturate(600%) hue-rotate(325deg) brightness(1.15)';
+  }
+  
+  // Generic fallback for other colors
   const r = parseInt(hex.substr(0, 2), 16);
   const g = parseInt(hex.substr(2, 2), 16);
   const b = parseInt(hex.substr(4, 2), 16);
   
-  // Convert to HSL
   const rNorm = r / 255;
   const gNorm = g / 255;
   const bNorm = b / 255;
@@ -97,17 +111,15 @@ const getColorFilter = (hexColor: string): string => {
     else h = ((rNorm - gNorm) / d + 4) / 6;
   }
   
-  const hue = h * 360;
-  const sat = s * 100;
-  const light = l * 100;
+  const hue = Math.round(h * 360);
+  const sat = Math.round(s * 100);
+  const light = Math.round(l * 100);
   
-  // For light colors (like our status colors), use invert to start from white
-  if (light > 60) {
-    const hueRotate = hue - 180;
-    return `brightness(1) sepia(1) saturate(${Math.max(100, sat * 2)}%) hue-rotate(${hueRotate}deg) brightness(${light / 60})`;
-  }
+  const hueRotate = hue - 50;
+  const saturation = Math.max(100, sat * 3);
+  const brightness = light > 50 ? light / 60 : 0.8;
   
-  return `brightness(0) saturate(100%) invert(${light > 50 ? 1 : 0.6}) sepia(1) saturate(${Math.max(100, sat * 2)}%) hue-rotate(${hue - 50}deg)`;
+  return `brightness(0) saturate(100%) invert(${light > 50 ? 0.9 : 0.5}) sepia(1) saturate(${saturation}%) hue-rotate(${hueRotate}deg) brightness(${brightness})`;
 };
 
 // Helper to convert hex to rgb values

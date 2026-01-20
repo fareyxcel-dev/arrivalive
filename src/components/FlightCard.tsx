@@ -48,39 +48,39 @@ const getStatusTheme = (status: string) => {
   switch (status.toUpperCase()) {
     case 'LANDED':
       return {
-        cardTint: '#15bd4d',
-        progressInactive: '#0a5c26',
-        progressActive: '#2dd663',
-        textColor: '#7bff9d', // Bright green for maximum visibility
-        bellColor: '#7bff9d',
-        bellGlow: 'rgba(21, 189, 77, 0.4)',
+        cardTint: '#10e8b9',
+        progressInactive: '#0f6955',
+        progressActive: '#30c2a2',
+        textColor: '#81f0d8',
+        bellColor: '#81f0d8',
+        bellGlow: 'rgba(16, 232, 185, 0.4)',
       };
     case 'DELAYED':
       return {
-        cardTint: '#fca90f',
-        progressInactive: '#7a5308',
-        progressActive: '#fdc54a',
-        textColor: '#ffe066', // Bright yellow for maximum visibility
-        bellColor: '#ffe066',
-        bellGlow: 'rgba(252, 169, 15, 0.4)',
+        cardTint: '#eb520c',
+        progressInactive: '#a1441a',
+        progressActive: '#c25e30',
+        textColor: '#f2763d',
+        bellColor: '#f2763d',
+        bellGlow: 'rgba(235, 82, 12, 0.4)',
       };
     case 'CANCELLED':
       return {
-        cardTint: '#fc0f37',
+        cardTint: '#bf0f24',
         progressInactive: '#7a081b',
-        progressActive: '#fd4a69',
-        textColor: '#ff8a9c', // Bright red/pink for maximum visibility
-        bellColor: '#ff8a9c',
-        bellGlow: 'rgba(252, 15, 55, 0.4)',
+        progressActive: '#bf0f24',
+        textColor: '#f7485d',
+        bellColor: '#f7485d',
+        bellGlow: 'rgba(191, 15, 36, 0.4)',
       };
     default: // NORMAL/ON TIME
       return {
-        cardTint: '#bfefff',
-        progressInactive: '#4dc3ff',
-        progressActive: '#ffffff',
-        textColor: '#ffffff',
-        bellColor: '#bfefff',
-        bellGlow: 'rgba(127, 220, 255, 0.35)',
+        cardTint: '#3a4a5c',
+        progressInactive: '#2a3a4c',
+        progressActive: '#5a6a7c',
+        textColor: '#DCE0DE',
+        bellColor: '#DCE0DE',
+        bellGlow: 'rgba(220, 224, 222, 0.35)',
       };
   }
 };
@@ -95,20 +95,21 @@ const formatTime = (time: string, format: '12h' | '24h') => {
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
 };
 
-// Generate CSS filter to colorize white image to match target hex color exactly
+// Generate CSS filter to colorize white PNG icon to exact target hex color
+// Uses an optimized filter chain for accurate color matching
 const getColorFilter = (hexColor: string): string => {
   const hex = hexColor.replace('#', '').toLowerCase();
   
-  // For pure white, minimal processing
-  if (hex === 'ffffff' || hex === 'fff') {
-    return 'none';
+  // For pure white, no filter needed
+  if (hex === 'ffffff' || hex === 'fff' || hex === 'dce0de') {
+    return 'brightness(0.95)';
   }
   
   const r = parseInt(hex.substr(0, 2), 16);
   const g = parseInt(hex.substr(2, 2), 16);
   const b = parseInt(hex.substr(4, 2), 16);
   
-  // Convert to HSL
+  // Convert to HSL for filter calculation
   const rNorm = r / 255;
   const gNorm = g / 255;
   const bNorm = b / 255;
@@ -129,20 +130,30 @@ const getColorFilter = (hexColor: string): string => {
     else h = ((rNorm - gNorm) / d + 4) / 6;
   }
   
-  const hue = h * 360;
-  const sat = s * 100;
-  const light = l * 100;
+  const hue = Math.round(h * 360);
+  const sat = Math.round(s * 100);
+  const light = Math.round(l * 100);
   
-  // For light colors (like our status colors), use invert to start from white
-  // then apply hue rotation and saturation
-  if (light > 60) {
-    // Light colors - start white, tint
-    const hueRotate = hue - 180; // Adjust based on sepia baseline
-    return `brightness(1) sepia(1) saturate(${Math.max(100, sat * 2)}%) hue-rotate(${hueRotate}deg) brightness(${light / 60})`;
+  // Blueprint colors mapping with precise filters
+  // Landed: #81f0d8 (cyan/teal)
+  if (hex === '81f0d8') {
+    return 'brightness(0) saturate(100%) invert(85%) sepia(25%) saturate(600%) hue-rotate(110deg) brightness(1.05)';
+  }
+  // Delayed: #f2763d (orange)
+  if (hex === 'f2763d') {
+    return 'brightness(0) saturate(100%) invert(55%) sepia(80%) saturate(500%) hue-rotate(350deg) brightness(1.1)';
+  }
+  // Cancelled: #f7485d (red/pink)
+  if (hex === 'f7485d') {
+    return 'brightness(0) saturate(100%) invert(45%) sepia(80%) saturate(600%) hue-rotate(325deg) brightness(1.15)';
   }
   
-  // Darker colors
-  return `brightness(0) saturate(100%) invert(${light > 50 ? 1 : 0.6}) sepia(1) saturate(${Math.max(100, sat * 2)}%) hue-rotate(${hue - 50}deg)`;
+  // Fallback: generic HSL-based filter
+  const hueRotate = hue - 50;
+  const saturation = Math.max(100, sat * 3);
+  const brightness = light > 50 ? light / 60 : 0.8;
+  
+  return `brightness(0) saturate(100%) invert(${light > 50 ? 0.9 : 0.5}) sepia(1) saturate(${saturation}%) hue-rotate(${hueRotate}deg) brightness(${brightness})`;
 };
 
 // Airline Icon Component with color matching and drop shadow

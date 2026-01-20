@@ -318,43 +318,57 @@ const WeatherAnimationLayer = ({ weatherData }: Props) => {
       ctx.restore();
     };
 
-    // Draw animated sun
+    // Draw animated sun with glow and rays
     const drawSun = () => {
-      if (!sunVisible || cloudCoverage > 0.8) return;
+      if (!sunVisible || cloudCoverage > 0.85) return;
       
       const x = sunPos.x * dimensions.width;
       const y = sunPos.y * dimensions.height;
-      const radius = 50 + Math.sin(timeRef.current * 0.5) * 5;
-      const glowOpacity = sunBrightness * 0.4 * (1 - cloudCoverage * 0.5);
+      const baseRadius = 45;
+      const pulseRadius = baseRadius + Math.sin(timeRef.current * 0.8) * 3;
+      const glowOpacity = sunBrightness * 0.5 * (1 - cloudCoverage * 0.6);
       
       ctx.save();
       
-      // Outer glow
-      const outerGradient = ctx.createRadialGradient(x, y, radius * 0.5, x, y, radius * 4);
-      outerGradient.addColorStop(0, `rgba(255, 250, 220, ${glowOpacity})`);
-      outerGradient.addColorStop(0.3, `rgba(255, 230, 180, ${glowOpacity * 0.5})`);
-      outerGradient.addColorStop(1, 'rgba(255, 220, 150, 0)');
+      // Outer corona glow (large soft halo)
+      const coronaGradient = ctx.createRadialGradient(x, y, pulseRadius * 0.3, x, y, pulseRadius * 5);
+      coronaGradient.addColorStop(0, `rgba(255, 250, 230, ${glowOpacity * 0.6})`);
+      coronaGradient.addColorStop(0.2, `rgba(255, 240, 200, ${glowOpacity * 0.4})`);
+      coronaGradient.addColorStop(0.5, `rgba(255, 220, 160, ${glowOpacity * 0.15})`);
+      coronaGradient.addColorStop(1, 'rgba(255, 200, 120, 0)');
       
       ctx.beginPath();
-      ctx.arc(x, y, radius * 4, 0, Math.PI * 2);
-      ctx.fillStyle = outerGradient;
+      ctx.arc(x, y, pulseRadius * 5, 0, Math.PI * 2);
+      ctx.fillStyle = coronaGradient;
       ctx.fill();
       
-      // Inner core
-      const coreGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-      coreGradient.addColorStop(0, `rgba(255, 255, 240, ${sunBrightness * 0.6})`);
-      coreGradient.addColorStop(0.7, `rgba(255, 245, 200, ${sunBrightness * 0.4})`);
-      coreGradient.addColorStop(1, 'rgba(255, 230, 180, 0)');
+      // Middle glow layer
+      const midGradient = ctx.createRadialGradient(x, y, pulseRadius * 0.5, x, y, pulseRadius * 2.5);
+      midGradient.addColorStop(0, `rgba(255, 255, 240, ${glowOpacity * 0.7})`);
+      midGradient.addColorStop(0.5, `rgba(255, 240, 200, ${glowOpacity * 0.35})`);
+      midGradient.addColorStop(1, 'rgba(255, 220, 160, 0)');
       
       ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.arc(x, y, pulseRadius * 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = midGradient;
+      ctx.fill();
+      
+      // Inner sun core (bright center)
+      const coreGradient = ctx.createRadialGradient(x, y, 0, x, y, pulseRadius);
+      coreGradient.addColorStop(0, `rgba(255, 255, 250, ${sunBrightness * 0.9})`);
+      coreGradient.addColorStop(0.4, `rgba(255, 252, 235, ${sunBrightness * 0.8})`);
+      coreGradient.addColorStop(0.8, `rgba(255, 245, 210, ${sunBrightness * 0.5})`);
+      coreGradient.addColorStop(1, 'rgba(255, 235, 180, 0)');
+      
+      ctx.beginPath();
+      ctx.arc(x, y, pulseRadius, 0, Math.PI * 2);
       ctx.fillStyle = coreGradient;
       ctx.fill();
       
       ctx.restore();
     };
 
-    // Draw animated moon with phase
+    // Draw animated moon with phase - blending dark areas with sky color
     const drawMoon = () => {
       if (!moonVisible) return;
       
@@ -362,9 +376,28 @@ const WeatherAnimationLayer = ({ weatherData }: Props) => {
       const y = moonPos.y * dimensions.height;
       const radius = 35;
       
+      // Get sky color at moon position for realistic phase blending
+      const yProgress = y / dimensions.height;
+      let skyColor: { r: number; g: number; b: number };
+      if (yProgress < 0.33) {
+        const t = yProgress / 0.33;
+        skyColor = {
+          r: Math.round(bgTopRgb.r + (bgMidRgb.r - bgTopRgb.r) * t),
+          g: Math.round(bgTopRgb.g + (bgMidRgb.g - bgTopRgb.g) * t),
+          b: Math.round(bgTopRgb.b + (bgMidRgb.b - bgTopRgb.b) * t),
+        };
+      } else {
+        const t = (yProgress - 0.33) / 0.67;
+        skyColor = {
+          r: Math.round(bgMidRgb.r + (bgBottomRgb.r - bgMidRgb.r) * t),
+          g: Math.round(bgMidRgb.g + (bgBottomRgb.g - bgMidRgb.g) * t),
+          b: Math.round(bgMidRgb.b + (bgBottomRgb.b - bgMidRgb.b) * t),
+        };
+      }
+      
       ctx.save();
       
-      // Moon glow
+      // Moon glow (soft halo)
       const glowGradient = ctx.createRadialGradient(x, y, radius * 0.8, x, y, radius * 3);
       glowGradient.addColorStop(0, `rgba(220, 230, 255, ${moonIllumination * 0.25})`);
       glowGradient.addColorStop(1, 'rgba(200, 210, 240, 0)');
@@ -374,21 +407,46 @@ const WeatherAnimationLayer = ({ weatherData }: Props) => {
       ctx.fillStyle = glowGradient;
       ctx.fill();
       
-      // Moon disc
+      // Create moon disc with lit portion
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(230, 235, 250, ${moonIllumination * 0.8})`;
+      ctx.fillStyle = `rgba(230, 235, 250, ${moonIllumination * 0.85})`;
       ctx.fill();
       
-      // Phase shadow (waning/waxing)
-      if (moonPhase !== 0.5) {
+      // Add subtle crater texture
+      const craterCount = 4;
+      for (let i = 0; i < craterCount; i++) {
+        const angle = (i / craterCount) * Math.PI * 2 + 0.3;
+        const dist = radius * (0.3 + (i % 3) * 0.15);
+        const craterX = x + Math.cos(angle) * dist;
+        const craterY = y + Math.sin(angle) * dist;
+        const craterR = radius * (0.08 + (i % 2) * 0.04);
+        
         ctx.beginPath();
-        const phaseOffset = (moonPhase - 0.5) * radius * 2;
-        ctx.ellipse(x + phaseOffset, y, Math.abs(phaseOffset), radius, 0, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(20, 25, 40, 0.85)';
-        ctx.globalCompositeOperation = 'destination-out';
+        ctx.arc(craterX, craterY, craterR, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(200, 210, 230, ${moonIllumination * 0.4})`;
         ctx.fill();
-        ctx.globalCompositeOperation = 'source-over';
+      }
+      
+      // Phase shadow - USE SKY COLOR for realistic blending (not opaque black)
+      if (moonPhase !== 0.5) {
+        // Calculate phase offset: 0 = new moon, 0.5 = full moon, 1 = new moon
+        const phaseOffset = (moonPhase - 0.5) * radius * 2.2;
+        
+        // Draw shadow ellipse with sky background color
+        ctx.beginPath();
+        ctx.ellipse(
+          x + phaseOffset,
+          y,
+          Math.abs(phaseOffset) + 2,
+          radius + 1,
+          0,
+          0,
+          Math.PI * 2
+        );
+        // Blend shadow with sky color - creates realistic crescent effect
+        ctx.fillStyle = `rgba(${skyColor.r}, ${skyColor.g}, ${skyColor.b}, 0.95)`;
+        ctx.fill();
       }
       
       ctx.restore();
