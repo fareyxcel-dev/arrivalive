@@ -169,7 +169,7 @@ const WeatherAnimationLayer = ({ weatherData }: Props) => {
 
   // Initialize clouds with variations and background color blending
   useEffect(() => {
-    const cloudCount = Math.floor(cloudCoverage * 20) + 8;
+    const cloudCount = Math.floor(cloudCoverage * 8) + 2;
     const clouds: Cloud[] = [];
     
     for (let i = 0; i < cloudCount; i++) {
