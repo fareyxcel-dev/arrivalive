@@ -30,7 +30,22 @@ Deno.serve(async (req) => {
     const weatherStackKey = Deno.env.get("WEATHERSTACK_API_KEY");
     const openWeatherKey = Deno.env.get("OPENWEATHERMAP_API_KEY");
     
-    let weatherData = null;
+    let weatherData: {
+      temp: number;
+      condition: string;
+      humidity: number;
+      windSpeed: number;
+      windDirection: number;
+      precipitation: number;
+      isRaining: boolean;
+      hourlyForecast?: Array<{
+        time: string;
+        condition: string;
+        temp: number;
+        chanceOfRain: number;
+      }>;
+      chanceOfRain?: number;
+    } | null = null;
     
     if (weatherStackKey) {
       try {
@@ -92,6 +107,33 @@ Deno.serve(async (req) => {
         precipitation: 0,
         isRaining: false,
       };
+    }
+
+    // After getting current weather, get forecast for enhanced predictions
+    if (openWeatherKey && weatherData) {
+      try {
+        const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${openWeatherKey}&units=metric&cnt=16`;
+        const forecastResponse = await fetch(forecastUrl);
+        const forecastData = await forecastResponse.json();
+        
+        if (forecastData.list) {
+          weatherData.hourlyForecast = forecastData.list.map((item: any) => ({
+            time: item.dt_txt,
+            condition: item.weather?.[0]?.main || "Clear",
+            temp: Math.round(item.main.temp),
+            chanceOfRain: Math.round((item.pop || 0) * 100),
+          }));
+          
+          // Calculate overall chance of rain (max in next 6 hours)
+          if (weatherData.hourlyForecast && weatherData.hourlyForecast.length > 0) {
+            const next6Hours = weatherData.hourlyForecast.slice(0, 2);
+            weatherData.chanceOfRain = Math.max(...next6Hours.map((h) => h.chanceOfRain));
+            console.log("Forecast data added:", weatherData.hourlyForecast.length, "entries");
+          }
+        }
+      } catch (e) {
+        console.error("Forecast fetch error:", e);
+      }
     }
 
     // Cache the result

@@ -573,7 +573,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           style={{ gridColumn: '1 / 4', gridRow: '4' }}
         >
           <span 
-            className="font-bold text-[11px] flex-shrink-0 w-12 text-left"
+            className="font-bold text-[11px] flex-shrink-0 w-16 text-left whitespace-nowrap"
             style={{ 
               color: theme.textColor,
               opacity: 0.9,
@@ -600,7 +600,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           )}
           
           <span 
-            className="font-bold text-[11px] flex-shrink-0 w-12 text-right"
+            className="font-bold text-[11px] flex-shrink-0 w-16 text-right whitespace-nowrap"
             style={{ 
               color: theme.textColor,
               opacity: 0.9,
