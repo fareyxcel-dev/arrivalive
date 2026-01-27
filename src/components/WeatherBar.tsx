@@ -252,14 +252,29 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
     return Math.round(temp);
   };
 
-  // Get chance of rain text
+  // Get chance of rain text with forecast info
   const getChanceOfWeather = (): string => {
     if (!weather) return '';
+    
+    // Check if there's an upcoming weather change
+    const nextCondition = getNextDifferentCondition();
+    
+    if (nextCondition) {
+      const nextNormalized = normalizeCondition(nextCondition.nextCondition);
+      if (nextNormalized === 'rain' || nextNormalized === 'storm') {
+        return `Rain at ${nextCondition.forecastTime}`;
+      }
+      return `${nextCondition.nextCondition} at ${nextCondition.forecastTime}`;
+    }
+    
+    // Fallback to rain chance
     const chanceOfRain = weather.chanceOfRain || 0;
     if (chanceOfRain > 0) {
       return `${chanceOfRain}% chance of rain`;
     }
-    return 'No rain expected';
+    
+    // Show stable weather message
+    return `${weather.condition} all day`;
   };
 
   const handleDayDateClick = () => {
@@ -307,11 +322,14 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
       <div className="flex items-start justify-between">
         {/* Time Section - Left (3 rows) */}
         <div className="space-y-0.5">
-          {/* Row 1: Icon + Live Time on same row (clickable for format toggle) */}
+          {/* Row 1: Live Time + Icon on same row (clickable for format toggle) */}
           <button 
             onClick={toggleTimeFormat}
             className="flex items-center gap-2 hover:bg-white/5 rounded px-1 -mx-1 transition-colors"
           >
+            <p className="text-xl font-bold text-white">
+              {formatTime(currentTime)}
+            </p>
             <div className={cn(
               "transition-all duration-300",
               showSunCountdown && "opacity-0"
@@ -327,9 +345,6 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
                 {sunData.icon}
               </div>
             )}
-            <p className="text-xl font-bold text-white">
-              {formatTime(currentTime)}
-            </p>
           </button>
           
           {/* Row 2 & 3: Day and Date - clickable for sun countdown */}
@@ -371,14 +386,11 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
         {/* Weather Section - Right (3 rows) */}
         {weather && (
           <div className="text-right space-y-0.5">
-            {/* Row 1: Temperature + Weather Icon (clickable for unit toggle) */}
+            {/* Row 1: Weather Icon + Temperature (clickable for unit toggle) */}
             <button
               onClick={toggleTemperatureUnit}
               className="flex items-center justify-end gap-2 ml-auto hover:bg-white/5 rounded px-1 -mx-1 transition-colors"
             >
-              <p className="text-xl font-bold text-white">
-                {convertTemperature(weather.temp, settings.temperatureUnit)}°{settings.temperatureUnit}
-              </p>
               <div className={cn(
                 "text-white transition-all duration-300",
                 showForecast && "opacity-0"
@@ -386,10 +398,13 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
                 {getWeatherIcon(weather.condition, isDay)}
               </div>
               {showForecast && nextCondition && (
-                <div className="absolute animate-fade-in text-white" style={{ right: '1rem' }}>
+                <div className="absolute animate-fade-in text-white" style={{ left: '1rem' }}>
                   {getWeatherIcon(nextCondition.nextCondition, isDay)}
                 </div>
               )}
+              <p className="text-xl font-bold text-white">
+                {convertTemperature(weather.temp, settings.temperatureUnit)}°{settings.temperatureUnit}
+              </p>
             </button>
             
             {/* Row 2 & 3: Weather condition + duration + chance */}

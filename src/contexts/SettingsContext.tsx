@@ -137,6 +137,22 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     document.documentElement.style.fontFamily = fontFamily;
     document.body.style.fontFamily = fontFamily;
     
+    // Inject style for portals (they may not inherit from body)
+    let portalStyle = document.getElementById('portal-font-style');
+    if (!portalStyle) {
+      portalStyle = document.createElement('style');
+      portalStyle.id = 'portal-font-style';
+      document.head.appendChild(portalStyle);
+    }
+    portalStyle.textContent = `
+      [data-radix-portal], [data-radix-portal] *, 
+      [role="dialog"], [role="dialog"] *,
+      [role="menu"], [role="menu"] *,
+      .modal-overlay, .modal-overlay * {
+        font-family: ${fontFamily} !important;
+      }
+    `;
+    
     // Apply font size
     document.documentElement.style.fontSize = `${settings.fontSize}px`;
     
