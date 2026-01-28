@@ -1,419 +1,389 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
-
 <meta charset="utf-8"/>
-
-<title>Maldives SkyView - Live Live Engine</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Maldives SkyView - Unified Reflection</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
 <style>
+    :root {
+        --rain-color: rgba(10, 40, 60, 0.6);
+        --ripple-color: rgb(80, 120, 140);
+        --ripple-opacity: 0.2;
+    }
 
-    html,body{margin:0;padding:0;overflow:hidden;background:#000;height:100%;}
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #000; height: 100%; width: 100%; touch-action: none; font-family: sans-serif; }
+    
+    #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+    
+    #celestial-layer {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        z-index: 10; pointer-events: none;
+        -webkit-mask-image: linear-gradient(to bottom, black 0%, black 65%, transparent 72%);
+        mask-image: linear-gradient(to bottom, black 0%, black 65%, transparent 72%);
+    }
 
-    canvas{display:block;width:100%;height:100%;}
+    #reflection-layer {
+        position: absolute; 
+        top: 72%; left: 0; width: 100%; height: 28%; 
+        z-index: 20; overflow: hidden; pointer-events: none;
+        mix-blend-mode: screen; 
+        filter: url(#water-ripple) blur(0.4px);
+    }
+    
+    .reflection-column {
+        position: absolute; top: 0; transform: translate(-50%, 0); 
+        display: flex; flex-direction: column; align-items: center;
+        width: 300px; height: 100%;
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 100%);
+        mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 100%);
+    }
 
-    /* UI Removed */
+    .glitter-line {
+        height: 2px; margin-bottom: 2px; border-radius: 100%; 
+        background-color: currentColor; box-shadow: 0 0 6px currentColor;
+        will-change: transform, width, opacity; transition: opacity 0.5s ease;
+    }
 
+    #sun-visual { position: absolute; width: 250px; height: 250px; transform: translate(-50%, -50%); display: flex; justify-content: center; align-items: center; transition: opacity 2s ease; }
+    .sun-core { width: 42px; height: 42px; border-radius: 50%; z-index: 3; background: #fff; box-shadow: 0 0 30px rgba(255,255,255,0.8); }
+    .sun-glow-inner { position: absolute; width: 120px; height: 120px; border-radius: 50%; z-index: 2; }
+    .sun-glow-outer { position: absolute; width: 100%; height: 100%; border-radius: 50%; z-index: 1; animation: atmosPulse 8s infinite alternate ease-in-out; }
+    @keyframes atmosPulse { from{opacity:0.3; transform:scale(0.9);} to{opacity:0.6; transform:scale(1.1);} }
+    #moon-visual { position: absolute; width: 45px; height: 45px; transform: translate(-50%, -50%); filter: drop-shadow(0 0 10px rgba(255,255,255,0.3)); transition: opacity 2s ease; }
+    
+    #weather-grade {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        z-index: 22; pointer-events: none;
+        transition: backdrop-filter 2s ease, background-color 2s ease;
+    }
+
+    #rain-layer {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        z-index: 25; pointer-events: none; display: none; overflow: hidden;
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 15%);
+        mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 15%);
+    }
+    
+    .rain-drop {
+        position: absolute;
+        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(150, 160, 170, 0.15) 50%, var(--rain-color));
+        width: 1px; height: 60px; top: -100px; 
+        animation: rainfall linear infinite;
+    }
+
+    #ripple-layer {
+        position: absolute; top: 72%; left: 0; width: 100%; height: 28%;
+        z-index: 24; pointer-events: none; display: none; overflow: hidden;
+        perspective: 500px;
+    }
+
+    .ocean-ripple {
+        position: absolute;
+        border-radius: 50%;
+        border: 2px solid var(--ripple-color); 
+        background: transparent;
+        transform: scaleY(0.2); opacity: 0;
+        animation: rippleExpand 2s linear forwards;
+        -webkit-mask-image: repeating-linear-gradient(to bottom, black 0%, black 20%, transparent 20%, transparent 40%);
+        mask-image: repeating-linear-gradient(to bottom, black 0%, black 20%, transparent 20%, transparent 40%);
+    }
+
+    @keyframes rainfall { 0% { transform: translateY(-100px); } 100% { transform: translateY(120vh); } }
+
+    @keyframes rippleExpand {
+        0% { width: 10px; height: 10px; opacity: var(--ripple-opacity); border-width: 3px; transform: scaleY(0.2) translateY(0); }
+        100% { width: 150px; height: 150px; opacity: 0; border-width: 0px; transform: scaleY(0.2) translateY(-200px); }
+    }
+
+    #storm-flash {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: white; opacity: 0; z-index: 26; pointer-events: none;
+        transition: opacity 0.05s ease-out; mix-blend-mode: screen;
+    }
+
+    #shooting-star {
+        position: absolute; width: 2px; height: 2px; background: white; border-radius: 50%;
+        box-shadow: 0 0 4px white; opacity: 0; z-index: 9; pointer-events: none;
+    }
+    #shooting-star::after {
+        content: ''; position: absolute; top: 50%; right: 0; transform: translateY(-50%);
+        width: 40px; height: 1px;
+        background: linear-gradient(to left, rgba(255,255,255,0), rgba(255,255,255,0.8));
+    }
+    @keyframes shoot {
+        0% { transform: translateX(0) translateY(0) rotate(-35deg); opacity: 1; width: 2px; }
+        100% { transform: translateX(-150px) translateY(100px) rotate(-35deg); opacity: 0; width: 0; }
+    }
 </style>
-
 </head>
-
 <body>
+    <svg style="position: absolute; width: 0; height: 0; overflow: hidden;">
+        <defs><filter id="water-ripple"><feTurbulence id="turb-noise" type="fractalNoise" baseFrequency="0.01 0.8" numOctaves="2" result="noise" /><feDisplacementMap in="SourceGraphic" in2="noise" scale="12" xChannelSelector="R" yChannelSelector="G" /><feGaussianBlur stdDeviation="0.6" /></filter></defs>
+    </svg>
+    <div id="canvas-container"></div>
+    <div id="celestial-layer">
+        <div id="sun-visual"><div class="sun-core" id="sun-core"></div><div class="sun-glow-inner" id="sun-inner"></div><div class="sun-glow-outer" id="sun-outer"></div></div>
+        <div id="moon-visual"><svg viewBox="0 0 100 100" overflow="visible"><defs><mask id="mMask"><rect x="-50" y="-50" width="200" height="200" fill="white"/><circle id="mShadow" cx="150" cy="50" r="48" fill="black"/></mask></defs><circle cx="50" cy="50" r="48" fill="#eef2f7" mask="url(#mMask)"/></svg></div>
+        <div id="shooting-star"></div>
+    </div>
+    <div id="reflection-layer"><div id="reflection-content"><div id="sun-reflection-col" class="reflection-column"></div><div id="moon-reflection-col" class="reflection-column"></div></div></div>
+    <div id="weather-grade"></div><div id="rain-layer"></div><div id="ripple-layer"></div><div id="storm-flash"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
-
-<script id="v" type="x-shader/x-vertex">
-
-varying vec2 vUv;
-
-void main(){ vUv = uv; gl_Position = vec4(position,1.0); }
-
-</script>
-
-<script id="f" type="x-shader/x-fragment">
-
+<script id="vert" type="x-shader/x-vertex">varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }</script>
+<script id="frag" type="x-shader/x-fragment">
 precision highp float;
-
 varying vec2 vUv;
-
-uniform float iTime, iDay, uMoonPhase, uSeed;
-
+uniform float iTime;
 uniform vec2 iRes;
-
-uniform float uCloudDensity, uRain, uLightning;
-
-const float PI = 3.14159265;
+uniform float iDay;
+uniform vec3 iSunDir;
+uniform vec3 iMoonDir;
+uniform float uCloudDensity;
 
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
-
-float noise(vec2 p){
-
-    vec2 i=floor(p), f=fract(p);
-
-    vec2 u=f*f*(3.-2.*f);
-
-    return mix(mix(hash(i),hash(i+vec2(1,0)),u.x), mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x), u.y);
-
-}
-
-float fbm(vec2 p){
-
-    float v=0., a=.5;
-
-    for(int i=0;i<6;i++){v+=a*noise(p); p*=2.1; a*=.5;}
-
-    return v;
-
-}
-
-vec3 sunDir(){ float a = (iDay - 0.25) * 2.0 * PI; return normalize(vec3(cos(a), sin(a), -0.15)); }
-
-vec3 moonDir(){ float a = (iDay + 0.25) * 2.0 * PI; return normalize(vec3(cos(a), sin(a), 0.15)); }
+float noise(vec2 p){ vec2 i=floor(p), f=fract(p); vec2 u=f*f*(3.-2.*f); return mix(mix(hash(i),hash(i+vec2(1,0)),u.x), mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x), u.y); }
+float fbm(vec2 p){ float v=0., a=.5; mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.5)); for(int i=0;i<5;i++){ v+=a*noise(p); p=rot*p*2.0+vec2(1.3); a*=.5; } return v; }
 
 vec3 verticalGradient(float y, vec3 c1, vec3 c2, vec3 c3, vec3 c4, vec3 c5, vec3 c6, vec3 c7) {
-
     float t = y * 6.0;
-
     if (t < 1.0) return mix(c1, c2, smoothstep(0.0, 1.0, t));
-
     if (t < 2.0) return mix(c2, c3, smoothstep(0.0, 1.0, t - 1.0));
-
     if (t < 3.0) return mix(c3, c4, smoothstep(0.0, 1.0, t - 2.0));
-
     if (t < 4.0) return mix(c4, c5, smoothstep(0.0, 1.0, t - 3.0));
-
     if (t < 5.0) return mix(c5, c6, smoothstep(0.0, 1.0, t - 4.0));
-
     return mix(c6, c7, smoothstep(0.0, 1.0, t - 5.0));
-
 }
-
-void getNightPalette(out vec3 c[7]) {
-
-    c[0]=vec3(0.005,0.01,0.02); c[1]=vec3(0.01,0.01,0.03); c[2]=vec3(0.01,0.015,0.04); 
-
-    c[3]=vec3(0.01,0.01,0.05); c[4]=vec3(0.005,0.005,0.04); c[5]=vec3(0.,0.,0.03); c[6]=vec3(0.,0.,0.01);
-
-}
-
-void getSunrisePalette(out vec3 c[7]) {
-
-    c[0]=vec3(1.0,0.3,0.1); c[1]=vec3(1.0,0.5,0.2); c[2]=vec3(1.0,0.7,0.4);
-
-    c[3]=vec3(0.6,0.7,0.8); c[4]=vec3(0.3,0.5,0.8); c[5]=vec3(0.1,0.3,0.6); c[6]=vec3(0.05,0.1,0.3);
-
-}
-
-void getDayPalette(out vec3 c[7]) {
-
-    c[0]=vec3(0.6,0.85,0.95); c[1]=vec3(0.4,0.75,0.9); c[2]=vec3(0.25,0.6,0.85);
-
-    c[3]=vec3(0.1,0.5,0.8); c[4]=vec3(0.05,0.35,0.7); c[5]=vec3(0.02,0.2,0.6); c[6]=vec3(0.01,0.1,0.4);
-
-}
-
-void getSunsetPalette(out vec3 c[7]) {
-
-    c[0]=vec3(0.8,0.1,0.1); c[1]=vec3(1.0,0.4,0.1); c[2]=vec3(1.0,0.7,0.3);
-
-    c[3]=vec3(0.9,0.5,0.6); c[4]=vec3(0.5,0.3,0.6); c[5]=vec3(0.2,0.2,0.5); c[6]=vec3(0.05,0.05,0.2);
-
-}
+void getNightPal(out vec3 c[7]) { c[0]=vec3(0.0,0.0,0.02); c[1]=vec3(0.01,0.01,0.05); c[2]=vec3(0.01,0.02,0.08); c[3]=vec3(0.02,0.03,0.1); c[4]=vec3(0.01,0.02,0.08); c[5]=vec3(0.,0.,0.05); c[6]=vec3(0.,0.,0.02); }
+void getRisePal(out vec3 c[7]) { c[0]=vec3(0.4,0.1,0.0); c[1]=vec3(1.0,0.3,0.05); c[2]=vec3(1.0,0.6,0.2); c[3]=vec3(0.5,0.6,0.8); c[4]=vec3(0.2,0.4,0.7); c[5]=vec3(0.1,0.2,0.5); c[6]=vec3(0.05,0.1,0.3); }
+void getDayPal(out vec3 c[7]) { c[0]=vec3(0.7,0.9,1.0); c[1]=vec3(0.5,0.8,0.95); c[2]=vec3(0.3,0.65,0.9); c[3]=vec3(0.1,0.5,0.85); c[4]=vec3(0.05,0.35,0.8); c[5]=vec3(0.02,0.2,0.6); c[6]=vec3(0.01,0.1,0.4); }
+void getSetPal(out vec3 c[7]) { c[0]=vec3(0.5,0.0,0.1); c[1]=vec3(0.9,0.2,0.1); c[2]=vec3(1.0,0.5,0.2); c[3]=vec3(0.6,0.3,0.5); c[4]=vec3(0.3,0.2,0.5); c[5]=vec3(0.1,0.1,0.4); c[6]=vec3(0.02,0.02,0.2); }
 
 vec3 getSkyColor(float mu) {
-
     vec3 c[7], p1[7], p2[7]; float t = iDay; float mf = 0.0;
-
-    if (t < 0.235) { getNightPalette(p1); getNightPalette(p2); } 
-
-    else if (t < 0.25) { getNightPalette(p1); getSunrisePalette(p2); mf = smoothstep(0.235, 0.25, t); }
-
-    else if (t < 0.265) { getSunrisePalette(p1); getDayPalette(p2); mf = smoothstep(0.25, 0.265, t); }
-
-    else if (t < 0.735) { getDayPalette(p1); getDayPalette(p2); }
-
-    else if (t < 0.75) { getDayPalette(p1); getSunsetPalette(p2); mf = smoothstep(0.735, 0.75, t); }
-
-    else if (t < 0.765) { getSunsetPalette(p1); getNightPalette(p2); mf = smoothstep(0.75, 0.765, t); } 
-
-    else { getNightPalette(p1); getNightPalette(p2); }
-
+    if (t < 0.26) { getNightPal(p1); getNightPal(p2); } 
+    else if (t < 0.28) { getNightPal(p1); getRisePal(p2); mf = smoothstep(0.26, 0.28, t); }
+    else if (t < 0.30) { getRisePal(p1); getDayPal(p2); mf = smoothstep(0.28, 0.30, t); }
+    else if (t < 0.73) { getDayPal(p1); getDayPal(p2); }
+    else if (t < 0.75) { getDayPal(p1); getSetPal(p2); mf = smoothstep(0.73, 0.75, t); }
+    else if (t < 0.77) { getSetPal(p1); getNightPal(p2); mf = smoothstep(0.75, 0.77, t); } 
+    else { getNightPal(p1); getNightPal(p2); }
     for(int i=0; i<7; i++) c[i] = mix(p1[i], p2[i], mf);
-
-    return verticalGradient(pow(mu, 0.65), c[0], c[1], c[2], c[3], c[4], c[5], c[6]);
-
-}
-
-float star(vec2 p){
-
-    vec2 gv = fract(p) - 0.5; vec2 id = floor(p);
-
-    float n = hash(id + uSeed); if(n < 0.975) return 0.0;
-
-    float cycle = 1200.0 + hash(id) * 600.0;
-
-    float activity = (fract((iTime + hash(id)*cycle) / cycle) < (2.0/cycle)) ? sin((fract((iTime + hash(id)*cycle) / cycle)/(2.0/cycle)) * PI) : 0.0;
-
-    float intensity = mix(0.3 + 0.3 * hash(id + 5.5), 1.5, activity * (0.5 + 0.5 * sin(iTime * 50.0 + hash(id) * 20.0)));
-
-    return smoothstep(0.04, 0.005, length(gv)) * ((n > 0.995) ? 3.0 : 1.0) * intensity;
-
-}
-
-vec3 drawMoon(vec3 rd, vec3 mDir) {
-
-    float d = length(rd - mDir); if (d > 0.04) return vec3(0.0);
-
-    float p = uMoonPhase * 2.0 - 1.0; 
-
-    float mask = smoothstep(p - 0.2, p + 0.2, (rd.x - mDir.x)/0.04);
-
-    if(uMoonPhase > 0.5) mask = 1.0 - smoothstep(p - 1.2, p - 0.8, (rd.x - mDir.x)/0.04);
-
-    return vec3(0.85, 0.9, 1.0) * smoothstep(0.04, 0.038, d) * (1.0 - mask);
-
-}
-
-float getRain(vec2 uv, float scale, float speed) {
-
-    vec2 p = uv * scale; p.y += iTime * speed; 
-
-    vec2 id = floor(p); vec2 f = fract(p);
-
-    return smoothstep(0.92, 1.0, hash(id + uSeed)) * smoothstep(0.15, 0.0, abs(f.x - 0.5)) * smoothstep(1.0, 0.1, f.y);
-
-}
-
-float oceanRipples(vec2 uv, float intensity) {
-
-    vec2 gv = fract(uv) - 0.5; vec2 id = floor(uv);
-
-    float n = hash(id + uSeed); float t = fract(iTime * 2.8 + n * 15.0);
-
-    vec2 center = (vec2(n - 0.5, fract(n * 34.1) - 0.5)) * 0.4;
-
-    float d = length(gv - center);
-
-    return smoothstep(0.0, 0.1, t - d) * smoothstep(0.15, 0.0, t - d) * (1.0 - t) * intensity;
-
-}
-
-float waves(vec2 p){
-
-    float h = 0.0;
-
-    h += fbm(p * 1.2 + vec2(iTime * 0.3, iTime * 0.15)) * 0.9;
-
-    h += fbm(p * 3.5 + vec2(iTime * 0.9, -iTime * 0.7)) * 0.35;
-
-    h += fbm(p * 10.0 + vec2(iTime * 2.2, iTime * 1.8)) * 0.12;
-
-    return h;
-
-}
-
-vec3 nrm(vec2 p){
-
-    float e = 0.04;
-
-    return normalize(vec3(waves(p) - waves(p + vec2(e, 0.0)), e * 5.0, waves(p) - waves(p + vec2(0.0, e))));
-
+    vec3 base = verticalGradient(pow(mu, 0.7), c[0], c[1], c[2], c[3], c[4], c[5], c[6]);
+    float dome = pow(max(0.0, dot(iSunDir, vec3(0.0, mu, 0.0))), 3.0);
+    return base + (c[1] * dome * 0.4);
 }
 
 void main(){
+    vec2 uv = (gl_FragCoord.xy - 0.5 * iRes.xy) / iRes.y; uv.y += 0.35;
+    vec3 rd = normalize(vec3(uv, -1.0)); rd.yz = mat2(cos(-0.12), sin(-0.12), -sin(-0.12), cos(-0.12)) * rd.yz;
+    vec3 bg = getSkyColor(clamp(rd.y, 0.0, 1.0)); vec3 col = bg;
 
-    vec2 uv = (gl_FragCoord.xy - 0.5 * iRes.xy) / iRes.y;
-
-    uv.y += 0.22;
-
-    vec3 rd = normalize(vec3(uv, -1.0));
-
-    rd.yz = mat2(cos(-0.12), sin(-0.12), -sin(-0.12), cos(-0.12)) * rd.yz;
-
-    vec3 sD = sunDir(); vec3 mD = moonDir();
-
-    vec3 skyBack = getSkyColor(clamp(rd.y, 0.0, 1.0));
-
-    vec3 col = skyBack;
-
-    float starVis = 1.0 - smoothstep(-0.3, 0.1, sD.y);
-
+    float starVis = (1.0 - smoothstep(-0.2, 0.1, iSunDir.y)) * smoothstep(0.0, 0.4, rd.y);
     if(rd.y > 0.0 && starVis > 0.0) {
-
-        float rot = (iDay - 0.25) * 2.0 * PI;
-
-        mat2 rotM = mat2(cos(rot), sin(rot), -sin(rot), cos(rot));
-
-        vec3 sRd = rd; sRd.xy = rotM * sRd.xy;
-
-        col += (star(sRd.xz / (1.0 + sRd.y) * 200.0) + star(sRd.xz / (1.0 + sRd.y) * 400.0)) * starVis * vec3(2.5, 2.5, 3.2);
-
+        vec2 sc = (rd.xz / (rd.y + 0.1) + vec2(iDay * 20.0, 0.0)) * 200.0; vec2 id = floor(sc);
+        if(hash(id) > 0.997) { float tw = 0.5 + 0.5 * (1.0 - smoothstep(0.0, 0.01, abs(fract(iDay * 24.0) - hash(id + 10.0)))); col += vec3(tw) * starVis; }
     }
 
-    col += vec3(1.0, 0.9, 0.8) * pow(max(dot(rd, sD), 0.0), 180.0) * (1.8 * (1.0 - uCloudDensity));
-
-    col += drawMoon(rd, mD) * starVis;
-
-    col += uLightning * vec3(0.8, 0.9, 1.0);
-
-    float rainStr = 0.0;
-
-    if(uRain > 0.0) { rainStr += getRain(uv, 35.0, 26.0) * 1.5; rainStr += getRain(uv, 75.0, 19.0) * 1.0; }
+    if(rd.y > 0.0) {
+        float skyY = max(0.0, rd.y); vec2 cUV = rd.xz / (skyY + 0.2) + vec2(iTime * 0.03, iTime * 0.01);
+        float den = smoothstep(1.0 - uCloudDensity, 1.6 - uCloudDensity, fbm(cUV * 1.5 + fbm(cUV * 0.5)));
+        float sDist = max(0.0, dot(rd, iSunDir));
+        vec3 hCol = mix(vec3(0.2,0.2,0.3), mix(vec3(1.0,0.6,0.3), vec3(1.0), smoothstep(0.1, 0.4, iSunDir.y)), smoothstep(-0.2, 0.1, iSunDir.y));
+        vec3 sCol = mix(vec3(0.02,0.02,0.05), mix(vec3(0.4,0.2,0.4), vec3(0.85,0.9,0.95), smoothstep(0.1, 0.4, iSunDir.y)), smoothstep(-0.2, 0.1, iSunDir.y));
+        col = mix(col, mix(sCol, hCol, den * 0.6 + sDist * 0.4), den * smoothstep(0.0, 0.3, skyY));
+    }
 
     if(rd.y < 0.0) {
+        float d = -3.0 / rd.y; vec3 pos = vec3(0.0, 3.0, 0.0) + rd * d; float e = 0.02;
+        vec2 wUV = pos.xz * 0.2 + vec2(iTime * 0.2, iTime * 0.12);
+        vec3 n = normalize(vec3(fbm(wUV)-fbm(wUV+vec2(e,0)), e*10., fbm(wUV)-fbm(wUV+vec2(0,e))));
+        vec3 oBase = mix(vec3(0.01, 0.03, 0.1), vec3(0.0, 0.25, 0.45), smoothstep(-0.2, 0.2, iSunDir.y));
+        vec3 refl = mix(oBase, getSkyColor(clamp(reflect(rd, n).y, 0.0, 1.0)), pow(1.0 - max(dot(-rd, n), 0.0), 12.0));
+        col = mix(refl, bg, 1.0 - exp(-d * 0.015));
+    }
+    gl_FragColor = vec4(col, 1.0);
+}
+</script>
+<script>
+    const CONFIG = { lat: 4.17, lon: 73.51 }; 
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const scene = new THREE.Scene();
+    
+    const uniforms = {
+        iTime: { value: 0 }, iRes: { value: new THREE.Vector2() }, iDay: { value: 0.5 },
+        iSunDir: { value: new THREE.Vector3() }, iMoonDir: { value: new THREE.Vector3() },
+        uCloudDensity: { value: 0.6 }
+    };
+    
+    scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+        vertexShader: document.getElementById('vert').textContent,
+        fragmentShader: document.getElementById('frag').textContent,
+        uniforms: uniforms
+    })));
 
-        float d = -3.0 / rd.y; vec3 pos = vec3(0.0, 3.0, 0.0) + rd * d;
+    function resize() { renderer.setSize(window.innerWidth, window.innerHeight); uniforms.iRes.value.set(window.innerWidth, window.innerHeight); }
+    window.addEventListener('resize', resize); resize();
+    
+    function lerpColor(a, b, t) { return a.map((val, i) => val + (b[i] - val) * t); }
+    const turb = document.getElementById('turb-noise'); let noiseSeed = 0;
 
-        vec3 n = nrm(pos.xz * 0.25);
+    const sCol = document.getElementById('sun-reflection-col'); const mCol = document.getElementById('moon-reflection-col');
+    const LINE_COUNT = 55; const sunLines = [], moonLines = [];
 
-        float ripples = (uRain > 0.05) ? (oceanRipples(pos.xz * 3.0, uRain) + oceanRipples(pos.xz * 5.0 + 1.2, uRain) * 0.6) : 0.0;
+    function initLines(container, array) { for(let i=0; i<LINE_COUNT; i++) { const line = document.createElement('div'); line.className = 'glitter-line'; container.appendChild(line); array.push(line); } }
+    initLines(sCol, sunLines); initLines(mCol, moonLines);
 
-        vec3 shallow = vec3(0.0, 0.4, 0.6), deep = vec3(0.01, 0.05, 0.2), nightViolet = vec3(0.05, 0.04, 0.14); 
-
-        vec3 oceanDNA = mix(shallow, deep, smoothstep(4.0, 45.0, d));
-
-        oceanDNA = mix(oceanDNA, nightViolet, 1.0 - smoothstep(-0.2, 0.15, sD.y));
-
-        oceanDNA *= mix(1.0, 0.35, uCloudDensity*0.4 + (1.0-smoothstep(-0.3, 0.2, sD.y))*0.65);
-
-        vec3 base = mix(oceanDNA, oceanDNA * 1.8 + uLightning * 0.5, ripples * 0.4);
-
-        col = mix(base, col, pow(1.0 - max(dot(-rd, n), 0.0), 4.0));
-
-        float specS = pow(max(dot(reflect(rd, n), sD), 0.0), 140.0) * max(sD.y + 0.1, 0.0);
-
-        float specM = pow(max(dot(reflect(rd, n), mD), 0.0), 80.0) * starVis * 0.4;
-
-        specM += ripples * 1.8 * starVis;
-
-        col += vec3(1.0, 0.9, 0.7) * specS + vec3(0.6, 0.7, 1.0) * specM;
-
-        col = mix(col, skyBack, 1.0 - exp(-d * 0.015)); 
-
-        col = mix(col, vec3(0.8, 0.85, 1.0), rainStr * uRain * 0.45);
-
-    } else {
-
-        col = mix(col, vec3(0.9, 0.95, 1.0), rainStr * uRain * 0.75);
-
+    function updateReflectionVisuals(linesArr, alt, colorRGB, time, type) {
+        if (alt < -6) { linesArr.forEach(l => l.style.opacity = 0); return; }
+        let mainOpacity = (type === 'sun') ? Math.min(Math.max((alt + 6) / 10, 0), 0.85) : Math.min(Math.max((alt + 5) / 10, 0), 0.4);
+        const altitudeSpread = 0.3 + (alt / 90) * 0.7;
+        linesArr.forEach((line, i) => {
+            const p = i / LINE_COUNT; 
+            const n1 = Math.sin(time * 2 + i * 0.5); const n2 = Math.cos(time * 5 + i * 1.3); const noiseVal = (n1 + n2) * 0.5;
+            let width = (10 + p*100) * altitudeSpread * (0.8 + 0.4 * noiseVal); width = Math.max(5, Math.min(100, width));
+            let alpha = mainOpacity * (0.5 + 0.5 * noiseVal); let drift = Math.sin(time + p * 10) * (20 * p); 
+            line.style.width = width + '%'; line.style.opacity = alpha;
+            line.style.transform = `translateX(${drift}px)`; line.style.color = `rgba(${colorRGB[0]}, ${colorRGB[1]}, ${colorRGB[2]}, ${alpha})`;
+        });
     }
 
-    vec2 cUV = rd.xz / (rd.y + 0.5); vec2 drift = vec2(iTime * 0.048, iTime * 0.012); 
+    let weatherMode = 'auto'; let stormInterval = null; let rippleInterval = null;
+    let celestialOpacitySun = 1.0; let celestialOpacityMoon = 1.0;
 
-    float maskHigh = smoothstep(0.8 - uCloudDensity, 1.15 - uCloudDensity, fbm(cUV * 0.3 + drift * 0.5)); 
+    function initRain() {
+        const container = document.getElementById('rain-layer');
+        if (container.childElementCount > 0) return;
+        for(let i=0; i<250; i++) {
+            let drop = document.createElement('div'); drop.className = 'rain-drop';
+            let depth = Math.random(); let scale = 0.5 + depth * 0.8; let opacity = 0.2 + depth * 0.6; let duration = (0.6 + Math.random() * 0.3) / scale;
+            drop.style.left = Math.random() * 100 + '%'; drop.style.width = (1 * scale) + 'px'; drop.style.height = (40 * scale) + 'px';
+            drop.style.opacity = opacity; drop.style.animationDuration = duration + 's'; drop.style.animationDelay = Math.random() * -2 + 's';
+            if(depth < 0.3) drop.style.filter = 'blur(1px)';
+            container.appendChild(drop);
+        }
+    }
+    initRain();
 
-    float maskMid = smoothstep(0.95 - uCloudDensity*0.8, 1.3 - uCloudDensity*0.8, fbm(cUV * 0.75 + drift * 0.8));
+    function spawnRipples() {
+        const container = document.getElementById('ripple-layer');
+        const rip = document.createElement('div'); rip.className = 'ocean-ripple';
+        const topVal = Math.random() * 90;
+        rip.style.left = Math.random() * 95 + '%'; rip.style.top = topVal + '%';
+        const progress = topVal / 90; const opacity = 0.12 + (progress * 0.11);
+        rip.style.setProperty('--ripple-opacity', opacity);
+        const scale = 0.5 + Math.random() * 1.0;
+        rip.style.width = (50 * scale) + 'px'; rip.style.height = (50 * scale) + 'px';
+        container.appendChild(rip); setTimeout(() => rip.remove(), 2000);
+    }
 
-    float stormN = fbm(cUV * 1.6 + drift * 1.8); float maskStorm = smoothstep(1.25 - uCloudDensity * 1.3, 1.5 - uCloudDensity * 1.3, stormN);
+    function setVisualWeather(type) {
+        const rainLayer = document.getElementById('rain-layer'); const rippleLayer = document.getElementById('ripple-layer');
+        const stormFlash = document.getElementById('storm-flash'); const grade = document.getElementById('weather-grade');
+        rainLayer.style.display = 'none'; rippleLayer.style.display = 'none'; stormFlash.style.opacity = 0;
+        clearInterval(stormInterval); clearInterval(rippleInterval);
+        grade.style.backdropFilter = 'none'; grade.style.backgroundColor = 'transparent';
+        celestialOpacitySun = 1.0; celestialOpacityMoon = 1.0;
 
-    vec3 ambientSky = getSkyColor(0.2); float sunInf = smoothstep(-0.2, 0.4, sD.y), moonInf = smoothstep(-0.2, 0.4, mD.y) * starVis;
+        if (type === 'clear') { uniforms.uCloudDensity.value = 0.6; }
+        else if (type === 'rain' || type === 'storm') {
+            rainLayer.style.display = 'block'; rippleLayer.style.display = 'block';
+            let ripFreq = type === 'storm' ? 30 : 100; rippleInterval = setInterval(spawnRipples, ripFreq);
+            if (type === 'rain') {
+                uniforms.uCloudDensity.value = 0.85; 
+                grade.style.backdropFilter = 'saturate(0.7) contrast(0.9) brightness(0.9)'; grade.style.backgroundColor = 'rgba(50, 60, 70, 0.1)';
+                celestialOpacitySun = 0.7; celestialOpacityMoon = 0.4;
+            } else {
+                uniforms.uCloudDensity.value = 1.1; 
+                grade.style.backdropFilter = 'saturate(0.5) contrast(1.1) brightness(0.7)'; grade.style.backgroundColor = 'rgba(10, 20, 30, 0.2)';
+                celestialOpacitySun = 0.15; celestialOpacityMoon = 0.06;
+                stormInterval = setInterval(() => {
+                    if(Math.random() > 0.96) { stormFlash.style.opacity = 0.8; setTimeout(() => stormFlash.style.opacity = 0, 80); if(Math.random() > 0.7) setTimeout(() => { stormFlash.style.opacity = 0.5; setTimeout(() => stormFlash.style.opacity = 0, 50); }, 150); }
+                }, 100);
+            }
+        }
+    }
 
-    vec3 sunTint = mix(vec3(1.0, 0.6, 0.2), vec3(1.0, 0.95, 0.85), sD.y), moonTint = vec3(0.7, 0.85, 1.0);
+    async function checkAutoWeather() {
+        if (weatherMode !== 'auto') return;
+        try {
+            const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=4.1755&longitude=73.5093&current_weather=true');
+            const data = await res.json(); const code = data.current_weather.weathercode;
+            if (code >= 95) setVisualWeather('storm'); else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) setVisualWeather('rain'); else setVisualWeather('clear');
+        } catch(e) { console.error('Weather API Error', e); }
+    }
+    checkAutoWeather(); setInterval(checkAutoWeather, 600000);
 
-    vec3 colHigh = ambientSky * 1.4 + (sunTint * sunInf * 0.6) + (moonTint * moonInf * 0.5);
+    let nextShootingStarTime = 0;
+    function scheduleNextShootingStar(nowTime) {
+        const minDelay = 22 * 60 * 1000; const maxDelay = 44 * 60 * 1000;
+        const delay = minDelay + Math.random() * (maxDelay - minDelay);
+        nextShootingStarTime = nowTime + delay;
+    }
 
-    vec3 colMid = ambientSky * 0.88; vec3 colShadow = ambientSky * 0.38 + vec3(0.02, 0.03, 0.06) * (1.0 - sunInf);
-
-    float h = clamp(rd.y * 2.5, 0.0, 1.0);
-
-    col = mix(col, colHigh, maskHigh * h * 0.35); col = mix(col, colMid, maskMid * h * 0.55);   
-
-    if(uCloudDensity > 0.65) col = mix(col, colShadow + (uLightning * smoothstep(0.3, 0.8, stormN) * vec3(0.85, 0.9, 1.0)), maskStorm * h * 0.9); 
-
-    gl_FragColor = vec4(pow(col, vec3(0.95)), 1.0);
-
-}
-
-</script>
-
-<script>
-
-const renderer = new THREE.WebGLRenderer({antialias: true});
-
-renderer.setSize(innerWidth, innerHeight);
-
-document.body.appendChild(renderer.domElement);
-
-const scene = new THREE.Scene(), camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-
-const uniforms = {
-
-  iTime: {value: 0}, iRes: {value: new THREE.Vector2(innerWidth, innerHeight)}, iDay: {value: 0},
-
-  uSeed: {value: Math.random()*1000}, uMoonPhase: {value: 0.5}, uCloudDensity: {value: 0.05}, uRain: {value: 0}, uLightning: {value: 0}
-
-};
-
-scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({ uniforms, vertexShader: document.getElementById("v").textContent, fragmentShader: document.getElementById("f").textContent })));
-
-let weatherState = { density: 0.05, rain: 0 }; // Baseline
-
-async function updateWeather() {
-
-    try {
-
-        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=4.17&longitude=73.51&current=weather_code,cloud_cover,precipitation&timezone=auto');
-
-        const data = await res.json();
-
-        const cur = data.current;
-
-        const code = cur.weather_code; // WMO codes
-
+    function animate(now) {
+        requestAnimationFrame(animate);
         
-
-        weatherState.density = (cur.cloud_cover / 100) * 0.95 + 0.05; // Map to range
-
-        weatherState.rain = (code >= 51) ? Math.min(1.0, cur.precipitation / 5.0) : 0.0;
-
+        let appTime = new Date(Date.now() + (new Date().getTimezoneOffset()*60000 + 18000000));
         
+        uniforms.iTime.value = now / 1000; const seconds = now / 1000;
+        noiseSeed += 0.005; turb.setAttribute('baseFrequency', `0.01 ${0.8 + Math.sin(noiseSeed)*0.05}`);
+        
+        const sPos = SunCalc.getPosition(appTime, CONFIG.lat, CONFIG.lon);
+        const mPos = SunCalc.getMoonPosition(appTime, CONFIG.lat, CONFIG.lon);
+        const moon = SunCalc.getMoonIllumination(appTime);
 
-        console.log(`Live Malé Update: Code ${code}, Density ${weatherState.density.toFixed(2)}, Rain ${weatherState.rain.toFixed(2)}`);
+        const sX = 50 + Math.sin(sPos.azimuth)*45; const sY = 72 - (sPos.altitude/(Math.PI/2))*60;
+        const mX = 50 + Math.sin(mPos.azimuth)*45; const mY = 72 - (mPos.altitude/(Math.PI/2))*60;
 
-    } catch(e) { console.error("Weather Sync Failed", e); }
+        document.getElementById('sun-visual').style.left = sX + '%'; document.getElementById('sun-visual').style.top = sY + '%';
+        document.getElementById('sun-visual').style.opacity = celestialOpacitySun;
+        document.getElementById('moon-visual').style.left = mX + '%'; document.getElementById('moon-visual').style.top = mY + '%';
 
-}
+        const deg = sPos.altitude*(180/Math.PI); const mDeg = mPos.altitude*(180/Math.PI);
+        let t = Math.max(0, Math.min(1, (deg + 2) / 17)); let curC = lerpColor([255, 128, 0], [255, 255, 255], t); let rgb = `rgb(${curC[0]}, ${curC[1]}, ${curC[2]})`;
+        
+        document.getElementById('sun-core').style.background = rgb;
+        document.getElementById('sun-inner').style.background = `radial-gradient(circle, rgba(${curC[0]},${curC[1]},${curC[2]},0.6) 0%, transparent 70%)`;
+        document.getElementById('sun-outer').style.background = `radial-gradient(circle, rgba(${curC[0]},${curC[1]},${curC[2]},0.15) 0%, transparent 70%)`;
 
-updateWeather(); setInterval(updateWeather, 600000); // Sync every 10 mins
+        let baseMoonOpacity = Math.max(0.3, 1.0 - (deg/15));
+        document.getElementById('moon-visual').style.opacity = baseMoonOpacity * celestialOpacityMoon;
+        if(document.getElementById('mShadow')) document.getElementById('mShadow').setAttribute('cx', 50+(1-Math.abs((moon.phase-0.5)*2))*100);
 
-function animate(){
-
-    requestAnimationFrame(animate);
-
-    let delta = 0.016; uniforms.iTime.value += delta;
-
-    
-
-    // Accurate Maldives Time
-
-    let mTime = new Date(new Date().getTime() + new Date().getTimezoneOffset()*60000 + 5*3600000);
-
-    uniforms.iDay.value = (mTime.getHours() + mTime.getMinutes()/60 + mTime.getSeconds()/3600) / 24;
-
-    uniforms.uMoonPhase.value = ((mTime.getTime() - new Date("2024-12-30T22:00:00Z").getTime()) % 2551442877) / 2551442877;
-
-    uniforms.uCloudDensity.value += (weatherState.density - uniforms.uCloudDensity.value) * 0.01;
-
-    uniforms.uRain.value += (weatherState.rain - uniforms.uRain.value) * 0.01;
-
-    
-
-    if(uniforms.uCloudDensity.value > 0.8 && weatherState.rain > 0.5 && Math.random() > 0.99) uniforms.uLightning.value = 0.6 + Math.random()*0.4;
-
-    else uniforms.uLightning.value *= 0.85;
-
-    renderer.render(scene, camera);
-
-}
-
-animate();
-
-window.addEventListener("resize", () => { renderer.setSize(innerWidth, innerHeight); uniforms.iRes.value.set(innerWidth, innerHeight); });
-
+        sCol.style.left = sX + '%'; mCol.style.left = mX + '%';
+        updateReflectionVisuals(sunLines, deg, curC, seconds, 'sun');
+        updateReflectionVisuals(moonLines, mDeg, [200, 230, 255], seconds, 'moon');
+        
+        const dayFactor = Math.min(Math.max((deg + 5) / 20, 0), 1);
+        const rC = lerpColor([10, 40, 60], [230, 250, 255], dayFactor);
+        document.documentElement.style.setProperty('--rain-color', `rgba(${rC[0]}, ${rC[1]}, ${rC[2]}, 0.6)`);
+        const ripC = lerpColor([80, 120, 140], [220, 245, 255], dayFactor);
+        document.documentElement.style.setProperty('--ripple-color', `rgb(${ripC[0]}, ${ripC[1]}, ${ripC[2]})`);
+        
+        uniforms.iDay.value = (appTime.getHours()*3600 + appTime.getMinutes()*60 + appTime.getSeconds()) / 86400;
+        uniforms.iSunDir.value.set(Math.sin(sPos.azimuth), Math.sin(sPos.altitude), -Math.cos(sPos.azimuth));
+        uniforms.iMoonDir.value.set(Math.sin(mPos.azimuth), Math.sin(mPos.altitude), -Math.cos(mPos.azimuth));
+        
+        const isNight = deg < -6;
+        if (!isNight) { if (nextShootingStarTime !== 0) { nextShootingStarTime = 0; } } 
+        else {
+            const currentTime = appTime.getTime();
+            if (nextShootingStarTime === 0) { scheduleNextShootingStar(currentTime); }
+            if (currentTime >= nextShootingStarTime) {
+                const star = document.getElementById('shooting-star');
+                const startY = Math.random() * 40; const startX = 20 + Math.random() * 60; 
+                star.style.top = startY + '%'; star.style.left = startX + '%';
+                star.style.animation = 'none'; star.offsetHeight; star.style.animation = 'shoot 1s linear forwards';
+                scheduleNextShootingStar(currentTime);
+            }
+        }
+        renderer.render(scene, camera);
+    }
+    animate(0);
 </script>
-
 </body>
-
 </html>

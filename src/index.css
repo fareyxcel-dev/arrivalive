@@ -75,8 +75,6 @@
 @layer base {
   * {
     @apply border-border;
-    font-family: inherit !important;
-    text-transform: var(--text-case, none);
   }
 
   html {
@@ -91,20 +89,6 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-body);
   }
-}
-
-/* Global font inheritance for all elements including portals */
-[data-radix-portal],
-[data-radix-portal] *,
-[data-radix-popper-content-wrapper],
-[data-radix-popper-content-wrapper] *,
-[role="dialog"],
-[role="dialog"] *,
-[role="menu"],
-[role="menu"] *,
-.modal-overlay,
-.modal-overlay * {
-  font-family: var(--font-body) !important;
 }
 
 @layer components {

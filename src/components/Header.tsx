@@ -15,6 +15,7 @@ interface Props {
   onAdminExport?: () => void;
   onOpenNotifications?: () => void;
   onOpenAdmin?: () => void;
+  notificationCount?: number;
 }
 
 const Header = ({
@@ -28,6 +29,7 @@ const Header = ({
   onAdminExport,
   onOpenNotifications,
   onOpenAdmin,
+  notificationCount = 0,
 }: Props) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [clickCount, setClickCount] = useState(0);
@@ -89,15 +91,35 @@ const Header = ({
         </button>
 
         <div className="absolute right-4 top-4">
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className={cn("orb-button", isMenuOpen && "bg-white/20")}
-            aria-label={isMenuOpen ? "Close menu" : "Open menu"}
-          >
-            <div className={cn("transition-transform duration-300", isMenuOpen ? "rotate-45" : "rotate-0")}>
-              {isMenuOpen ? <X className="w-5 h-5 text-foreground" /> : <Plus className="w-5 h-5 text-foreground" />}
-            </div>
-          </button>
+          {/* Menu orb button with notification counter */}
+          <div className="relative">
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className={cn("orb-button", isMenuOpen && "bg-white/20")}
+              aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+            >
+              <div className={cn("transition-transform duration-300", isMenuOpen ? "rotate-45" : "rotate-0")}>
+                {isMenuOpen ? <X className="w-5 h-5 text-foreground" /> : <Plus className="w-5 h-5 text-foreground" />}
+              </div>
+            </button>
+            
+            {/* Translucent notification counter badge */}
+            {notificationCount > 0 && !isMenuOpen && (
+              <div 
+                className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold animate-pulse"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.25)',
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  color: 'white',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                }}
+              >
+                {notificationCount > 99 ? '99+' : notificationCount}
+              </div>
+            )}
+          </div>
 
           {isMenuOpen && (
             <div className="absolute right-0 top-14 w-48 glass-blur-strong rounded-xl overflow-hidden animate-scale-in border border-white/10">
