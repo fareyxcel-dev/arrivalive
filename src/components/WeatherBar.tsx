@@ -7,6 +7,7 @@ interface HourlyForecast {
   time: string;
   condition: string;
   temp: number;
+  chanceOfRain?: number;
 }
 
 interface WeatherData {
@@ -131,11 +132,18 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
           const forecastDate = new Date(hourData.time);
           minutesUntil = Math.round((forecastDate.getTime() - currentTime.getTime()) / (1000 * 60));
         } else {
-          const hourTime = parseInt(hourData.time.split(':')[0]);
-          const currentHour = currentTime.getHours();
-          const currentMin = currentTime.getMinutes();
-          minutesUntil = (hourTime * 60) - (currentHour * 60 + currentMin);
-          if (minutesUntil <= 0) minutesUntil += 24 * 60;
+          // Parse "YYYY-MM-DD HH:MM:SS" format
+          const parts = hourData.time.split(' ');
+          if (parts.length === 2) {
+            const forecastDate = new Date(hourData.time.replace(' ', 'T') + 'Z');
+            minutesUntil = Math.round((forecastDate.getTime() - currentTime.getTime()) / (1000 * 60));
+          } else {
+            const hourTime = parseInt(hourData.time.split(':')[0]);
+            const currentHour = currentTime.getHours();
+            const currentMin = currentTime.getMinutes();
+            minutesUntil = (hourTime * 60) - (currentHour * 60 + currentMin);
+            if (minutesUntil <= 0) minutesUntil += 24 * 60;
+          }
         }
         
         if (minutesUntil <= 0) continue;
@@ -162,7 +170,14 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
   // Calculate weather duration (time until change) - show as "Clear for 2h 15m"
   const getWeatherDuration = (): string => {
     const nextCondition = getNextDifferentCondition();
-    if (!nextCondition || nextCondition.timeToChange <= 0) return '';
+    if (!nextCondition || nextCondition.timeToChange <= 0) {
+      // No change expected - show condition name without duration
+      if (weather?.condition) {
+        const conditionName = weather.condition.charAt(0).toUpperCase() + weather.condition.slice(1).toLowerCase();
+        return `${conditionName} all day`;
+      }
+      return '';
+    }
     
     const hrs = Math.floor(nextCondition.timeToChange / 60);
     const mins = Math.floor(nextCondition.timeToChange % 60);
@@ -178,6 +193,26 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
       return `${conditionName} for ${hrs}h`;
     }
     return `${conditionName} for ${mins}m`;
+  };
+
+  // Get upcoming weather change info for row 3
+  const getUpcomingWeatherText = (): string => {
+    const nextCondition = getNextDifferentCondition();
+    
+    if (nextCondition) {
+      // Capitalize next condition
+      const nextName = nextCondition.nextCondition.charAt(0).toUpperCase() + 
+                       nextCondition.nextCondition.slice(1).toLowerCase();
+      return `${nextName} at ${nextCondition.forecastTime}`;
+    }
+    
+    // Fallback to rain chance
+    const chanceOfRain = weather?.chanceOfRain || 0;
+    if (chanceOfRain > 0) {
+      return `${chanceOfRain}% chance of rain`;
+    }
+    
+    return 'No change expected';
   };
 
   // Calculate sunrise/sunset countdown with expected time
@@ -252,31 +287,6 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
     return Math.round(temp);
   };
 
-  // Get chance of rain text with forecast info
-  const getChanceOfWeather = (): string => {
-    if (!weather) return '';
-    
-    // Check if there's an upcoming weather change
-    const nextCondition = getNextDifferentCondition();
-    
-    if (nextCondition) {
-      const nextNormalized = normalizeCondition(nextCondition.nextCondition);
-      if (nextNormalized === 'rain' || nextNormalized === 'storm') {
-        return `Rain at ${nextCondition.forecastTime}`;
-      }
-      return `${nextCondition.nextCondition} at ${nextCondition.forecastTime}`;
-    }
-    
-    // Fallback to rain chance
-    const chanceOfRain = weather.chanceOfRain || 0;
-    if (chanceOfRain > 0) {
-      return `${chanceOfRain}% chance of rain`;
-    }
-    
-    // Show stable weather message
-    return `${weather.condition} all day`;
-  };
-
   const handleDayDateClick = () => {
     if (showSunCountdown) {
       if (sunCountdownTimeout) clearTimeout(sunCountdownTimeout);
@@ -315,14 +325,34 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
   const sunData = getSunCountdown();
   const nextCondition = getNextDifferentCondition();
   const weatherDurationText = getWeatherDuration();
-  const chanceOfWeatherText = getChanceOfWeather();
+  const upcomingWeatherText = getUpcomingWeatherText();
+
+  // Get the current icon based on state
+  const getCurrentIcon = () => {
+    if (showSunCountdown) {
+      return sunData.icon;
+    }
+    return isDay ? (
+      <Sun className="w-5 h-5 text-white animate-pulse-soft" />
+    ) : (
+      <Moon className="w-5 h-5 text-white animate-pulse-soft" />
+    );
+  };
+
+  // Get the weather icon based on state (for right side)
+  const getDisplayWeatherIcon = () => {
+    if (showForecast && nextCondition) {
+      return getWeatherIcon(nextCondition.nextCondition, isDay);
+    }
+    return weather ? getWeatherIcon(weather.condition, isDay) : null;
+  };
 
   return (
     <div className="glass rounded-2xl p-4 mx-4 mb-4">
       <div className="flex items-start justify-between">
         {/* Time Section - Left (3 rows) */}
         <div className="space-y-0.5">
-          {/* Row 1: Live Time + Icon on same row (clickable for format toggle) */}
+          {/* Row 1: Live Time + Icon (icon AFTER time) */}
           <button 
             onClick={toggleTimeFormat}
             className="flex items-center gap-2 hover:bg-white/5 rounded px-1 -mx-1 transition-colors"
@@ -330,21 +360,9 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
             <p className="text-xl font-bold text-white">
               {formatTime(currentTime)}
             </p>
-            <div className={cn(
-              "transition-all duration-300",
-              showSunCountdown && "opacity-0"
-            )}>
-              {isDay ? (
-                <Sun className="w-5 h-5 text-white animate-pulse-soft" />
-              ) : (
-                <Moon className="w-5 h-5 text-white animate-pulse-soft" />
-              )}
+            <div className="text-white">
+              {getCurrentIcon()}
             </div>
-            {showSunCountdown && (
-              <div className="absolute animate-fade-in text-white">
-                {sunData.icon}
-              </div>
-            )}
           </button>
           
           {/* Row 2 & 3: Day and Date - clickable for sun countdown */}
@@ -386,28 +404,20 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
         {/* Weather Section - Right (3 rows) */}
         {weather && (
           <div className="text-right space-y-0.5">
-            {/* Row 1: Weather Icon + Temperature (clickable for unit toggle) */}
+            {/* Row 1: Weather Icon (BEFORE temp) + Temperature */}
             <button
               onClick={toggleTemperatureUnit}
               className="flex items-center justify-end gap-2 ml-auto hover:bg-white/5 rounded px-1 -mx-1 transition-colors"
             >
-              <div className={cn(
-                "text-white transition-all duration-300",
-                showForecast && "opacity-0"
-              )}>
-                {getWeatherIcon(weather.condition, isDay)}
+              <div className="text-white">
+                {getDisplayWeatherIcon()}
               </div>
-              {showForecast && nextCondition && (
-                <div className="absolute animate-fade-in text-white" style={{ left: '1rem' }}>
-                  {getWeatherIcon(nextCondition.nextCondition, isDay)}
-                </div>
-              )}
               <p className="text-xl font-bold text-white">
                 {convertTemperature(weather.temp, settings.temperatureUnit)}°{settings.temperatureUnit}
               </p>
             </button>
             
-            {/* Row 2 & 3: Weather condition + duration + chance */}
+            {/* Row 2 & 3: Weather condition + duration + upcoming change */}
             <div className="relative">
               <button
                 onClick={handleWeatherClick}
@@ -416,13 +426,13 @@ const WeatherBar = ({ weather, currentTime }: Props) => {
                   showForecast && "blur-sm opacity-0"
                 )}
               >
-                {/* Row 2: Current weather + duration (larger font) */}
+                {/* Row 2: Current weather + duration (e.g., "Clouds for 2h 15m") */}
                 <p className="text-sm font-bold text-white capitalize">
-                  {weatherDurationText || weather.condition}
+                  {weatherDurationText}
                 </p>
-                {/* Row 3: Chance of weather */}
+                {/* Row 3: Upcoming weather change (e.g., "Rain at 3:00 PM") */}
                 <p className="text-xs font-medium text-white/70">
-                  {chanceOfWeatherText}
+                  {upcomingWeatherText}
                 </p>
               </button>
 

@@ -129,32 +129,13 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     // Apply font globally to ALL elements including portals/modals
     const fontFamily = `'${settings.fontFamily}', sans-serif`;
     
-    // Set CSS custom properties
+    // Set CSS custom properties with !important
     document.documentElement.style.setProperty('--font-body', fontFamily);
     document.documentElement.style.setProperty('--font-display', fontFamily);
     
     // Apply to root elements for global coverage
     document.documentElement.style.fontFamily = fontFamily;
     document.body.style.fontFamily = fontFamily;
-    
-    // Inject style for portals (they may not inherit from body)
-    let portalStyle = document.getElementById('portal-font-style');
-    if (!portalStyle) {
-      portalStyle = document.createElement('style');
-      portalStyle.id = 'portal-font-style';
-      document.head.appendChild(portalStyle);
-    }
-    portalStyle.textContent = `
-      [data-radix-portal], [data-radix-portal] *, 
-      [role="dialog"], [role="dialog"] *,
-      [role="menu"], [role="menu"] *,
-      .modal-overlay, .modal-overlay * {
-        font-family: ${fontFamily} !important;
-      }
-    `;
-    
-    // Apply font size
-    document.documentElement.style.fontSize = `${settings.fontSize}px`;
     
     // Apply text case globally via CSS custom property
     let textTransform: string;
@@ -169,6 +150,79 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         textTransform = 'none';
     }
     document.documentElement.style.setProperty('--text-case', textTransform);
+    document.body.style.textTransform = textTransform;
+    
+    // Inject comprehensive global styles for fonts and text case
+    let globalStyle = document.getElementById('global-font-style');
+    if (!globalStyle) {
+      globalStyle = document.createElement('style');
+      globalStyle.id = 'global-font-style';
+      document.head.appendChild(globalStyle);
+    }
+    
+    // COMPREHENSIVE font and text-transform override for ALL elements
+    globalStyle.textContent = `
+      /* Root level font application */
+      html, body {
+        font-family: ${fontFamily} !important;
+        text-transform: ${textTransform} !important;
+      }
+      
+      /* Universal selector for all elements */
+      *, *::before, *::after {
+        font-family: ${fontFamily} !important;
+        text-transform: ${textTransform} !important;
+      }
+      
+      /* Radix UI portals (dialogs, popovers, dropdowns, etc.) */
+      [data-radix-portal],
+      [data-radix-portal] *,
+      [data-radix-popper-content-wrapper],
+      [data-radix-popper-content-wrapper] * {
+        font-family: ${fontFamily} !important;
+        text-transform: ${textTransform} !important;
+      }
+      
+      /* Dialog and menu elements */
+      [role="dialog"],
+      [role="dialog"] *,
+      [role="menu"],
+      [role="menu"] *,
+      [role="listbox"],
+      [role="listbox"] *,
+      [role="tooltip"],
+      [role="tooltip"] * {
+        font-family: ${fontFamily} !important;
+        text-transform: ${textTransform} !important;
+      }
+      
+      /* Modal overlays and sheets */
+      .modal-overlay,
+      .modal-overlay *,
+      [data-state="open"],
+      [data-state="open"] * {
+        font-family: ${fontFamily} !important;
+        text-transform: ${textTransform} !important;
+      }
+      
+      /* Flight cards, weather bar, headers */
+      .glass, .glass *,
+      .glass-blur-strong, .glass-blur-strong *,
+      header, header *,
+      main, main * {
+        font-family: ${fontFamily} !important;
+        text-transform: ${textTransform} !important;
+      }
+      
+      /* Buttons, inputs, labels */
+      button, input, select, textarea, label, span, p, h1, h2, h3, h4, h5, h6, div, a {
+        font-family: ${fontFamily} !important;
+        text-transform: ${textTransform} !important;
+      }
+    `;
+    
+    // Apply font size
+    document.documentElement.style.fontSize = `${settings.fontSize}px`;
     
     // Load Google Font dynamically with all weights
     const fontLink = document.getElementById('dynamic-font') as HTMLLinkElement;

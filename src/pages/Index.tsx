@@ -8,6 +8,7 @@ import SettingsModal from '@/components/SettingsModal';
 import ExportModal from '@/components/ExportModal';
 import NotificationsModal from '@/components/NotificationsModal';
 import AdminDashboard from '@/components/AdminDashboard';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { Flight } from '@/components/FlightCard';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,6 +24,13 @@ interface WeatherData {
   windDirection?: number;
   precipitation?: number;
   isRaining?: boolean;
+  hourlyForecast?: Array<{
+    time: string;
+    condition: string;
+    temp: number;
+    chanceOfRain: number;
+  }>;
+  chanceOfRain?: number;
 }
 
 const Index = () => {
@@ -31,6 +39,7 @@ const Index = () => {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [flights, setFlights] = useState<Flight[]>([]);
   const [notificationIds, setNotificationIds] = useState<Set<string>>(new Set());
+  const [notificationCount, setNotificationCount] = useState(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -130,7 +139,7 @@ const Index = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch weather from Yr.no edge function
+  // Fetch weather from edge function with hourly forecast
   useEffect(() => {
     const fetchWeather = async () => {
       try {
@@ -150,6 +159,8 @@ const Index = () => {
             windDirection: data.current.windDirection,
             precipitation: data.current.precipitation,
             isRaining: data.current.isRaining,
+            hourlyForecast: data.current.hourlyForecast,
+            chanceOfRain: data.current.chanceOfRain,
           });
         }
       } catch (error) {
@@ -296,6 +307,7 @@ const Index = () => {
 
     if (data) {
       setNotificationIds(new Set(data.map(s => s.flight_id)));
+      setNotificationCount(data.length);
     }
   };
 
@@ -433,12 +445,13 @@ const Index = () => {
           onForceRefresh={handleForceRefresh}
           onExportSchedule={() => setIsExportOpen(true)}
           onOpenSettings={() => setIsSettingsOpen(true)}
-          onOpenNotifications={() => setIsNotificationsOpen(true)}
+          onOpenNotifications={() => { setIsNotificationsOpen(true); setNotificationCount(0); }}
           onOpenAdmin={() => setIsAdminOpen(true)}
           isLoggedIn={!!user}
           onAuthAction={handleAuthAction}
           onInstallPWA={handleInstallPWA}
           userEmail={user?.email}
+          notificationCount={notificationCount}
         />
 
         <main className="pb-8">
@@ -446,8 +459,9 @@ const Index = () => {
 
           <div className="px-4 space-y-4">
             {isLoading ? (
-              <div className="glass rounded-xl p-3 text-center text-sm text-muted-foreground animate-pulse-soft">
-                Loading flight data...
+              <div className="glass rounded-xl p-6 flex flex-col items-center justify-center">
+                <LoadingSpinner size="lg" />
+                <p className="mt-3 text-sm text-muted-foreground">Loading flight data...</p>
               </div>
             ) : flights.length === 0 ? (
               <div className="glass rounded-xl p-3 text-center text-sm text-muted-foreground">
