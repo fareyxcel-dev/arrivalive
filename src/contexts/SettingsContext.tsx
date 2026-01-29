@@ -1,14 +1,11 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-// Extended fonts list - 200+ fonts for variety (like the GIF shows)
+// Extended fonts list - 200+ fonts for variety
 const AVAILABLE_FONTS = [
-  // Display & Impact (from GIF)
   'Poppins', 'Teko', 'Sulphur Point', 'Stick No Bills', 'Space Mono', 'Notable',
   'Archive', 'Bebas Neue', 'Oswald', 'Anton', 'Permanent Marker', 'Russo One',
   'Black Ops One', 'Bangers', 'Bungee', 'Audiowide', 'Orbitron', 'Electrolize',
-  
-  // Sans-Serif Modern
   'Inter', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Source Sans Pro',
   'Nunito', 'Ubuntu', 'Rubik', 'Work Sans', 'Fira Sans', 'Quicksand',
   'Karla', 'DM Sans', 'Manrope', 'Outfit', 'Sora', 'Plus Jakarta Sans',
@@ -17,50 +14,33 @@ const AVAILABLE_FONTS = [
   'Raleway', 'Nunito Sans', 'Hind', 'Asap', 'Catamaran', 'Heebo',
   'Overpass', 'Jost', 'Commissioner', 'Epilogue', 'Syne', 'Chivo',
   'Josefin Sans', 'Signika', 'Prompt', 'Sarabun', 'Mulish', 'Cairo',
-  
-  // Futuristic & Tech
   'Rajdhani', 'Chakra Petch', 'Kanit', 'Quantico', 'Play', 'Geo',
   'Iceland', 'Iceberg', 'Revalia', 'Odibee Sans', 'Big Shoulders Stencil',
   'Agdasima', 'Anta', 'Michroma', 'Oxanium', 'Saira', 'Sarpanch',
   'Share Tech', 'Share Tech Mono', 'Syncopate', 'Tomorrow', 'Turret Road',
-  
-  // Condensed & Narrow
   'PT Sans Narrow', 'Sofia Sans Extra Condensed', 'Yanone Kaffeesatz',
   'Bai Jamjuree', 'Smooch Sans', 'Tulpen One', 'Big Shoulders Display',
   'Saira Condensed', 'Barlow Condensed', 'Roboto Condensed', 'Fjalla One',
-  'Pathway Gothic One', 'Encode Sans Condensed', 'Oswald',
-  
-  // Serif & Elegant
+  'Pathway Gothic One', 'Encode Sans Condensed',
   'Playfair Display', 'Merriweather', 'Instrument Serif', 'Bona Nova SC',
   'Lora', 'Crimson Text', 'Libre Baskerville', 'EB Garamond',
   'Cormorant Garamond', 'Spectral', 'Source Serif Pro', 'Noto Serif',
   'Bitter', 'Domine', 'Vollkorn', 'Cardo', 'Frank Ruhl Libre',
   'Old Standard TT', 'Sorts Mill Goudy', 'Gilda Display', 'Rozha One',
-  
-  // Script & Handwriting
   'Pacifico', 'Dancing Script', 'Great Vibes', 'Allura', 'Sacramento',
   'Satisfy', 'Tangerine', 'Alex Brush', 'Petit Formal Script', 'Pinyon Script',
   'Indie Flower', 'Caveat', 'Shadows Into Light', 'Amatic SC', 'Kaushan Script',
   'Courgette', 'Cookie', 'Yellowtail', 'Marck Script', 'Merienda',
-  
-  // Artistic & Unique
   'Kelly Slab', 'Offside', 'Federant', 'Bahianita', 'Karantina',
   'Jaini Purva', 'Trochut', 'Sansita Swashed', 'Monoton', 'Abril Fatface',
   'Lobster', 'Lobster Two', 'Righteous', 'Philosopher', 'Comfortaa',
   'Fredoka', 'Baloo 2', 'Chewy', 'Concert One', 'Luckiest Guy',
   'Rampart One', 'Silkscreen', 'Special Elite', 'VT323', 'Press Start 2P',
   'Creepster', 'Nosifer', 'Metal Mania', 'Butcherman', 'Eater',
-  
-  // Monospace
   'Inconsolata', 'Fira Code', 'JetBrains Mono', 'Source Code Pro',
-  'IBM Plex Mono', 'Space Mono', 'Roboto Mono', 'Ubuntu Mono',
+  'IBM Plex Mono', 'Roboto Mono', 'Ubuntu Mono',
   'Courier Prime', 'Anonymous Pro', 'Cutive Mono', 'Major Mono Display',
-  
-  // Geometric
-  'Comfortaa', 'Varela Round', 'Quicksand', 'Nunito', 'Fredoka',
-  'Baloo 2', 'Bubblegum Sans', 'Cherry Cream Soda', 'Chewy', 'Coiny',
-  
-  // International Display
+  'Varela Round', 'Bubblegum Sans', 'Cherry Cream Soda', 'Coiny',
   'ZCOOL QingKe HuangYou', 'WDXL Lubrifont TC', 'Noto Sans JP',
   'Noto Sans KR', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans Arabic',
 ];
@@ -71,6 +51,8 @@ interface SettingsState {
   textCase: 'default' | 'uppercase' | 'lowercase';
   timeFormat: '12h' | '24h';
   temperatureUnit: 'C' | 'F';
+  blurLevel: number;
+  glassOpacity: number;
   notifications: {
     sms: boolean;
     email: boolean;
@@ -85,6 +67,8 @@ interface SettingsContextType {
   setFontFamily: (font: string) => void;
   setFontSize: (size: number) => void;
   setTextCase: (textCase: 'default' | 'uppercase' | 'lowercase') => void;
+  setBlurLevel: (level: number) => void;
+  setGlassOpacity: (opacity: number) => void;
   toggleTimeFormat: () => void;
   toggleTemperatureUnit: () => void;
   setNotification: (key: keyof SettingsState['notifications'], value: boolean) => void;
@@ -99,6 +83,8 @@ const defaultSettings: SettingsState = {
   textCase: 'default',
   timeFormat: '24h',
   temperatureUnit: 'C',
+  blurLevel: 20,
+  glassOpacity: 0.1,
   notifications: {
     sms: false,
     email: false,
@@ -126,18 +112,15 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     localStorage.setItem('arriva-settings', JSON.stringify(settings));
     
-    // Apply font globally to ALL elements including portals/modals
+    // Apply font globally
     const fontFamily = `'${settings.fontFamily}', sans-serif`;
     
-    // Set CSS custom properties with !important
     document.documentElement.style.setProperty('--font-body', fontFamily);
     document.documentElement.style.setProperty('--font-display', fontFamily);
-    
-    // Apply to root elements for global coverage
     document.documentElement.style.fontFamily = fontFamily;
     document.body.style.fontFamily = fontFamily;
     
-    // Apply text case globally via CSS custom property
+    // Apply text case
     let textTransform: string;
     switch (settings.textCase) {
       case 'uppercase':
@@ -152,7 +135,11 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     document.documentElement.style.setProperty('--text-case', textTransform);
     document.body.style.textTransform = textTransform;
     
-    // Inject comprehensive global styles for fonts and text case
+    // Apply blur and glass settings
+    document.documentElement.style.setProperty('--glass-blur', `${settings.blurLevel}px`);
+    document.documentElement.style.setProperty('--glass-opacity', `${settings.glassOpacity}`);
+    
+    // Inject comprehensive global styles
     let globalStyle = document.getElementById('global-font-style');
     if (!globalStyle) {
       globalStyle = document.createElement('style');
@@ -160,71 +147,60 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       document.head.appendChild(globalStyle);
     }
     
-    // COMPREHENSIVE font and text-transform override for ALL elements
     globalStyle.textContent = `
-      /* Root level font application */
       html, body {
         font-family: ${fontFamily} !important;
         text-transform: ${textTransform} !important;
       }
       
-      /* Universal selector for all elements */
       *, *::before, *::after {
-        font-family: ${fontFamily} !important;
-        text-transform: ${textTransform} !important;
+        font-family: inherit !important;
       }
       
-      /* Radix UI portals (dialogs, popovers, dropdowns, etc.) */
       [data-radix-portal],
       [data-radix-portal] *,
       [data-radix-popper-content-wrapper],
-      [data-radix-popper-content-wrapper] * {
-        font-family: ${fontFamily} !important;
-        text-transform: ${textTransform} !important;
-      }
-      
-      /* Dialog and menu elements */
-      [role="dialog"],
-      [role="dialog"] *,
-      [role="menu"],
-      [role="menu"] *,
-      [role="listbox"],
-      [role="listbox"] *,
-      [role="tooltip"],
-      [role="tooltip"] * {
-        font-family: ${fontFamily} !important;
-        text-transform: ${textTransform} !important;
-      }
-      
-      /* Modal overlays and sheets */
-      .modal-overlay,
-      .modal-overlay *,
-      [data-state="open"],
-      [data-state="open"] * {
-        font-family: ${fontFamily} !important;
-        text-transform: ${textTransform} !important;
-      }
-      
-      /* Flight cards, weather bar, headers */
+      [data-radix-popper-content-wrapper] *,
+      [role="dialog"], [role="dialog"] *,
+      [role="menu"], [role="menu"] *,
+      [role="listbox"], [role="listbox"] *,
+      [role="tooltip"], [role="tooltip"] *,
+      .modal-overlay, .modal-overlay *,
+      [data-state="open"], [data-state="open"] *,
       .glass, .glass *,
       .glass-blur-strong, .glass-blur-strong *,
       header, header *,
-      main, main * {
+      main, main *,
+      button, input, select, textarea, label, span, p, h1, h2, h3, h4, h5, h6, div, a {
         font-family: ${fontFamily} !important;
         text-transform: ${textTransform} !important;
       }
       
-      /* Buttons, inputs, labels */
-      button, input, select, textarea, label, span, p, h1, h2, h3, h4, h5, h6, div, a {
-        font-family: ${fontFamily} !important;
-        text-transform: ${textTransform} !important;
+      .glass {
+        background: rgba(255, 255, 255, ${settings.glassOpacity}) !important;
+        backdrop-filter: blur(${settings.blurLevel}px) !important;
+        -webkit-backdrop-filter: blur(${settings.blurLevel}px) !important;
+      }
+      
+      .glass-blur-strong {
+        background: rgba(0, 0, 0, ${settings.glassOpacity + 0.2}) !important;
+        backdrop-filter: blur(${settings.blurLevel + 10}px) !important;
+        -webkit-backdrop-filter: blur(${settings.blurLevel + 10}px) !important;
+      }
+      
+      .terminal-group {
+        background: rgba(255, 255, 255, ${settings.glassOpacity * 0.5}) !important;
+        backdrop-filter: blur(${settings.blurLevel}px) !important;
+        -webkit-backdrop-filter: blur(${settings.blurLevel}px) !important;
+        border-radius: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
       }
     `;
     
     // Apply font size
     document.documentElement.style.fontSize = `${settings.fontSize}px`;
     
-    // Load Google Font dynamically with all weights
+    // Load Google Font dynamically
     const fontLink = document.getElementById('dynamic-font') as HTMLLinkElement;
     const fontUrl = `https://fonts.googleapis.com/css2?family=${settings.fontFamily.replace(/ /g, '+')}:wght@300;400;500;600;700;800&display=swap`;
     
@@ -249,6 +225,14 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
   const setTextCase = (textCase: 'default' | 'uppercase' | 'lowercase') => {
     setSettings(prev => ({ ...prev, textCase }));
+  };
+
+  const setBlurLevel = (level: number) => {
+    setSettings(prev => ({ ...prev, blurLevel: level }));
+  };
+
+  const setGlassOpacity = (opacity: number) => {
+    setSettings(prev => ({ ...prev, glassOpacity: opacity }));
   };
 
   const toggleTimeFormat = () => {
@@ -309,6 +293,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         setFontFamily,
         setFontSize,
         setTextCase,
+        setBlurLevel,
+        setGlassOpacity,
         toggleTimeFormat,
         toggleTemperatureUnit,
         setNotification,

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { X, User, Palette, Bell, Shield, Camera, Loader2, Upload } from 'lucide-react';
+import { X, User, Palette, Bell, Shield, Camera, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import FontPicker from './FontPicker';
+import { Slider } from './ui/slider';
 
 interface Props {
   isOpen: boolean;
@@ -20,6 +21,8 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     setFontFamily, 
     setFontSize, 
     setTextCase,
+    setBlurLevel,
+    setGlassOpacity,
     setNotification,
     updateProfile,
     updatePassword,
@@ -204,7 +207,8 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
           )}
 
           {activeTab === 'appearance' && (
-            <div className="space-y-4 animate-fade-in">
+            <div className="space-y-5 animate-fade-in">
+              {/* Font Family */}
               <div>
                 <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">Font Family</label>
                 <FontPicker
@@ -214,19 +218,23 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                   onUploadClick={handleFontUpload}
                 />
               </div>
+              
+              {/* Font Size */}
               <div>
-                <label className="text-xs text-muted-foreground uppercase tracking-wide">
+                <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">
                   Font Size: {settings.fontSize}px
                 </label>
-                <input
-                  type="range"
-                  min="12"
-                  max="24"
-                  value={settings.fontSize}
-                  onChange={e => setFontSize(Number(e.target.value))}
-                  className="w-full mt-2"
+                <Slider
+                  value={[settings.fontSize]}
+                  onValueChange={([val]) => setFontSize(val)}
+                  min={12}
+                  max={24}
+                  step={1}
+                  className="w-full"
                 />
               </div>
+              
+              {/* Text Case */}
               <div>
                 <label className="text-xs text-muted-foreground uppercase tracking-wide">Text Case</label>
                 <div className="flex gap-2 mt-2">
@@ -244,6 +252,37 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                   ))}
                 </div>
               </div>
+
+              {/* Blur Level */}
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">
+                  Glass Blur: {settings.blurLevel}px
+                </label>
+                <Slider
+                  value={[settings.blurLevel]}
+                  onValueChange={([val]) => setBlurLevel(val)}
+                  min={0}
+                  max={40}
+                  step={2}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Glass Opacity */}
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">
+                  Glass Opacity: {Math.round(settings.glassOpacity * 100)}%
+                </label>
+                <Slider
+                  value={[settings.glassOpacity * 100]}
+                  onValueChange={([val]) => setGlassOpacity(val / 100)}
+                  min={0}
+                  max={50}
+                  step={5}
+                  className="w-full"
+                />
+              </div>
+
               <div>
                 <label className="text-xs text-muted-foreground uppercase tracking-wide">Time Format</label>
                 <p className="text-xs text-muted-foreground mt-2">Click the clock to toggle 12/24 hour format</p>

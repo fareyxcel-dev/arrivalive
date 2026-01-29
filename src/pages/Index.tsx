@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AnimatedBackground from '@/components/AnimatedBackground';
-import Header from '@/components/Header';
-import WeatherBar from '@/components/WeatherBar';
+import SkyIframeBackground from '@/components/SkyIframeBackground';
+import NewHeader from '@/components/NewHeader';
 import TerminalGroup from '@/components/TerminalGroup';
 import SettingsModal from '@/components/SettingsModal';
 import ExportModal from '@/components/ExportModal';
@@ -14,7 +13,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 
-const POLLING_INTERVAL = 30000; // 30 seconds
+const POLLING_INTERVAL = 30000;
 
 interface WeatherData {
   temp: number;
@@ -49,7 +48,25 @@ const Index = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Register service worker and background syncs
+  // Request notification permission on first visit for non-PWA
+  useEffect(() => {
+    const hasAskedPermission = localStorage.getItem('arriva-notification-asked');
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+    
+    if (!hasAskedPermission && !isPWA && 'Notification' in window) {
+      setTimeout(async () => {
+        if (Notification.permission === 'default') {
+          const result = await Notification.requestPermission();
+          if (result === 'granted') {
+            toast.success('Notifications enabled! You\'ll be notified of flight updates.');
+          }
+        }
+        localStorage.setItem('arriva-notification-asked', 'true');
+      }, 3000);
+    }
+  }, []);
+
+  // Register service worker
   useEffect(() => {
     const registerServiceWorker = async () => {
       if (!('serviceWorker' in navigator)) return;
@@ -58,29 +75,24 @@ const Index = () => {
         const registration = await navigator.serviceWorker.register('/sw.js');
         console.log('SW registered:', registration);
         
-        // Register background sync
         if ('sync' in registration) {
           await (registration as any).sync.register('sync-flights');
           await (registration as any).sync.register('sync-weather');
-          console.log('Background sync registered');
         }
         
-        // Register periodic sync if supported
         if ('periodicSync' in registration) {
           try {
             await (registration as any).periodicSync.register('update-flights', {
-              minInterval: 30 * 1000 // 30 seconds
+              minInterval: 30 * 1000
             });
             await (registration as any).periodicSync.register('update-weather', {
-              minInterval: 5 * 60 * 1000 // 5 minutes
+              minInterval: 5 * 60 * 1000
             });
-            console.log('Periodic sync registered');
           } catch (e) {
             console.log('Periodic sync not available:', e);
           }
         }
         
-        // Listen for messages from service worker
         navigator.serviceWorker.addEventListener('message', (event) => {
           if (event.data?.type === 'FLIGHTS_SYNCED') {
             fetchFlights();
@@ -93,11 +105,9 @@ const Index = () => {
     
     registerServiceWorker();
     
-    // Sync on visibility change (app focus)
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         fetchFlights();
-        // Trigger service worker sync
         if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
           navigator.serviceWorker.controller.postMessage({ type: 'SYNC_NOW' });
         }
@@ -139,7 +149,7 @@ const Index = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch weather from edge function with hourly forecast
+  // Fetch weather with hourly forecast
   useEffect(() => {
     const fetchWeather = async () => {
       try {
@@ -168,7 +178,7 @@ const Index = () => {
       }
     };
     fetchWeather();
-    const interval = setInterval(fetchWeather, 600000); // 10 minutes
+    const interval = setInterval(fetchWeather, 600000);
     return () => clearInterval(interval);
   }, []);
 
@@ -178,14 +188,12 @@ const Index = () => {
     }
     
     try {
-      // First try to get from edge function (which scrapes and updates DB)
       const { data, error } = await supabase.functions.invoke('scrape-flights');
       
       if (error) {
         console.error('Scrape error:', error);
       }
 
-      // Fetch from database - today and upcoming days
       const today = new Date();
       const todayStr = today.toISOString().split('T')[0];
       const weekAhead = new Date(today);
@@ -237,11 +245,10 @@ const Index = () => {
     }
   }, [isLoading]);
 
-  // Fetch flights and subscribe to realtime + 30s polling
+  // Fetch flights and subscribe to realtime
   useEffect(() => {
     fetchFlights();
 
-    // 30 second polling
     const pollingInterval = setInterval(() => {
       fetchFlights();
     }, POLLING_INTERVAL);
@@ -291,7 +298,6 @@ const Index = () => {
     const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      console.log('PWA install prompt captured');
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
@@ -320,7 +326,6 @@ const Index = () => {
       }
       setDeferredPrompt(null);
     } else {
-      // Show instructions for manual install
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
       const isAndroid = /Android/.test(navigator.userAgent);
       
@@ -345,7 +350,6 @@ const Index = () => {
       return;
     }
 
-    // Request push notification permission
     if ('Notification' in window && Notification.permission === 'default') {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
@@ -371,6 +375,7 @@ const Index = () => {
           newSet.delete(flightId);
           return newSet;
         });
+        setNotificationCount(prev => Math.max(0, prev - 1));
         toast.info('Notifications disabled');
       }
     } else {
@@ -386,6 +391,7 @@ const Index = () => {
 
       if (!error) {
         setNotificationIds(prev => new Set(prev).add(flightId));
+        setNotificationCount(prev => prev + 1);
         toast.success('You\'ll be notified when this flight lands or is delayed');
       }
     }
@@ -395,32 +401,26 @@ const Index = () => {
     if (user) {
       await supabase.auth.signOut();
       setNotificationIds(new Set());
+      setNotificationCount(0);
       toast.success('Signed out');
     } else {
       navigate('/auth');
     }
   };
 
-  // Filter flights: remove flights scheduled 1+ hours ago OR landed 1+ hour ago
+  // Filter flights
   const filteredFlights = flights.filter(flight => {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
     
-    // Hide all past days' flights completely
     if (flight.date < todayStr) return false;
-    
-    // Keep all future days' flights
     if (flight.date > todayStr) return true;
     
-    // For today's flights, apply 1-hour cutoff
-    const cutoffTime = new Date(now.getTime() - 60 * 60 * 1000); // 1 hour ago
-    
-    // Parse scheduled time
+    const cutoffTime = new Date(now.getTime() - 60 * 60 * 1000);
     const [schHours, schMinutes] = flight.scheduledTime.split(':').map(Number);
     const scheduledDateTime = new Date(now);
     scheduledDateTime.setHours(schHours, schMinutes, 0, 0);
     
-    // For delayed flights, use estimated time for filtering
     if (flight.status.toUpperCase() === 'DELAYED' && flight.estimatedTime) {
       const [estHours, estMinutes] = flight.estimatedTime.split(':').map(Number);
       const estimatedDateTime = new Date(now);
@@ -428,7 +428,6 @@ const Index = () => {
       return estimatedDateTime >= cutoffTime;
     }
     
-    // For landed/cancelled flights, hide after 1 hour from scheduled time
     return scheduledDateTime >= cutoffTime;
   });
 
@@ -438,10 +437,13 @@ const Index = () => {
 
   return (
     <div className="relative min-h-screen">
-      <AnimatedBackground weather={weather} />
+      {/* Full-screen iframe background */}
+      <div className="fixed inset-0 z-0">
+        <SkyIframeBackground weatherData={null} />
+      </div>
       
       <div className="relative z-10">
-        <Header
+        <NewHeader
           onForceRefresh={handleForceRefresh}
           onExportSchedule={() => setIsExportOpen(true)}
           onOpenSettings={() => setIsSettingsOpen(true)}
@@ -452,11 +454,12 @@ const Index = () => {
           onInstallPWA={handleInstallPWA}
           userEmail={user?.email}
           notificationCount={notificationCount}
+          weather={weather}
+          currentTime={currentTime}
         />
 
-        <main className="pb-8">
-          <WeatherBar weather={weather} currentTime={currentTime} />
-
+        {/* Main content with padding for fixed header */}
+        <main className="pt-28 pb-8">
           <div className="px-4 space-y-4">
             {isLoading ? (
               <div className="glass rounded-xl p-6 flex flex-col items-center justify-center">
@@ -499,10 +502,20 @@ const Index = () => {
         </main>
       </div>
 
+      {/* Modals */}
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-      <ExportModal isOpen={isExportOpen} onClose={() => setIsExportOpen(false)} />
-      <NotificationsModal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
-      <AdminDashboard isOpen={isAdminOpen} onClose={() => setIsAdminOpen(false)} />
+      <ExportModal 
+        isOpen={isExportOpen} 
+        onClose={() => setIsExportOpen(false)} 
+      />
+      <NotificationsModal 
+        isOpen={isNotificationsOpen} 
+        onClose={() => setIsNotificationsOpen(false)} 
+      />
+      <AdminDashboard
+        isOpen={isAdminOpen}
+        onClose={() => setIsAdminOpen(false)}
+      />
     </div>
   );
 };
