@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import AnimatedBackground from '@/components/AnimatedBackground';
+import SkyIframeBackground from '@/components/SkyIframeBackground';
 import { Mail, Lock, User, ArrowLeft } from 'lucide-react';
 
 const Auth = () => {
@@ -74,7 +74,6 @@ const Auth = () => {
           return;
         }
 
-        // Create profile
         if (data.user) {
           await supabase.from('profiles').insert({
             user_id: data.user.id,
@@ -93,8 +92,27 @@ const Auth = () => {
   };
 
   return (
-    <div className="relative min-h-screen">
-      <AnimatedBackground />
+    <div className="relative min-h-screen overflow-hidden">
+      {/* Iframe Background */}
+      <div className="fixed inset-0 z-0">
+        <SkyIframeBackground weatherData={null} />
+      </div>
+      
+      {/* CRT Scanline Animation */}
+      <div 
+        className="fixed inset-0 z-[1] pointer-events-none"
+        style={{
+          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)',
+          animation: 'crt-scanline 8s linear infinite',
+        }}
+      />
+      
+      <style>{`
+        @keyframes crt-scanline {
+          0% { transform: translateY(0); }
+          100% { transform: translateY(100vh); }
+        }
+      `}</style>
       
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
         <button
@@ -106,7 +124,6 @@ const Auth = () => {
         </button>
 
         <div className="w-full max-w-md">
-          {/* Logo with animation */}
           <div className="text-center mb-8">
             <img
               src="/splash-logo.png"
@@ -118,7 +135,6 @@ const Auth = () => {
             </p>
           </div>
 
-          {/* Form */}
           <div className="glass rounded-2xl p-6">
             <form onSubmit={handleAuth} className="space-y-4">
               {!isLogin && (

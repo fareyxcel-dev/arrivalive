@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, forwardRef } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -29,12 +29,10 @@ const groupFlightsByDate = (flights: Flight[]) => {
       const aLanded = a.status.toUpperCase() === 'LANDED' ? 0 : 1;
       const bLanded = b.status.toUpperCase() === 'LANDED' ? 0 : 1;
       
-      // Landed flights come first
       if (aLanded !== bLanded) {
         return aLanded - bLanded;
       }
       
-      // Then sort by scheduled time
       const timeA = a.scheduledTime.replace(':', '');
       const timeB = b.scheduledTime.replace(':', '');
       return parseInt(timeA) - parseInt(timeB);
@@ -44,16 +42,16 @@ const groupFlightsByDate = (flights: Flight[]) => {
   return grouped;
 };
 
-// Format date as "18 Dec - Wednesday"
+// Format date as "18 Dec, Wednesday"
 const formatDateDisplay = (dateStr: string) => {
   const date = new Date(dateStr + 'T00:00:00+05:00');
   const day = date.getDate();
   const month = date.toLocaleDateString('en-GB', { month: 'short' });
   const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
-  return `${day} ${month} - ${weekday}`;
+  return `${day} ${month}, ${weekday}`;
 };
 
-const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotification }: Props) => {
+const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, notificationIds, onToggleNotification }, ref) => {
   const { settings } = useSettings();
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
@@ -65,18 +63,19 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
   const terminalStats = useMemo(() => {
     let total = 0;
     let landed = 0;
+    let cancelled = 0;
     
     Object.values(groupedFlights).forEach(dateFlights => {
       total += dateFlights.length;
-      landed += dateFlights.filter(f => 
-        f.status.toUpperCase().includes('LANDED')
-      ).length;
+      landed += dateFlights.filter(f => f.status.toUpperCase().includes('LANDED')).length;
+      cancelled += dateFlights.filter(f => f.status.toUpperCase().includes('CANCELLED')).length;
     });
     
     return {
       total,
       landed,
-      remaining: total - landed
+      cancelled,
+      remaining: total - landed - cancelled
     };
   }, [groupedFlights]);
 
@@ -108,8 +107,15 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
   };
 
   return (
-    <div className="terminal-group" style={{ fontFamily: settings.fontFamily }}>
-      {/* Terminal Header - Clean design without icons */}
+    <div 
+      ref={ref}
+      className={cn(
+        "terminal-group transition-all duration-300",
+        !isExpanded && "bg-white/[0.02]"
+      )} 
+      style={{ fontFamily: settings.fontFamily }}
+    >
+      {/* Terminal Header */}
       <button
         onClick={handleToggleExpand}
         className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
@@ -130,9 +136,9 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
         />
       </button>
 
-      {/* Expanded Content - No animations */}
+      {/* Expanded Content */}
       {isExpanded && (
-        <div className="px-4 pb-4 space-y-3">
+        <div className="px-4 pb-4 space-y-2">
           {dates.length === 0 ? (
             <p className="text-center text-white/50 py-8">
               No flights scheduled
@@ -142,37 +148,46 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
               const dateFlights = groupedFlights[date];
               const totalCount = dateFlights.length;
               const dateLandedCount = dateFlights.filter(f => f.status.toUpperCase().includes('LANDED')).length;
-              const remainingCount = totalCount - dateLandedCount;
+              const dateCancelledCount = dateFlights.filter(f => f.status.toUpperCase().includes('CANCELLED')).length;
+              const remainingCount = totalCount - dateLandedCount - dateCancelledCount;
+              const isDateExpanded = expandedDates.has(date);
               
               return (
-                <div key={date} className="space-y-3">
-                  {/* Date Pill */}
+                <div key={date} className="space-y-2">
+                  {/* Date Pill - compact single row */}
                   <button
                     onClick={() => toggleDate(date)}
                     className={cn(
-                      "date-pill flex items-center justify-between w-full",
-                      expandedDates.has(date) && "active-selection"
+                      "w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all",
+                      isDateExpanded 
+                        ? "active-selection" 
+                        : "bg-white/[0.03] hover:bg-white/5"
                     )}
                   >
-                    <span className="font-medium text-white/90">
+                    <span className="font-medium text-white/90 text-sm">
                       {formatDateDisplay(date)}
                     </span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-white/50">
-                        {totalCount} flights · {dateLandedCount} landed · {remainingCount} remaining
-                      </span>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <span className="text-xs text-white/70">
+                          {totalCount} flights
+                        </span>
+                        <span className="text-xs text-white/50 ml-2">
+                          {dateLandedCount}L · {dateCancelledCount}C · {remainingCount}R
+                        </span>
+                      </div>
                       <ChevronDown
                         className={cn(
-                          "w-4 h-4 transition-transform duration-300",
-                          expandedDates.has(date) && "rotate-180"
+                          "w-4 h-4 text-white/50 transition-transform duration-300",
+                          isDateExpanded && "rotate-180"
                         )}
                       />
                     </div>
                   </button>
 
                   {/* Flights for this date */}
-                  {expandedDates.has(date) && (
-                    <div className="space-y-1.5 pl-2">
+                  {isDateExpanded && (
+                    <div className="space-y-1.5 pl-1">
                       {groupedFlights[date].map(flight => (
                         <FlightCard
                           key={flight.id}
@@ -191,6 +206,8 @@ const TerminalGroup = ({ terminal, flights, notificationIds, onToggleNotificatio
       )}
     </div>
   );
-};
+});
+
+TerminalGroup.displayName = 'TerminalGroup';
 
 export default TerminalGroup;
