@@ -1,352 +1,377 @@
 
-# Fix Plan: Progress Bar, Weather Bar, Icons & Global Fonts
+# Comprehensive UI Enhancement Plan
 
-## Issues Identified
-
-### 1. Progress Bar Time Text Wrapping to Two Lines
-**Problem**: In `FlightCard.tsx` (lines 575-612), the time text container has a fixed width of `w-12` (48px) which is insufficient for 12-hour format with AM/PM like "12:34 PM".
-
-**Current Code (line 576)**:
-```tsx
-className="font-bold text-[11px] flex-shrink-0 w-12 text-left"
-```
-
-**Solution**: Increase width from `w-12` to `w-16` (64px) and add `whitespace-nowrap` to ensure text stays on one line.
-
-### 2. Weather Bar Showing "No rain expected" Instead of Full Forecast
-**Problem**: In `WeatherBar.tsx` (lines 256-263), `getChanceOfWeather()` only shows basic rain chance and falls back to "No rain expected" when no rain is predicted. It doesn't utilize the hourly forecast data.
-
-**Current Code**:
-```tsx
-const getChanceOfWeather = (): string => {
-  if (!weather) return '';
-  const chanceOfRain = weather.chanceOfRain || 0;
-  if (chanceOfRain > 0) {
-    return `${chanceOfRain}% chance of rain`;
-  }
-  return 'No rain expected';
-};
-```
-
-**Solution**: 
-- Enhance the edge function `get-weather` to fetch OpenWeatherMap forecast API (hourly/5-day) for complete upcoming weather data
-- Update `getChanceOfWeather()` to show the next upcoming weather change from hourly forecast (e.g., "Rain at 3:00 PM" or "Clear until 6:00 PM")
-
-### 3. Weather Bar Icons on Wrong Side of Text
-**Problem**: Currently icons are positioned before text. The user wants them on the opposite side.
-
-**Current Layout (Row 1 - Left Side)**:
-```
-[☀️ Icon] [12:34 PM]
-```
-
-**Target Layout**:
-```
-[12:34 PM] [☀️ Icon]
-```
-
-**Current Layout (Row 1 - Right Side)**:
-```
-[28°C] [☁️ Icon]
-```
-
-**Target Layout**:
-```
-[☁️ Icon] [28°C]
-```
-
-**Solution**: Swap the order of elements in both left and right sections of WeatherBar.tsx
-
-### 4. Global Font Application Not Working Everywhere
-**Problem**: The `SettingsContext.tsx` applies font via CSS variables and `document.body.style.fontFamily`, but some elements (especially portals/modals) may not inherit correctly.
-
-**Current Implementation** (SettingsContext.tsx lines 135-152):
-- Sets `--font-body` and `--font-display` CSS variables
-- Applies to `document.documentElement.style.fontFamily` and `document.body.style.fontFamily`
-- Sets `document.documentElement.style.fontSize` for font size
-
-**Solution**:
-- Add `!important` to root font-family styles
-- Ensure all modal/portal elements use `inherit` or explicit `var(--font-body)`
-- Add a global CSS rule that forces font inheritance on all elements
+## Overview
+This plan addresses multiple UI/UX improvements including header text sizing, settings restructuring with new tabs, enhanced font picker, glass UI presets, collapsible flight cards, notification flow, and date pill styling.
 
 ---
 
-## Files to Modify
+## 1. Header Text Size Reduction
 
-### 1. `src/components/FlightCard.tsx`
-**Lines 575-584, 602-611**:
-- Change `w-12` to `w-16` for both scheduled and estimated time spans
-- Add `whitespace-nowrap` class
+### Current Issue
+Header texts (time, date, weather info) may wrap to second lines on smaller screens due to font sizes.
 
-### 2. `src/components/WeatherBar.tsx`
-**Lines 256-263** - Update `getChanceOfWeather()`:
-- Use `getNextDifferentCondition()` to show more meaningful forecast info
-- Show "Rain at X:XX" if rain is coming, or "Clear until X:XX" otherwise
-
-**Lines 311-333** - Left side Row 1 (swap icon and time):
-- Move `{formatTime(currentTime)}` before the icon
-- Icon should come after the time text
-
-**Lines 375-393** - Right side Row 1 (swap icon and temperature):
-- Move the weather icon before the temperature
-- Temperature should come after the icon
-
-### 3. `supabase/functions/get-weather/index.ts`
-**Add OpenWeatherMap Forecast API call**:
-- After getting current weather, fetch 5-day/3-hour forecast
-- Parse hourly forecast data
-- Include in response as `hourlyForecast` array
-
-### 4. `src/index.css`
-**Lines 75-93** - Add global font inheritance:
-```css
-*, *::before, *::after {
-  font-family: inherit !important;
-}
-
-[data-radix-portal], [data-radix-popper-content-wrapper] {
-  font-family: var(--font-body) !important;
-}
-```
-
-### 5. `src/contexts/SettingsContext.tsx`
-**Lines 135-152** - Enhance font application:
-- Add inline style injection for portals
-- Use `!important` in CSS variable setting
+### Solution
+**File: `src/components/NewHeader.tsx`**
+- Reduce base font sizes:
+  - Time: `text-xl` → `text-lg`, scrolled: `text-lg` → `text-base`
+  - Day/weather duration: `text-sm` → `text-xs`, scrolled: `text-xs` → `text-[10px]`
+  - Date/upcoming weather: `text-xs` → `text-[10px]`, scrolled: `text-[10px]` → `text-[9px]`
+- Add `whitespace-nowrap` to all text elements to prevent wrapping
+- Adjust chevron menu pill styling
 
 ---
 
-## Detailed Changes
+## 2. Date Pill Text Extension in Terminal Groups
 
-### Change 1: FlightCard Time Width (FlightCard.tsx)
+### Current Issue
+Status abbreviations use single letters: `{dateLandedCount}L · {dateCancelledCount}C · {remainingCount}R`
 
-**Line 576** - Scheduled time:
-```tsx
-// FROM:
-className="font-bold text-[11px] flex-shrink-0 w-12 text-left"
-// TO:
-className="font-bold text-[11px] flex-shrink-0 w-16 text-left whitespace-nowrap"
+### Solution
+**File: `src/components/TerminalGroup.tsx`**
+- Replace abbreviations with full words:
+  ```
+  "{totalCount} flights" → Row 1
+  "{dateLandedCount} Landed · {dateCancelledCount} Cancelled · {remainingCount} Remaining" → Row 2
+  ```
+- Reduce overall height by using `py-1.5` instead of `py-2`
+- Reduce border-radius from `rounded-lg` to `rounded-md`
+- Fix dark grey selection issue by using proper active state styling
+
+---
+
+## 3. Settings Modal Restructuring with New Tabs
+
+### Current Structure
+Tabs: Profile, Appearance, Notifications, Security
+
+### New Structure
+Tabs: **Profile, Texts, Style, Notifications, Security**
+
+**File: `src/components/SettingsModal.tsx`**
+
+#### A. New "Style" Tab (moved from Appearance)
+Contains visual/display settings:
+- **Iframe Brightness Slider** (0-200%, default 100%)
+- **Glass Blur Slider** (0-40px, default 20px)
+- **Glass Opacity Slider** (0-50%, default 10%)
+- **Monochrome Toggle with Intensity Slider** (0-100%)
+- **10 Glass UI Presets** (selectable cards):
+  1. Crystal Clear - minimal blur, high transparency
+  2. Frosted Glass - medium blur, low opacity
+  3. Dark Smoke - high blur, dark tint
+  4. Ocean Mist - blue-tinted glass
+  5. Sunset Glow - warm orange tint
+  6. Midnight - very dark, subtle blur
+  7. Arctic - bright, icy appearance
+  8. Cyberpunk - neon-accented glass
+  9. Minimal - almost no blur, clean
+  10. Classic - balanced defaults
+
+#### B. New "Texts" Tab (renamed from Appearance)
+Contains text-related settings:
+- **Bold Toggle** (on/off)
+- **Extended Font Selection Area** - scrollable grid/list of all fonts with live previews
+- **Font Size Slider** (12-24px)
+- **Text Case Toggle** (Default/Uppercase/Lowercase)
+- **Color Shift Slider** (-100 to 100) - adjusts text brightness/darkness
+
+#### C. Dynamic Settings Title
+- When switching tabs, title shows tab name (e.g., "Style Settings") for 11 seconds
+- Then morphs back to "Settings"
+- State managed with `useState` and `setTimeout`
+
+---
+
+## 4. Enhanced Font Picker with Scrollable Grid
+
+### Solution
+**File: `src/components/FontPicker.tsx`**
+
+New features:
+- Remove dropdown behavior for main settings area
+- Create scrollable grid layout showing all 80+ fonts
+- Each font displayed in its own typeface as preview
+- Lazy-load fonts as they scroll into view (IntersectionObserver)
+- Bold text toggle affects previews
+
+**File: `src/hooks/usePreloadedFonts.ts`** (NEW)
+- Hook that preloads all fonts on app initialization
+- Uses document.fonts.load() for faster previews
+- Returns loading state and loaded fonts set
+
+---
+
+## 5. Settings Context Updates
+
+**File: `src/contexts/SettingsContext.tsx`**
+
+New settings state properties:
+```typescript
+interface SettingsState {
+  // Existing
+  fontFamily: string;
+  fontSize: number;
+  textCase: 'default' | 'uppercase' | 'lowercase';
+  timeFormat: '12h' | '24h';
+  temperatureUnit: 'C' | 'F';
+  blurLevel: number;
+  glassOpacity: number;
+  notifications: {...};
+  
+  // New
+  iframeBrightness: number;      // 0-200, default 100
+  monochrome: boolean;           // default false
+  monochromeIntensity: number;   // 0-100, default 50
+  glassPreset: string;           // preset name or 'custom'
+  boldText: boolean;             // default false
+  colorShift: number;            // -100 to 100, default 0
+}
 ```
 
-**Line 603** - Estimated time:
-```tsx
-// FROM:
-className="font-bold text-[11px] flex-shrink-0 w-12 text-right"
-// TO:
-className="font-bold text-[11px] flex-shrink-0 w-16 text-right whitespace-nowrap"
-```
+New setter functions:
+- `setIframeBrightness(value)`
+- `setMonochrome(enabled)`
+- `setMonochromeIntensity(value)`
+- `setGlassPreset(preset)`
+- `setBoldText(enabled)`
+- `setColorShift(value)`
 
-### Change 2: Weather Bar Forecast Text (WeatherBar.tsx)
+CSS Variable injection updates:
+- `--iframe-brightness: {value}%`
+- `--iframe-monochrome: {enabled ? monochromeIntensity : 0}%`
+- `--font-weight: {boldText ? 700 : 400}`
+- `--color-shift: {value}`
 
-**Replace `getChanceOfWeather` function (lines 256-263)**:
-```tsx
-const getChanceOfWeather = (): string => {
-  if (!weather) return '';
-  
-  // Check if there's an upcoming weather change
-  const nextCondition = getNextDifferentCondition();
-  
-  if (nextCondition) {
-    const nextNormalized = normalizeCondition(nextCondition.nextCondition);
-    if (nextNormalized === 'rain' || nextNormalized === 'storm') {
-      return `Rain at ${nextCondition.forecastTime}`;
-    }
-    return `${nextCondition.nextCondition} at ${nextCondition.forecastTime}`;
-  }
-  
-  // Fallback to rain chance
-  const chanceOfRain = weather.chanceOfRain || 0;
-  if (chanceOfRain > 0) {
-    return `${chanceOfRain}% chance of rain`;
-  }
-  
-  // Show stable weather message
-  return `${weather.condition} all day`;
+---
+
+## 6. Collapsible Flight Cards
+
+### Current Behavior
+Flight cards always show full 4-row layout including progress bar.
+
+### New Behavior
+**File: `src/components/FlightCard.tsx`**
+
+#### Collapsed State (Default)
+- Rows 1-2 only: Airline logo, Flight ID, Origin, Status/Bell
+- Compact estimated time shown before status badge:
+  - **Normal**: Time before bell icon
+  - **Delayed**: Time before DELAYED badge
+  - **Landed**: Landed time before LANDED badge
+  - **Cancelled**: Cancelled time before CANCELLED badge
+- Time opacity: 80% (20% reduced transparency)
+- Click on time or flight ID/origin expands card
+
+#### Expanded State
+- Full 4-row layout with progress bar
+- Time text fades out when expanded
+- Click anywhere except bell to collapse
+
+Implementation:
+```typescript
+const [isExpanded, setIsExpanded] = useState(false);
+
+const handleCardClick = (e: React.MouseEvent) => {
+  if ((e.target as HTMLElement).closest('.bell-button')) return;
+  setIsExpanded(!isExpanded);
 };
 ```
 
-### Change 3: Weather Bar Icon Positions (WeatherBar.tsx)
+Card height reduction:
+- Collapsed: ~60-70px
+- Expanded: ~110-125px (current)
 
-**Left side Row 1 (lines 311-333)** - Move icon after time:
+---
+
+## 7. Menu Chevron → Pill Transformation
+
+### Current Behavior
+- `˅` character under logo, expands to vertical dropdown
+
+### New Behavior
+**File: `src/components/NewHeader.tsx`**
+
+#### Default State
+- Small pill container (like flight cards) containing `˅`
+- Semi-translucent white background
+- Width: ~40px, Height: ~24px
+
+#### Expanded State
+- Pill grows horizontally to ~320px
+- Menu items display in horizontal row (icons only or icons + short labels)
+- Chevron flips to `˄`
+- Smooth animation using CSS transform + width transition
+
 ```tsx
 <button 
-  onClick={toggleTimeFormat}
-  className="flex items-center gap-2 hover:bg-white/5 rounded px-1 -mx-1 transition-colors"
+  onClick={() => setIsMenuOpen(!isMenuOpen)}
+  className={cn(
+    "glass rounded-full transition-all duration-300 flex items-center justify-center",
+    isMenuOpen 
+      ? "w-80 h-10 gap-4 px-4" 
+      : "w-10 h-6 px-2"
+  )}
 >
-  {/* Time first */}
-  <p className="text-xl font-bold text-white">
-    {formatTime(currentTime)}
-  </p>
-  {/* Icon after */}
-  <div className={cn(
-    "transition-all duration-300",
-    showSunCountdown && "opacity-0"
-  )}>
-    {isDay ? (
-      <Sun className="w-5 h-5 text-white animate-pulse-soft" />
-    ) : (
-      <Moon className="w-5 h-5 text-white animate-pulse-soft" />
-    )}
-  </div>
-  {showSunCountdown && (
-    <div className="absolute animate-fade-in text-white">
-      {sunData.icon}
-    </div>
+  {isMenuOpen ? (
+    <>
+      {menuItems.map(item => (
+        <button key={item.label} onClick={item.action}>
+          <item.icon className="w-5 h-5" />
+        </button>
+      ))}
+      <span>˄</span>
+    </>
+  ) : (
+    <span className="text-lg text-white/60">˅</span>
   )}
 </button>
-```
-
-**Right side Row 1 (lines 375-393)** - Move icon before temperature:
-```tsx
-<button
-  onClick={toggleTemperatureUnit}
-  className="flex items-center justify-end gap-2 ml-auto hover:bg-white/5 rounded px-1 -mx-1 transition-colors"
->
-  {/* Icon first */}
-  <div className={cn(
-    "text-white transition-all duration-300",
-    showForecast && "opacity-0"
-  )}>
-    {getWeatherIcon(weather.condition, isDay)}
-  </div>
-  {showForecast && nextCondition && (
-    <div className="absolute animate-fade-in text-white" style={{ left: '1rem' }}>
-      {getWeatherIcon(nextCondition.nextCondition, isDay)}
-    </div>
-  )}
-  {/* Temperature after */}
-  <p className="text-xl font-bold text-white">
-    {convertTemperature(weather.temp, settings.temperatureUnit)}°{settings.temperatureUnit}
-  </p>
-</button>
-```
-
-### Change 4: Enhanced Weather Edge Function (get-weather/index.ts)
-
-Add forecast API call after current weather:
-```typescript
-// After getting current weather, get forecast
-if (openWeatherKey && weatherData) {
-  try {
-    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${openWeatherKey}&units=metric&cnt=16`;
-    const forecastResponse = await fetch(forecastUrl);
-    const forecastData = await forecastResponse.json();
-    
-    if (forecastData.list) {
-      weatherData.hourlyForecast = forecastData.list.map((item: any) => ({
-        time: item.dt_txt,
-        condition: item.weather?.[0]?.main || "Clear",
-        temp: Math.round(item.main.temp),
-        chanceOfRain: Math.round((item.pop || 0) * 100),
-      }));
-      
-      // Calculate overall chance of rain (max in next 6 hours)
-      const next6Hours = weatherData.hourlyForecast.slice(0, 2);
-      weatherData.chanceOfRain = Math.max(...next6Hours.map((h: any) => h.chanceOfRain));
-    }
-  } catch (e) {
-    console.error("Forecast fetch error:", e);
-  }
-}
-```
-
-### Change 5: Global Font CSS (index.css)
-
-Add after line 93:
-```css
-/* Global font inheritance for all elements including portals */
-*, *::before, *::after {
-  font-family: inherit;
-}
-
-/* Force font on Radix UI portals (dialogs, popovers, etc.) */
-[data-radix-portal],
-[data-radix-popper-content-wrapper],
-[role="dialog"],
-[role="menu"],
-.modal-overlay,
-.modal-overlay * {
-  font-family: var(--font-body) !important;
-}
-```
-
-### Change 6: Settings Context Font Application (SettingsContext.tsx)
-
-Enhance the useEffect that applies fonts (around line 135):
-```tsx
-useEffect(() => {
-  localStorage.setItem('arriva-settings', JSON.stringify(settings));
-  
-  const fontFamily = `'${settings.fontFamily}', sans-serif`;
-  
-  // Set CSS custom properties
-  document.documentElement.style.setProperty('--font-body', fontFamily);
-  document.documentElement.style.setProperty('--font-display', fontFamily);
-  
-  // Apply to root elements for global coverage
-  document.documentElement.style.fontFamily = fontFamily;
-  document.body.style.fontFamily = fontFamily;
-  
-  // Inject style for portals (they may not inherit from body)
-  let portalStyle = document.getElementById('portal-font-style');
-  if (!portalStyle) {
-    portalStyle = document.createElement('style');
-    portalStyle.id = 'portal-font-style';
-    document.head.appendChild(portalStyle);
-  }
-  portalStyle.textContent = `
-    [data-radix-portal], [data-radix-portal] *, 
-    [role="dialog"], [role="dialog"] *,
-    [role="menu"], [role="menu"] *,
-    .modal-overlay, .modal-overlay * {
-      font-family: ${fontFamily} !important;
-    }
-  `;
-  
-  // Apply font size
-  document.documentElement.style.fontSize = `${settings.fontSize}px`;
-  
-  // Apply text case
-  let textTransform: string;
-  switch (settings.textCase) {
-    case 'uppercase':
-      textTransform = 'uppercase';
-      break;
-    case 'lowercase':
-      textTransform = 'lowercase';
-      break;
-    default:
-      textTransform = 'none';
-  }
-  document.documentElement.style.setProperty('--text-case', textTransform);
-  
-  // Load Google Font dynamically
-  const fontLink = document.getElementById('dynamic-font') as HTMLLinkElement;
-  const fontUrl = `https://fonts.googleapis.com/css2?family=${settings.fontFamily.replace(/ /g, '+')}:wght@300;400;500;600;700;800&display=swap`;
-  
-  if (fontLink) {
-    fontLink.href = fontUrl;
-  } else {
-    const link = document.createElement('link');
-    link.id = 'dynamic-font';
-    link.rel = 'stylesheet';
-    link.href = fontUrl;
-    document.head.appendChild(link);
-  }
-}, [settings]);
 ```
 
 ---
 
-## Summary of Changes
+## 8. Terminal Group Transparency Adjustments
 
-| File | Change | Impact |
-|------|--------|--------|
-| FlightCard.tsx | Increase time container width from w-12 to w-16, add whitespace-nowrap | Prevents AM/PM wrapping |
-| WeatherBar.tsx | Update getChanceOfWeather() to show forecast changes | More informative weather info |
-| WeatherBar.tsx | Swap icon/text order on both sides | Icons on opposite side of text |
-| get-weather/index.ts | Add forecast API call for hourly data | Enables full forecast display |
-| index.css | Add global font inheritance rules | Ensures fonts apply everywhere |
-| SettingsContext.tsx | Inject dynamic style for portals | Fonts apply to modals/dialogs |
+### Current Issue
+When date pill is clicked, it turns "grey dark and looks weird"
 
+### Solution
+**File: `src/components/TerminalGroup.tsx`**
+
+- Unextended group containers: `bg-white/[0.02]` (very transparent, blends with background)
+- Extended group containers: `bg-white/[0.08]` (normal visibility)
+- Date pill active state: Use `active-selection` class with proper opacity
+- Remove harsh dark backgrounds, use soft glass effect instead
+
+```tsx
+// Date pill styling fix
+className={cn(
+  "w-full flex items-center justify-between px-3 py-1.5 rounded-md transition-all",
+  isDateExpanded 
+    ? "bg-white/15 border border-white/20" // Soft active state
+    : "bg-white/[0.03] hover:bg-white/[0.06]" // Subtle default
+)}
+```
+
+---
+
+## 9. Notification Bell One-Click Subscribe
+
+### Current Flow
+Bell click → Modal opens → User selects options
+
+### New Flow
+**File: `src/components/FlightCard.tsx`**
+
+Single-click behavior:
+1. Click bell icon
+2. If not subscribed:
+   - Request OneSignal permission (if needed)
+   - Create subscription in database
+   - Show toast: "Notifications enabled for {flightId}"
+3. If subscribed:
+   - Delete subscription from database
+   - Show toast: "Notifications disabled for {flightId}"
+
+Push/WebPush/Email all enabled by default on subscribe.
+
+---
+
+## 10. Glass UI Applied to Modals and Toasts
+
+### Solution
+
+**File: `src/index.css`**
+Add glass styles for toast notifications:
+```css
+.sonner-toast {
+  backdrop-filter: blur(20px) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+```
+
+**All Modal Files**
+Ensure `glass-blur-strong` class is applied to modal containers.
+
+---
+
+## Files to Create/Modify
+
+| File | Action | Description |
+|------|--------|-------------|
+| `src/components/NewHeader.tsx` | Modify | Reduce text sizes, pill menu transformation |
+| `src/components/TerminalGroup.tsx` | Modify | Extended date pill text, transparency fixes |
+| `src/components/SettingsModal.tsx` | Major Modify | Split into Texts/Style tabs, add all new controls |
+| `src/contexts/SettingsContext.tsx` | Modify | Add new settings properties and setters |
+| `src/components/FlightCard.tsx` | Major Modify | Collapsible behavior, compact time display |
+| `src/components/FontPicker.tsx` | Modify | Scrollable grid layout with previews |
+| `src/hooks/usePreloadedFonts.ts` | Create | Font preloading hook |
+| `src/index.css` | Modify | Toast glass styles, new CSS variables |
+| `src/components/SkyIframeBackground.tsx` | Modify | Apply brightness/monochrome filters |
+
+---
+
+## Technical Notes
+
+### Font Preloading Strategy
+```typescript
+// usePreloadedFonts.ts
+const usePreloadedFonts = (fonts: string[]) => {
+  const [loaded, setLoaded] = useState<Set<string>>(new Set());
+  
+  useEffect(() => {
+    fonts.forEach(font => {
+      const fontUrl = `https://fonts.googleapis.com/css2?family=${font.replace(/ /g, '+')}:wght@400;700&display=swap`;
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'style';
+      link.href = fontUrl;
+      document.head.appendChild(link);
+      
+      document.fonts.load(`16px "${font}"`).then(() => {
+        setLoaded(prev => new Set(prev).add(font));
+      });
+    });
+  }, [fonts]);
+  
+  return loaded;
+};
+```
+
+### Glass Presets Definition
+```typescript
+const GLASS_PRESETS = {
+  'crystal-clear': { blur: 5, opacity: 0.03, tint: null },
+  'frosted-glass': { blur: 20, opacity: 0.08, tint: null },
+  'dark-smoke': { blur: 30, opacity: 0.25, tint: '#1a1a1a' },
+  'ocean-mist': { blur: 15, opacity: 0.1, tint: '#0066cc' },
+  'sunset-glow': { blur: 18, opacity: 0.12, tint: '#ff6b35' },
+  'midnight': { blur: 25, opacity: 0.35, tint: '#0d0d0d' },
+  'arctic': { blur: 12, opacity: 0.05, tint: '#e0f4ff' },
+  'cyberpunk': { blur: 22, opacity: 0.15, tint: '#ff00ff' },
+  'minimal': { blur: 3, opacity: 0.02, tint: null },
+  'classic': { blur: 20, opacity: 0.1, tint: null },
+};
+```
+
+### Color Shift Implementation
+```css
+/* Applied via CSS filter */
+.color-shifted {
+  filter: brightness(calc(100% + var(--color-shift) * 0.5%));
+}
+```
+
+---
+
+## Summary
+
+This comprehensive update transforms the app's customization capabilities with:
+- Reduced header text for better mobile display
+- Extended, readable date pill statistics
+- Reorganized settings with dedicated Texts and Style tabs
+- 10 glass UI presets for quick theming
+- Collapsible flight cards for compact viewing
+- Streamlined one-click notification subscriptions
+- Glass-styled toasts and modals throughout
