@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface WeatherData {
   weather?: {
@@ -20,6 +21,24 @@ interface Props {
 const SkyIframeBackground = ({ weatherData }: Props) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+   const { settings } = useSettings();
+ 
+   // Calculate filter based on settings
+   const getIframeFilter = () => {
+     const filters: string[] = [];
+     
+     // Brightness
+     if (settings.iframeBrightness !== 100) {
+       filters.push(`brightness(${settings.iframeBrightness}%)`);
+     }
+     
+     // Monochrome/grayscale
+     if (settings.monochrome && settings.monochromeIntensity > 0) {
+       filters.push(`grayscale(${settings.monochromeIntensity}%)`);
+     }
+     
+     return filters.length > 0 ? filters.join(' ') : 'none';
+   };
 
   return (
     <div 
@@ -34,6 +53,8 @@ const SkyIframeBackground = ({ weatherData }: Props) => {
         style={{
           transform: 'scale(1.02)', // Slight scale to hide edges
           transformOrigin: 'center',
+           filter: getIframeFilter(),
+           transition: 'filter 0.3s ease',
         }}
         onLoad={() => setIsLoaded(true)}
         title="Live Sky Background"

@@ -111,7 +111,7 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, no
       ref={ref}
       className={cn(
         "terminal-group transition-all duration-300",
-        !isExpanded && "bg-white/[0.02]"
+        isExpanded ? "bg-white/[0.08]" : "bg-white/[0.02]"
       )} 
       style={{ fontFamily: settings.fontFamily }}
     >
@@ -158,22 +158,22 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, no
                   <button
                     onClick={() => toggleDate(date)}
                     className={cn(
-                      "w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all",
+                      "w-full flex items-center justify-between px-3 py-1.5 rounded-md transition-all",
                       isDateExpanded 
-                        ? "active-selection" 
-                        : "bg-white/[0.03] hover:bg-white/5"
+                        ? "bg-white/15 border border-white/20" 
+                        : "bg-white/[0.03] hover:bg-white/[0.06]"
                     )}
                   >
                     <span className="font-medium text-white/90 text-sm">
                       {formatDateDisplay(date)}
                     </span>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <span className="text-xs text-white/70">
+                    <div className="flex items-center gap-2">
+                      <div className="text-right flex flex-col">
+                        <span className="text-[10px] text-white/70">
                           {totalCount} flights
                         </span>
-                        <span className="text-xs text-white/50 ml-2">
-                          {dateLandedCount}L · {dateCancelledCount}C · {remainingCount}R
+                        <span className="text-[9px] text-white/50">
+                          {dateLandedCount} Landed · {dateCancelledCount} Cancelled · {remainingCount} Remaining
                         </span>
                       </div>
                       <ChevronDown
