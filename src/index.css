@@ -407,6 +407,24 @@
     backdrop-filter: blur(8px);
   }
 
+   /* Toast glass styling */
+   [data-sonner-toaster] [data-sonner-toast] {
+     backdrop-filter: blur(20px) !important;
+     -webkit-backdrop-filter: blur(20px) !important;
+     background: rgba(255, 255, 255, 0.1) !important;
+     border: 1px solid rgba(255, 255, 255, 0.15) !important;
+   }
+
+   [data-sonner-toaster] [data-sonner-toast][data-type="success"] {
+     background: rgba(16, 232, 185, 0.15) !important;
+     border-color: rgba(16, 232, 185, 0.3) !important;
+   }
+
+   [data-sonner-toaster] [data-sonner-toast][data-type="error"] {
+     background: rgba(191, 15, 36, 0.15) !important;
+     border-color: rgba(191, 15, 36, 0.3) !important;
+   }
+
   /* Scrollbar styling */
   ::-webkit-scrollbar {
     width: 6px;

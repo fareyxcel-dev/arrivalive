@@ -261,6 +261,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   const [countdown, setCountdown] = useState('');
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [bellPulse, setBellPulse] = useState(false);
+   const [isExpanded, setIsExpanded] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const bellPulseRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -383,10 +384,40 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
     `,
   };
 
+   // Get compact time display for collapsed state
+   const getCompactTimeDisplay = () => {
+     if (isLanded) {
+       return { time: estimatedTimeFormatted, label: 'Landed' };
+     }
+     if (isCancelled) {
+       return { time: estimatedTimeFormatted, label: 'Cancelled' };
+     }
+     if (isDelayed) {
+       return { time: estimatedTimeFormatted, label: 'Delayed' };
+     }
+     return { time: estimatedTimeFormatted, label: 'Est.' };
+   };
+ 
+   const compactTime = getCompactTimeDisplay();
+ 
+   // Handle card expansion
+   const handleCardClick = (e: React.MouseEvent) => {
+     // Don't toggle if clicking bell button
+     if ((e.target as HTMLElement).closest('.bell-button')) return;
+     setIsExpanded(!isExpanded);
+   };
+ 
+   // Handle clickable area (flight ID, origin, or compact time)
+   const handleExpandableClick = (e: React.MouseEvent) => {
+     e.stopPropagation();
+     setIsExpanded(!isExpanded);
+   };
+
   return (
     <div 
-      className="rounded-2xl overflow-hidden"
+      className="rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer"
       style={cardStyle}
+       onClick={handleCardClick}
     >
       {/* 4 ROW × 3 COLUMN GRID */}
       <div 
@@ -431,7 +462,8 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           className="flex items-center"
           style={{ gridColumn: '2', gridRow: '1' }}
         >
-          <span 
+          <button 
+            onClick={handleExpandableClick}
             className="font-bold text-sm leading-tight"
             style={{ 
               color: theme.textColor,
@@ -440,14 +472,31 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             }}
           >
             {flight.flightId}
-          </span>
+          </button>
         </div>
 
         {/* RIGHT COLUMN ROW 1: Status Badge OR Bell */}
         <div 
-          className="flex items-center justify-end"
+          className="flex items-center justify-end gap-2"
           style={{ gridColumn: '3', gridRow: '1' }}
         >
+          {/* Compact time display when collapsed */}
+          {!isExpanded && !isLanded && !isCancelled && (
+            <button
+              onClick={handleExpandableClick}
+              className={cn(
+                "text-[10px] font-medium transition-opacity duration-300",
+                isExpanded ? "opacity-0" : "opacity-80"
+              )}
+              style={{ 
+                color: theme.textColor,
+                textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+              }}
+            >
+              {compactTime.time}
+            </button>
+          )}
+          
           {showStatusBadge && !isDelayed && (
             <div 
               className="px-1.5 py-0.5 rounded-full text-[8px] font-semibold uppercase tracking-wide animate-pulse"
@@ -496,7 +545,8 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           className="flex items-center"
           style={{ gridColumn: '2', gridRow: '2' }}
         >
-          <span 
+          <button 
+            onClick={handleExpandableClick}
             className="text-[11px] truncate leading-tight"
             style={{ 
               color: theme.textColor,
@@ -505,7 +555,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             }}
           >
             {flight.origin}
-          </span>
+          </button>
         </div>
 
         {/* RIGHT COLUMN ROW 2: Bell (for DELAYED only) */}
@@ -526,90 +576,95 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           )}
         </div>
 
-        {/* ROW 3: Labels - WHITE text, not grey */}
-        <div 
-          className="col-span-3 flex items-center justify-between mt-1"
-          style={{ gridColumn: '1 / 4', gridRow: '3' }}
-        >
-          <span 
-            className="text-[8px] font-medium"
-            style={{ 
-              color: theme.textColor,
-              opacity: 0.8,
-              textShadow: '0 1px 2px rgba(0,0,0,0.3)',
-            }}
-          >
-            Scheduled
-          </span>
-          
-          {showProgressBar && countdown && (
-            <span 
-              className="text-[8px] font-medium"
-              style={{ 
-                color: theme.textColor,
-                opacity: 0.85,
-                textShadow: '0 1px 2px rgba(0,0,0,0.3)',
-              }}
+        {/* ROW 3 & 4: Expandable bottom section */}
+        {isExpanded && (
+          <>
+            {/* ROW 3: Labels */}
+            <div 
+              className="col-span-3 flex items-center justify-between mt-1 animate-fade-in"
+              style={{ gridColumn: '1 / 4', gridRow: '3' }}
             >
-              {countdown}
-            </span>
-          )}
-          
-          <span 
-            className="text-[8px] font-medium"
-            style={{ 
-              color: theme.textColor,
-              opacity: 0.8,
-              textShadow: '0 1px 2px rgba(0,0,0,0.3)',
-            }}
-          >
-            Estimated
-          </span>
-        </div>
-
-        {/* ROW 4: Times + Progress Bar */}
-        <div 
-          className="col-span-3 flex items-center gap-1.5"
-          style={{ gridColumn: '1 / 4', gridRow: '4' }}
-        >
-          <span 
-            className="font-bold text-[11px] flex-shrink-0 w-16 text-left whitespace-nowrap"
-            style={{ 
-              color: theme.textColor,
-              opacity: 0.9,
-              textShadow: '0 1px 3px rgba(0,0,0,0.5)',
-            }}
-          >
-            {scheduledTimeFormatted}
-          </span>
-          
-          {showProgressBar && (
-            <div className="flex-1">
-              <FlightProgressBar
-                scheduledTime={flight.scheduledTime}
-                estimatedTime={flight.estimatedTime}
-                flightDate={flight.date}
-                status={flight.status}
-                trackingProgress={flight.trackingProgress}
-                textColor={theme.textColor}
-                trackActiveColor={theme.progressActive}
-                trackInactiveColor={theme.progressInactive}
-                onCountdownChange={handleCountdownChange}
-              />
+              <span 
+                className="text-[8px] font-medium"
+                style={{ 
+                  color: theme.textColor,
+                  opacity: 0.8,
+                  textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                }}
+              >
+                Scheduled
+              </span>
+              
+              {showProgressBar && countdown && (
+                <span 
+                  className="text-[8px] font-medium"
+                  style={{ 
+                    color: theme.textColor,
+                    opacity: 0.85,
+                    textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                  }}
+                >
+                  {countdown}
+                </span>
+              )}
+              
+              <span 
+                className="text-[8px] font-medium"
+                style={{ 
+                  color: theme.textColor,
+                  opacity: 0.8,
+                  textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                }}
+              >
+                Estimated
+              </span>
             </div>
-          )}
-          
-          <span 
-            className="font-bold text-[11px] flex-shrink-0 w-16 text-right whitespace-nowrap"
-            style={{ 
-              color: theme.textColor,
-              opacity: 0.9,
-              textShadow: '0 1px 3px rgba(0,0,0,0.5)',
-            }}
-          >
-            {estimatedTimeFormatted}
-          </span>
-        </div>
+
+            {/* ROW 4: Times + Progress Bar */}
+            <div 
+              className="col-span-3 flex items-center gap-1.5 animate-fade-in"
+              style={{ gridColumn: '1 / 4', gridRow: '4' }}
+            >
+              <span 
+                className="font-bold text-[11px] flex-shrink-0 w-16 text-left whitespace-nowrap"
+                style={{ 
+                  color: theme.textColor,
+                  opacity: 0.9,
+                  textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+                }}
+              >
+                {scheduledTimeFormatted}
+              </span>
+              
+              {showProgressBar && (
+                <div className="flex-1">
+                  <FlightProgressBar
+                    scheduledTime={flight.scheduledTime}
+                    estimatedTime={flight.estimatedTime}
+                    flightDate={flight.date}
+                    status={flight.status}
+                    trackingProgress={flight.trackingProgress}
+                    textColor={theme.textColor}
+                    trackActiveColor={theme.progressActive}
+                    trackInactiveColor={theme.progressInactive}
+                    onCountdownChange={handleCountdownChange}
+                  />
+                </div>
+              )}
+              
+              <span 
+                className="font-bold text-[11px] flex-shrink-0 w-16 text-right whitespace-nowrap"
+                style={{ 
+                  color: theme.textColor,
+                  opacity: 0.9,
+                  textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+                }}
+              >
+                {estimatedTimeFormatted}
+              </span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -638,7 +693,7 @@ const BellButton = ({
       onClick={onClick}
       disabled={isSubscribing}
       className={cn(
-        "p-1 rounded-full flex-shrink-0 transition-all duration-300",
+        "p-1 rounded-full flex-shrink-0 transition-all duration-300 bell-button",
         isSubscribing && "opacity-50"
       )}
       style={{

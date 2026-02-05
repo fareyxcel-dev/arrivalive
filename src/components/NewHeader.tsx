@@ -360,8 +360,8 @@ const NewHeader = ({
               className="flex items-center gap-1 hover:bg-white/5 rounded px-1 -mx-1 transition-colors"
             >
               <p className={cn(
-                "font-bold text-white transition-all",
-                isScrolled ? "text-lg" : "text-xl"
+                "font-bold text-white transition-all whitespace-nowrap",
+                isScrolled ? "text-base" : "text-lg"
               )}>
                 {formatTime(currentTime)}
               </p>
@@ -371,19 +371,19 @@ const NewHeader = ({
               <button
                 onClick={handleDayDateClick}
                 className={cn(
-                  "block text-left hover:bg-white/5 rounded px-1 -mx-1 transition-all duration-300",
+                  "block text-left hover:bg-white/5 rounded px-1 -mx-1 transition-all duration-300 whitespace-nowrap",
                   showSunCountdown && "blur-sm opacity-0"
                 )}
               >
                 <p className={cn(
-                  "font-bold text-white transition-all",
-                  isScrolled ? "text-xs" : "text-sm"
+                  "font-bold text-white transition-all whitespace-nowrap",
+                  isScrolled ? "text-[10px]" : "text-xs"
                 )}>
                   {formatDay(currentTime)}
                 </p>
                 <p className={cn(
-                  "font-medium text-white/70 transition-all",
-                  isScrolled ? "text-[10px]" : "text-xs"
+                  "font-medium text-white/70 transition-all whitespace-nowrap",
+                  isScrolled ? "text-[9px]" : "text-[10px]"
                 )}>
                   {formatDate(currentTime)}
                 </p>
@@ -392,12 +392,12 @@ const NewHeader = ({
               {showSunCountdown && (
                 <button
                   onClick={handleDayDateClick}
-                  className="absolute top-0 left-0 animate-fade-in text-left px-1 -mx-1"
+                  className="absolute top-0 left-0 animate-fade-in text-left px-1 -mx-1 whitespace-nowrap"
                 >
-                  <p className={cn("font-bold text-white", isScrolled ? "text-xs" : "text-sm")}>
+                  <p className={cn("font-bold text-white whitespace-nowrap", isScrolled ? "text-[10px]" : "text-xs")}>
                     {sunData.label} in {sunData.countdown}
                   </p>
-                  <p className={cn("font-medium text-white/70", isScrolled ? "text-[10px]" : "text-xs")}>
+                  <p className={cn("font-medium text-white/70 whitespace-nowrap", isScrolled ? "text-[9px]" : "text-[10px]")}>
                     at {sunData.time}
                   </p>
                 </button>
@@ -425,18 +425,48 @@ const NewHeader = ({
             </button>
             
             {/* Menu chevron under logo */}
-            <div className="relative mt-1">
+            <div className="relative mt-1.5">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="text-white/60 hover:text-white/90 transition-colors px-4 py-1"
+                className={cn(
+                  "flex items-center justify-center transition-all duration-300",
+                  isMenuOpen
+                    ? "w-72 h-9 gap-3 px-4 rounded-full"
+                    : "w-10 h-6 px-2 rounded-full",
+                  "glass border border-white/15"
+                )}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  backdropFilter: 'blur(12px)',
+                }}
                 aria-label={isMenuOpen ? "Close menu" : "Open menu"}
               >
-                <span className={cn(
-                  "text-2xl font-light inline-block transition-transform duration-300",
-                  isMenuOpen ? "rotate-180" : ""
-                )}>
-                  ˅
-                </span>
+                {isMenuOpen ? (
+                  <>
+                    {menuItems.map((item) => (
+                      <button
+                        key={item.label}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          item.action?.();
+                          setIsMenuOpen(false);
+                        }}
+                        className="p-1.5 rounded-full hover:bg-white/15 transition-colors"
+                        title={item.label}
+                      >
+                        <item.icon className="w-4 h-4 text-white/80" />
+                      </button>
+                    ))}
+                    <span className={cn(
+                      "text-lg font-light text-white/60 ml-1 transition-transform duration-300",
+                      "rotate-180"
+                    )}>
+                      ˅
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-lg font-light text-white/60">˅</span>
+                )}
               </button>
               
               {/* Notification badge */}
@@ -469,8 +499,8 @@ const NewHeader = ({
                 className="flex items-center justify-end gap-1 ml-auto hover:bg-white/5 rounded px-1 -mx-1 transition-colors"
               >
                 <p className={cn(
-                  "font-bold text-white transition-all",
-                  isScrolled ? "text-lg" : "text-xl"
+                "font-bold text-white transition-all whitespace-nowrap",
+                isScrolled ? "text-base" : "text-lg"
                 )}>
                   {convertTemperature(weather.temp, settings.temperatureUnit)}°{settings.temperatureUnit}
                 </p>
@@ -480,19 +510,19 @@ const NewHeader = ({
                 <button
                   onClick={handleWeatherClick}
                   className={cn(
-                    "block text-right hover:bg-white/5 rounded px-1 -mx-1 transition-all duration-300",
+                  "block text-right hover:bg-white/5 rounded px-1 -mx-1 transition-all duration-300 whitespace-nowrap",
                     showForecast && "blur-sm opacity-0"
                   )}
                 >
                   <p className={cn(
-                    "font-bold text-white capitalize transition-all",
-                    isScrolled ? "text-xs" : "text-sm"
+                  "font-bold text-white capitalize transition-all whitespace-nowrap",
+                  isScrolled ? "text-[10px]" : "text-xs"
                   )}>
                     {weatherDurationText}
                   </p>
                   <p className={cn(
-                    "font-medium text-white/70 transition-all",
-                    isScrolled ? "text-[10px]" : "text-xs"
+                  "font-medium text-white/70 transition-all whitespace-nowrap",
+                  isScrolled ? "text-[9px]" : "text-[10px]"
                   )}>
                     {upcomingWeatherText}
                   </p>
@@ -501,19 +531,19 @@ const NewHeader = ({
                 {showForecast && (
                   <button
                     onClick={handleWeatherClick}
-                    className="absolute top-0 right-0 animate-fade-in text-right px-1 -mx-1"
+                  className="absolute top-0 right-0 animate-fade-in text-right px-1 -mx-1 whitespace-nowrap"
                   >
                     {nextCondition ? (
                       <>
-                        <p className={cn("font-bold text-white capitalize", isScrolled ? "text-xs" : "text-sm")}>
+                      <p className={cn("font-bold text-white capitalize whitespace-nowrap", isScrolled ? "text-[10px]" : "text-xs")}>
                           {nextCondition.nextCondition} in {formatCountdown(nextCondition.timeToChange)}
                         </p>
-                        <p className={cn("font-medium text-white/70", isScrolled ? "text-[10px]" : "text-xs")}>
+                      <p className={cn("font-medium text-white/70 whitespace-nowrap", isScrolled ? "text-[9px]" : "text-[10px]")}>
                           at {nextCondition.forecastTime}
                         </p>
                       </>
                     ) : (
-                      <p className={cn("font-bold text-white", isScrolled ? "text-xs" : "text-sm")}>
+                    <p className={cn("font-bold text-white whitespace-nowrap", isScrolled ? "text-[10px]" : "text-xs")}>
                         No change expected
                       </p>
                     )}
@@ -525,24 +555,7 @@ const NewHeader = ({
         </div>
       </div>
 
-      {/* Dropdown menu - centered under header */}
-      {isMenuOpen && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-56 glass-blur-strong rounded-xl overflow-hidden animate-scale-in border border-white/10">
-          {menuItems.map((item, index) => (
-            <button
-              key={item.label}
-              onClick={() => { item.action?.(); setIsMenuOpen(false); }}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground transition-colors hover:bg-white/10",
-                index !== menuItems.length - 1 && "border-b border-white/5"
-              )}
-            >
-              <item.icon className="w-4 h-4 text-muted-foreground" />
-              {item.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Menu items now inside the pill, no separate dropdown */}
     </header>
   );
 };
