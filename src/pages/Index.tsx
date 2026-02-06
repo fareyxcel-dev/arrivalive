@@ -408,7 +408,7 @@ const Index = () => {
     }
   };
 
-  // Filter flights
+  // Filter flights - 90 minute (1.5 hour) cutoff
   const filteredFlights = flights.filter(flight => {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
@@ -416,18 +416,30 @@ const Index = () => {
     if (flight.date < todayStr) return false;
     if (flight.date > todayStr) return true;
     
-    const cutoffTime = new Date(now.getTime() - 60 * 60 * 1000);
-    const [schHours, schMinutes] = flight.scheduledTime.split(':').map(Number);
-    const scheduledDateTime = new Date(now);
-    scheduledDateTime.setHours(schHours, schMinutes, 0, 0);
+    const cutoffTime = new Date(now.getTime() - 90 * 60 * 1000); // 1.5 hours
+    const statusUpper = flight.status.toUpperCase();
     
-    if (flight.status.toUpperCase() === 'DELAYED' && flight.estimatedTime) {
+    // For landed/cancelled, use estimated time as reference
+    if (statusUpper === 'LANDED' || statusUpper === 'CANCELLED') {
+      const refTime = flight.estimatedTime || flight.scheduledTime;
+      const [h, m] = refTime.split(':').map(Number);
+      const refDateTime = new Date(now);
+      refDateTime.setHours(h, m, 0, 0);
+      return refDateTime >= cutoffTime;
+    }
+    
+    // For delayed flights, use estimated arrival time
+    if (statusUpper === 'DELAYED' && flight.estimatedTime) {
       const [estHours, estMinutes] = flight.estimatedTime.split(':').map(Number);
       const estimatedDateTime = new Date(now);
       estimatedDateTime.setHours(estHours, estMinutes, 0, 0);
       return estimatedDateTime >= cutoffTime;
     }
     
+    // Normal flights: use scheduled time
+    const [schHours, schMinutes] = flight.scheduledTime.split(':').map(Number);
+    const scheduledDateTime = new Date(now);
+    scheduledDateTime.setHours(schHours, schMinutes, 0, 0);
     return scheduledDateTime >= cutoffTime;
   });
 

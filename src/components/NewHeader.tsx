@@ -186,47 +186,41 @@ const NewHeader = ({
     return null;
   };
 
-  // Weather duration text
-  const getWeatherDuration = (): string => {
-    const nextCondition = getNextDifferentCondition();
-    if (!nextCondition || nextCondition.timeToChange <= 0) {
-      if (weather?.condition) {
-        const conditionName = weather.condition.charAt(0).toUpperCase() + weather.condition.slice(1).toLowerCase();
-        return `${conditionName} all day`;
-      }
-      return '';
-    }
-    
-    const hrs = Math.floor(nextCondition.timeToChange / 60);
-    const mins = Math.floor(nextCondition.timeToChange % 60);
-    const conditionName = weather?.condition 
-      ? weather.condition.charAt(0).toUpperCase() + weather.condition.slice(1).toLowerCase()
-      : 'Weather';
-    
-    if (hrs > 0 && mins > 0) {
-      return `${conditionName} for ${hrs}h ${mins}m`;
-    } else if (hrs > 0) {
-      return `${conditionName} for ${hrs}h`;
-    }
-    return `${conditionName} for ${mins}m`;
+  // Weather duration text - Row 1: Condition name, Row 2: Duration
+  const getWeatherDurationRow1 = (): string => {
+    if (!weather?.condition) return '';
+    return weather.condition.charAt(0).toUpperCase() + weather.condition.slice(1).toLowerCase();
   };
 
-  // Upcoming weather change info
-  const getUpcomingWeatherText = (): string => {
+  const getWeatherDurationRow2 = (): string => {
     const nextCondition = getNextDifferentCondition();
-    
+    if (!nextCondition || nextCondition.timeToChange <= 0) {
+      return 'All day';
+    }
+    const hrs = Math.floor(nextCondition.timeToChange / 60);
+    const mins = Math.floor(nextCondition.timeToChange % 60);
+    if (hrs > 0 && mins > 0) return `For next ${hrs}h ${mins}m`;
+    if (hrs > 0) return `For next ${hrs}h`;
+    return `For next ${mins}m`;
+  };
+
+  // Upcoming weather - Row 1: "Expect: {Condition}", Row 2: "Around {time}"
+  const getUpcomingRow1 = (): string => {
+    const nextCondition = getNextDifferentCondition();
     if (nextCondition) {
       const nextName = nextCondition.nextCondition.charAt(0).toUpperCase() + 
                        nextCondition.nextCondition.slice(1).toLowerCase();
-      return `${nextName} at ${nextCondition.forecastTime}`;
+      return `Expect: ${nextName}`;
     }
-    
-    const chanceOfRain = weather?.chanceOfRain || 0;
-    if (chanceOfRain > 0) {
-      return `${chanceOfRain}% chance of rain`;
-    }
-    
     return 'No change expected';
+  };
+
+  const getUpcomingRow2 = (): string => {
+    const nextCondition = getNextDifferentCondition();
+    if (nextCondition) {
+      return `Around ${nextCondition.forecastTime}`;
+    }
+    return '';
   };
 
   // Sun countdown
@@ -317,8 +311,10 @@ const NewHeader = ({
 
   const sunData = getSunCountdown();
   const nextCondition = getNextDifferentCondition();
-  const weatherDurationText = getWeatherDuration();
-  const upcomingWeatherText = getUpcomingWeatherText();
+  const weatherDurationRow1 = getWeatherDurationRow1();
+  const weatherDurationRow2 = getWeatherDurationRow2();
+  const upcomingRow1 = getUpcomingRow1();
+  const upcomingRow2 = getUpcomingRow2();
 
   const menuItems = [
     { icon: RefreshCw, label: 'Force Refresh', action: onForceRefresh },
@@ -457,16 +453,8 @@ const NewHeader = ({
                         <item.icon className="w-4 h-4 text-white/80" />
                       </button>
                     ))}
-                    <span className={cn(
-                      "text-lg font-light text-white/60 ml-1 transition-transform duration-300",
-                      "rotate-180"
-                    )}>
-                      ˅
-                    </span>
                   </>
-                ) : (
-                  <span className="text-lg font-light text-white/60">˅</span>
-                )}
+                ) : null}
               </button>
               
               {/* Notification badge */}
@@ -510,41 +498,35 @@ const NewHeader = ({
                 <button
                   onClick={handleWeatherClick}
                   className={cn(
-                  "block text-right hover:bg-white/5 rounded px-1 -mx-1 transition-all duration-300 whitespace-nowrap",
+                    "block text-right hover:bg-white/5 rounded px-1 -mx-1 transition-all duration-300 whitespace-nowrap",
                     showForecast && "blur-sm opacity-0"
                   )}
                 >
                   <p className={cn(
-                  "font-bold text-white capitalize transition-all whitespace-nowrap",
-                  isScrolled ? "text-[10px]" : "text-xs"
+                    "font-bold text-white capitalize transition-all whitespace-nowrap",
+                    isScrolled ? "text-[10px]" : "text-xs"
                   )}>
-                    {weatherDurationText}
+                    {weatherDurationRow1}
                   </p>
                   <p className={cn(
-                  "font-medium text-white/70 transition-all whitespace-nowrap",
-                  isScrolled ? "text-[9px]" : "text-[10px]"
+                    "font-medium text-white/70 transition-all whitespace-nowrap",
+                    isScrolled ? "text-[9px]" : "text-[10px]"
                   )}>
-                    {upcomingWeatherText}
+                    {weatherDurationRow2}
                   </p>
                 </button>
 
                 {showForecast && (
                   <button
                     onClick={handleWeatherClick}
-                  className="absolute top-0 right-0 animate-fade-in text-right px-1 -mx-1 whitespace-nowrap"
+                    className="absolute top-0 right-0 animate-fade-in text-right px-1 -mx-1 whitespace-nowrap"
                   >
-                    {nextCondition ? (
-                      <>
-                      <p className={cn("font-bold text-white capitalize whitespace-nowrap", isScrolled ? "text-[10px]" : "text-xs")}>
-                          {nextCondition.nextCondition} in {formatCountdown(nextCondition.timeToChange)}
-                        </p>
+                    <p className={cn("font-bold text-white capitalize whitespace-nowrap", isScrolled ? "text-[10px]" : "text-xs")}>
+                      {upcomingRow1}
+                    </p>
+                    {upcomingRow2 && (
                       <p className={cn("font-medium text-white/70 whitespace-nowrap", isScrolled ? "text-[9px]" : "text-[10px]")}>
-                          at {nextCondition.forecastTime}
-                        </p>
-                      </>
-                    ) : (
-                    <p className={cn("font-bold text-white whitespace-nowrap", isScrolled ? "text-[10px]" : "text-xs")}>
-                        No change expected
+                        {upcomingRow2}
                       </p>
                     )}
                   </button>
