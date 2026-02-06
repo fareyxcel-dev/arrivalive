@@ -143,9 +143,9 @@ const AdminDashboard = ({ isOpen, onClose }: Props) => {
   return (
     <div className="modal-overlay flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="glass-blur-strong rounded-2xl w-full max-w-lg max-h-[85vh] overflow-hidden animate-scale-in"
+        className="rounded-2xl w-full max-w-lg max-h-[85vh] overflow-hidden animate-scale-in"
         onClick={(e) => e.stopPropagation()}
-        style={{ fontFamily: settings.fontFamily }}
+        style={{ background: 'rgba(255, 255, 255, 0.08)', backdropFilter: 'blur(20px) saturate(1.2)', border: '1px solid rgba(255, 255, 255, 0.1)', fontFamily: settings.fontFamily }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">

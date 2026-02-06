@@ -182,8 +182,9 @@ const AdminExport = ({ isOpen, onClose }: Props) => {
   return (
     <div className="modal-overlay flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="glass-strong rounded-2xl w-full max-w-md overflow-hidden animate-scale-in"
+        className="rounded-2xl w-full max-w-md overflow-hidden animate-scale-in"
         onClick={e => e.stopPropagation()}
+        style={{ background: 'rgba(255, 255, 255, 0.08)', backdropFilter: 'blur(20px) saturate(1.2)', border: '1px solid rgba(255, 255, 255, 0.1)' }}
       >
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <h2 className="font-display text-lg font-bold text-foreground">Admin Blueprint Export</h2>

@@ -400,11 +400,11 @@
     border: 1px solid hsl(var(--status-cancelled) / 0.4);
   }
 
-  /* Modal overlay */
+  /* Modal overlay - lighter feel */
   .modal-overlay {
     @apply fixed inset-0 z-50;
-    background: hsl(0 0% 0% / 0.7);
-    backdrop-filter: blur(8px);
+    background: hsl(0 0% 0% / 0.4);
+    backdrop-filter: blur(12px);
   }
 
    /* Toast glass styling */

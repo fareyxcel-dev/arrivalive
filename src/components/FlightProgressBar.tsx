@@ -11,6 +11,7 @@ interface Props {
   trackActiveColor: string;
   trackInactiveColor: string;
   onCountdownChange?: (countdown: string) => void;
+  rightLabel?: string;
 }
 
 // Calculate time remaining in human-readable format
@@ -139,6 +140,7 @@ const FlightProgressBar = ({
   trackActiveColor,
   trackInactiveColor,
   onCountdownChange,
+  rightLabel,
 }: Props) => {
   const [progress, setProgress] = useState(0);
   const [minutesRemaining, setMinutesRemaining] = useState(0);
