@@ -190,7 +190,7 @@ const NotificationsModal = ({ isOpen, onClose }: Props) => {
   };
 
   return (
-    <div className="modal-overlay flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose} style={{ background: 'rgba(0,0,0,0.3)' }}>
       <div
         className="rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden animate-scale-in"
         onClick={(e) => e.stopPropagation()}
