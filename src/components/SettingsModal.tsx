@@ -7,7 +7,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Slider } from './ui/slider';
 import { ScrollArea } from './ui/scroll-area';
-import { Switch } from './ui/switch';
 import JSZip from 'jszip';
 
 interface Props {
@@ -65,21 +64,17 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
   useEffect(() => {
     const checkAdmin = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email && ADMIN_EMAILS.includes(user.email)) {
-        setIsAdmin(true);
-      }
+      if (user?.email && ADMIN_EMAILS.includes(user.email)) setIsAdmin(true);
     };
     if (isOpen) checkAdmin();
   }, [isOpen]);
 
-  // Auto-scroll to selected font when Texts tab is active
+  // Auto-scroll to selected font
   useEffect(() => {
     if (activeTab !== 'texts' || !isOpen) return;
     const timer = setTimeout(() => {
       const selectedEl = document.querySelector(`[data-font="${settings.fontFamily}"]`);
-      if (selectedEl) {
-        selectedEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+      if (selectedEl) selectedEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 300);
     return () => clearTimeout(timer);
   }, [activeTab, isOpen, settings.fontFamily]);
@@ -88,14 +83,12 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
   const setupFontObserver = useCallback((node: HTMLDivElement | null) => {
     if (fontObserverRef.current) fontObserverRef.current.disconnect();
     if (!node) return;
-    
     fontObserverRef.current = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const fontName = (entry.target as HTMLElement).dataset.font;
             if (fontName && !visibleFonts.has(fontName)) {
-              // Load this font
               const linkId = `lazy-font-${fontName.replace(/\s+/g, '-')}`;
               if (!document.getElementById(linkId)) {
                 const link = document.createElement('link');
@@ -111,20 +104,15 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
       },
       { root: node, rootMargin: '100px', threshold: 0 }
     );
-
-    // Observe all font items inside
     const items = node.querySelectorAll('[data-font]');
     items.forEach(item => fontObserverRef.current?.observe(item));
   }, [visibleFonts]);
 
-  // Re-observe when fonts list renders
   useEffect(() => {
     if (activeTab !== 'texts') return;
     const timer = setTimeout(() => {
       const scrollContainer = fontScrollRef.current;
-      if (scrollContainer) {
-        setupFontObserver(scrollContainer);
-      }
+      if (scrollContainer) setupFontObserver(scrollContainer);
     }, 100);
     return () => clearTimeout(timer);
   }, [activeTab, setupFontObserver]);
@@ -183,7 +171,6 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
       const zip = new JSZip();
       zip.file('REMIX_PROMPT.md', `# Arriva.MV Remix Prompt\n\nRecreate a real-time flight arrival tracker PWA for Velana International Airport (MLE), Maldives.\n\n## Core Features\n- Real-time flight scraping from FIDS\n- Weather-reactive animated background (iframe)\n- Live flight tracking via FlightAware AeroAPI\n- Push notifications via OneSignal\n- Multi-terminal grouping (T1, T2, Domestic)\n- Glassmorphism UI with 12 glass presets\n- 200+ Google Font customization\n- CSV export functionality\n- Admin dashboard for reports and fonts\n\n## Tech Stack\n- React 18 + Vite + TypeScript\n- Tailwind CSS + Shadcn/UI\n- Supabase (Database, Auth, Edge Functions)\n- OneSignal (Push notifications)\n- FlightAware AeroAPI (Flight tracking)\n- PWA with Service Worker\n`);
       zip.file('docs/README.md', 'Full project blueprint - see source files for implementation details.');
-      
       const blob = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -200,8 +187,15 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
 
   const glassPresetEntries = Object.entries(GLASS_PRESETS);
 
+  // Compute saturation from monochrome intensity (inverted: 100% = full color, 0% = grayscale)
+  const saturationValue = settings.monochrome ? (100 - settings.monochromeIntensity) : 100;
+
   return (
-    <div className="modal-overlay flex items-center justify-center p-4" onClick={onClose}>
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4" 
+      onClick={onClose}
+      style={{ background: 'rgba(0,0,0,0.3)' }}
+    >
       <div
         className="rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden animate-scale-in"
         onClick={e => e.stopPropagation()}
@@ -271,7 +265,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
             <div className="space-y-5 animate-fade-in">
               <div className="flex items-center justify-between">
                 <label className="text-xs text-muted-foreground uppercase tracking-wide">Bold Text</label>
-                <Switch checked={settings.boldText} onCheckedChange={setBoldText} />
+                <LiveBlurToggle checked={settings.boldText} onChange={setBoldText} />
               </div>
               
               <div>
@@ -347,18 +341,28 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                 <Slider value={[settings.glassOpacity * 100]} onValueChange={([val]) => setGlassOpacity(val / 100)} min={0} max={50} step={5} className="w-full" />
               </div>
 
-              {/* Monochrome with advanced controls */}
+              {/* Saturation slider instead of monochrome toggle */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs text-muted-foreground uppercase tracking-wide">Monochrome Background</label>
-                  <Switch checked={settings.monochrome} onCheckedChange={setMonochrome} />
-                </div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide mb-1 block">
+                  Saturation: {saturationValue}%
+                </label>
+                <Slider 
+                  value={[saturationValue]} 
+                  onValueChange={([val]) => {
+                    if (val < 100) {
+                      setMonochrome(true);
+                      setMonochromeIntensity(100 - val);
+                    } else {
+                      setMonochrome(false);
+                      setMonochromeIntensity(0);
+                    }
+                  }} 
+                  min={0} max={100} step={5} className="w-full" 
+                />
+                <p className="text-[10px] text-muted-foreground">0% = grayscale, 100% = full color</p>
+                
                 {settings.monochrome && (
-                  <div className="space-y-3 pl-2 border-l border-white/10">
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Intensity: {settings.monochromeIntensity}%</label>
-                      <Slider value={[settings.monochromeIntensity]} onValueChange={([val]) => setMonochromeIntensity(val)} min={0} max={100} step={5} className="w-full" />
-                    </div>
+                  <div className="space-y-3 pl-2 border-l border-white/10 mt-2">
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">Contrast: {settings.monoContrast}%</label>
                       <Slider value={[settings.monoContrast]} onValueChange={([val]) => setMonoContrast(val)} min={50} max={150} step={5} className="w-full" />
@@ -379,7 +383,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs text-muted-foreground uppercase tracking-wide">Dual Glass Blend</label>
-                  <Switch checked={settings.dualGlass} onCheckedChange={setDualGlass} />
+                  <LiveBlurToggle checked={settings.dualGlass} onChange={setDualGlass} />
                 </div>
                 {settings.dualGlass && (
                   <div className="grid grid-cols-2 gap-2">
@@ -405,7 +409,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                 )}
               </div>
 
-              {/* Glass Presets */}
+              {/* Glass Presets with visual preview */}
               <div>
                 <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">Glass Presets</label>
                 <div className="grid grid-cols-3 gap-2">
@@ -414,12 +418,17 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                       key={id}
                       onClick={() => setGlassPreset(id)}
                       className={cn(
-                        "p-2 rounded-lg text-left transition-all border",
-                        settings.glassPreset === id ? "bg-white/20 border-white/30" : "bg-white/5 border-white/10 hover:bg-white/10"
+                        "relative p-2 rounded-lg text-left transition-all border overflow-hidden",
+                        settings.glassPreset === id ? "border-white/40" : "border-white/10 hover:border-white/20"
                       )}
+                      style={{
+                        background: `rgba(255, 255, 255, ${preset.opacity})`,
+                        backdropFilter: `blur(${preset.blur}px)`,
+                        WebkitBackdropFilter: `blur(${preset.blur}px)`,
+                      }}
                     >
-                      <span className="text-[10px] font-medium text-foreground block">{preset.label}</span>
-                      <span className="text-[8px] text-muted-foreground leading-tight">{preset.description}</span>
+                      <span className="text-[10px] font-medium text-foreground block relative z-10">{preset.label}</span>
+                      <span className="text-[7px] text-muted-foreground leading-tight relative z-10">{preset.blur}px / {Math.round(preset.opacity * 100)}%</span>
                     </button>
                   ))}
                 </div>
@@ -439,9 +448,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                   className={cn("w-full flex items-center justify-between p-3 rounded-lg transition-colors",
                     settings.notifications[item.key] ? "active-selection" : "glass hover:bg-white/10")}>
                   <span>{item.label}</span>
-                  <div className={cn("w-10 h-6 rounded-full transition-colors relative", settings.notifications[item.key] ? "toggle-on" : "toggle-off")}>
-                    <div className={cn("absolute top-1 w-4 h-4 rounded-full bg-white transition-transform", settings.notifications[item.key] ? "translate-x-5" : "translate-x-1")} />
-                  </div>
+                  <LiveBlurToggle checked={settings.notifications[item.key]} onChange={() => setNotification(item.key, !settings.notifications[item.key])} />
                 </button>
               ))}
             </div>
@@ -505,5 +512,38 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     </div>
   );
 };
+
+// Live blur toggle - replaces solid-color Switch
+const LiveBlurToggle = ({ checked, onChange }: { checked: boolean; onChange: (val: boolean) => void }) => (
+  <button
+    onClick={(e) => { e.stopPropagation(); onChange(!checked); }}
+    className={cn(
+      "relative w-10 h-6 rounded-full transition-all duration-300 border flex-shrink-0",
+      checked ? "border-white/30" : "border-white/15"
+    )}
+    style={{
+      background: checked 
+        ? 'rgba(255, 255, 255, 0.2)' 
+        : 'rgba(255, 255, 255, 0.05)',
+      backdropFilter: `blur(${checked ? 12 : 6}px) brightness(${checked ? 1.3 : 0.9})`,
+      WebkitBackdropFilter: `blur(${checked ? 12 : 6}px) brightness(${checked ? 1.3 : 0.9})`,
+    }}
+  >
+    <div 
+      className={cn(
+        "absolute top-0.5 w-4.5 h-4.5 rounded-full transition-all duration-300",
+        checked ? "translate-x-[18px]" : "translate-x-[2px]"
+      )}
+      style={{
+        width: '20px',
+        height: '20px',
+        background: 'rgba(255, 255, 255, 0.5)',
+        backdropFilter: 'blur(8px) brightness(1.5)',
+        WebkitBackdropFilter: 'blur(8px) brightness(1.5)',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+      }}
+    />
+  </button>
+);
 
 export default SettingsModal;

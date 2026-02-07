@@ -141,7 +141,7 @@ const AdminDashboard = ({ isOpen, onClose }: Props) => {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose} style={{ background: 'rgba(0,0,0,0.3)' }}>
       <div
         className="rounded-2xl w-full max-w-lg max-h-[85vh] overflow-hidden animate-scale-in"
         onClick={(e) => e.stopPropagation()}

@@ -12,26 +12,22 @@ interface Props {
   trackInactiveColor: string;
   onCountdownChange?: (countdown: string) => void;
   rightLabel?: string;
+  showCountdownInline?: boolean;
 }
 
-// Calculate time remaining in human-readable format
 const formatCountdown = (minutes: number): string => {
   if (minutes <= 0) return '';
   const hrs = Math.floor(minutes / 60);
   const mins = Math.floor(minutes % 60);
-  if (hrs > 0) {
-    return `${hrs} hr ${mins} min`;
-  }
-  return `${mins} min`;
+  if (hrs > 0) return `${hrs}h ${mins}m`;
+  return `${mins}m`;
 };
 
-// Parse time string to minutes since midnight
 const parseTimeToMinutes = (time: string): number => {
   const [hours, minutes] = time.split(':').map(Number);
   return hours * 60 + minutes;
 };
 
-// Calculate progress based on current time vs scheduled/estimated
 const calculateProgress = (
   scheduledTime: string,
   estimatedTime: string,
@@ -64,66 +60,37 @@ const calculateProgress = (
   return { progress, minutesRemaining };
 };
 
-// Generate CSS filter to colorize white PNG icon to exact target hex color
 const getColorFilter = (hexColor: string): string => {
   const hex = hexColor.replace('#', '').toLowerCase();
+  if (hex === 'ffffff' || hex === 'fff' || hex === 'dce0de') return 'brightness(0.95)';
+  if (hex === '81f0d8') return 'brightness(0) saturate(100%) invert(85%) sepia(25%) saturate(600%) hue-rotate(110deg) brightness(1.05)';
+  if (hex === 'f2763d') return 'brightness(0) saturate(100%) invert(55%) sepia(80%) saturate(500%) hue-rotate(350deg) brightness(1.1)';
+  if (hex === 'f7485d') return 'brightness(0) saturate(100%) invert(45%) sepia(80%) saturate(600%) hue-rotate(325deg) brightness(1.15)';
   
-  // For pure white or near-white, minimal filter
-  if (hex === 'ffffff' || hex === 'fff' || hex === 'dce0de') {
-    return 'brightness(0.95)';
-  }
-  
-  // Blueprint colors mapping with precise filters
-  // Landed: #81f0d8 (cyan/teal)
-  if (hex === '81f0d8') {
-    return 'brightness(0) saturate(100%) invert(85%) sepia(25%) saturate(600%) hue-rotate(110deg) brightness(1.05)';
-  }
-  // Delayed: #f2763d (orange)
-  if (hex === 'f2763d') {
-    return 'brightness(0) saturate(100%) invert(55%) sepia(80%) saturate(500%) hue-rotate(350deg) brightness(1.1)';
-  }
-  // Cancelled: #f7485d (red/pink)
-  if (hex === 'f7485d') {
-    return 'brightness(0) saturate(100%) invert(45%) sepia(80%) saturate(600%) hue-rotate(325deg) brightness(1.15)';
-  }
-  
-  // Generic fallback for other colors
   const r = parseInt(hex.substr(0, 2), 16);
   const g = parseInt(hex.substr(2, 2), 16);
   const b = parseInt(hex.substr(4, 2), 16);
-  
-  const rNorm = r / 255;
-  const gNorm = g / 255;
-  const bNorm = b / 255;
-  
+  const rNorm = r / 255; const gNorm = g / 255; const bNorm = b / 255;
   const max = Math.max(rNorm, gNorm, bNorm);
   const min = Math.min(rNorm, gNorm, bNorm);
   const l = (max + min) / 2;
-  
-  let h = 0;
-  let s = 0;
-  
+  let h = 0; let s = 0;
   if (max !== min) {
     const d = max - min;
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    
     if (max === rNorm) h = ((gNorm - bNorm) / d + (gNorm < bNorm ? 6 : 0)) / 6;
     else if (max === gNorm) h = ((bNorm - rNorm) / d + 2) / 6;
     else h = ((rNorm - gNorm) / d + 4) / 6;
   }
-  
   const hue = Math.round(h * 360);
   const sat = Math.round(s * 100);
   const light = Math.round(l * 100);
-  
   const hueRotate = hue - 50;
   const saturation = Math.max(100, sat * 3);
   const brightness = light > 50 ? light / 60 : 0.8;
-  
   return `brightness(0) saturate(100%) invert(${light > 50 ? 0.9 : 0.5}) sepia(1) saturate(${saturation}%) hue-rotate(${hueRotate}deg) brightness(${brightness})`;
 };
 
-// Helper to convert hex to rgb values
 function hexToRgb(hex: string): string {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) return '255, 255, 255';
@@ -141,6 +108,7 @@ const FlightProgressBar = ({
   trackInactiveColor,
   onCountdownChange,
   rightLabel,
+  showCountdownInline = false,
 }: Props) => {
   const [progress, setProgress] = useState(0);
   const [minutesRemaining, setMinutesRemaining] = useState(0);
@@ -148,11 +116,11 @@ const FlightProgressBar = ({
   const [isLandingPulse, setIsLandingPulse] = useState(false);
   const [fadeProgress, setFadeProgress] = useState(1);
   const [iconScale, setIconScale] = useState(1);
+  const [countdownText, setCountdownText] = useState('');
 
   const isLanded = status.toUpperCase() === 'LANDED';
   const isCancelled = status.toUpperCase() === 'CANCELLED';
 
-  // Calculate hours until landing for visibility
   const hoursUntilLanding = useMemo(() => {
     const now = new Date();
     const [hours, minutes] = (estimatedTime || scheduledTime).split(':').map(Number);
@@ -161,7 +129,6 @@ const FlightProgressBar = ({
     return (estimated.getTime() - now.getTime()) / (1000 * 60 * 60);
   }, [scheduledTime, estimatedTime, flightDate]);
 
-  // Fade out 45-90 mins after landing based on traffic
   const minutesSinceLanding = useMemo(() => {
     if (!isLanded) return 0;
     const now = new Date();
@@ -171,15 +138,9 @@ const FlightProgressBar = ({
     return (now.getTime() - landed.getTime()) / (1000 * 60);
   }, [isLanded, scheduledTime, estimatedTime, flightDate]);
 
-  // Handle visibility and post-landing animation
   useEffect(() => {
-    if (isCancelled) {
-      setIsVisible(false);
-      return;
-    }
-
+    if (isCancelled) { setIsVisible(false); return; }
     if (isLanded) {
-      // Fade out between 45-90 minutes (average 67.5 mins)
       const fadeOutDuration = 45 + Math.random() * 45;
       if (minutesSinceLanding < fadeOutDuration) {
         setIsVisible(true);
@@ -192,47 +153,34 @@ const FlightProgressBar = ({
       }
       return;
     }
-
     const shouldShow = (trackingProgress !== undefined && trackingProgress > 0) || 
                        (hoursUntilLanding <= 4 && hoursUntilLanding > 0);
     setIsVisible(shouldShow);
     setFadeProgress(1);
   }, [isCancelled, isLanded, trackingProgress, hoursUntilLanding, minutesSinceLanding]);
 
-  // Update progress
   useEffect(() => {
     if (!isVisible || isLanded) return;
-
     const updateProgress = () => {
       const { progress: newProgress, minutesRemaining: newMinutes } = calculateProgress(
-        scheduledTime,
-        estimatedTime,
-        flightDate,
-        trackingProgress
+        scheduledTime, estimatedTime, flightDate, trackingProgress
       );
       setProgress(newProgress);
       setMinutesRemaining(newMinutes);
-      
-      const countdown = formatCountdown(newMinutes);
-      onCountdownChange?.(countdown);
-      
-      // Activate landing pulse in final 5 minutes with soft glow
+      const cd = formatCountdown(newMinutes);
+      setCountdownText(cd);
+      onCountdownChange?.(cd);
       setIsLandingPulse(newMinutes <= 5 && newMinutes > 0);
-      
       const growProgress = Math.min(newProgress / 100, 1);
       setIconScale(0.8 + (growProgress * 0.4));
     };
-
     updateProgress();
     const interval = setInterval(updateProgress, 30000);
-
     return () => clearInterval(interval);
   }, [isVisible, isLanded, scheduledTime, estimatedTime, flightDate, trackingProgress, onCountdownChange]);
 
   useEffect(() => {
-    if (!isVisible) {
-      onCountdownChange?.('');
-    }
+    if (!isVisible) onCountdownChange?.('');
   }, [isVisible, onCountdownChange]);
 
   if (!isVisible) return null;
@@ -243,9 +191,7 @@ const FlightProgressBar = ({
 
   return (
     <div 
-      className={cn(
-        "relative rounded-full overflow-visible transition-all duration-500"
-      )}
+      className="relative rounded-full overflow-visible transition-all duration-500"
       style={{ 
         height: `${barHeight}px`,
         opacity: fadeProgress,
@@ -253,38 +199,47 @@ const FlightProgressBar = ({
         transformOrigin: 'center',
       }}
     >
-      {/* Glassmorphism track with dark scrim */}
+      {/* Track background */}
       <div 
         className="absolute inset-0 rounded-full"
         style={{ 
-          background: `linear-gradient(90deg, 
-            rgba(${hexToRgb(trackInactiveColor)}, 0.2) 0%, 
-            rgba(${hexToRgb(trackInactiveColor)}, 0.3) 100%)`,
+          background: `linear-gradient(90deg, rgba(${hexToRgb(trackInactiveColor)}, 0.2) 0%, rgba(${hexToRgb(trackInactiveColor)}, 0.3) 100%)`,
           backdropFilter: 'blur(8px)',
-          boxShadow: `
-            inset 0 1px 2px rgba(255, 255, 255, 0.1),
-            inset 0 -1px 2px rgba(0, 0, 0, 0.2)
-          `,
+          boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.1), inset 0 -1px 2px rgba(0,0,0,0.2)',
         }}
       />
       
-      {/* Active track with soft glow */}
+      {/* Active track */}
       <div 
         className="absolute inset-y-0 left-0 rounded-full transition-all duration-1000 ease-out"
         style={{ 
           width: `${progress}%`,
-          background: `linear-gradient(90deg, 
-            rgba(${hexToRgb(trackActiveColor)}, 0.4) 0%, 
-            rgba(${hexToRgb(trackActiveColor)}, 0.6) 100%)`,
+          background: `linear-gradient(90deg, rgba(${hexToRgb(trackActiveColor)}, 0.4) 0%, rgba(${hexToRgb(trackActiveColor)}, 0.6) 100%)`,
           boxShadow: `0 0 8px rgba(${hexToRgb(trackActiveColor)}, 0.4)`,
         }}
       />
+
+      {/* Countdown inline overlay */}
+      {showCountdownInline && countdownText && (
+        <div 
+          className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
+        >
+          <span 
+            className="text-[7px] font-bold px-1 rounded"
+            style={{ 
+              color: textColor, 
+              textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+              opacity: 0.9,
+            }}
+          >
+            {countdownText}
+          </span>
+        </div>
+      )}
       
       {/* Aircraft icon */}
       <div 
-        className={cn(
-          "absolute top-1/2 -translate-y-1/2 transition-all duration-1000 ease-out z-10"
-        )}
+        className="absolute top-1/2 -translate-y-1/2 transition-all duration-1000 ease-out z-10"
         style={{ 
           left: `${planePosition}%`,
           transform: `translate(-50%, -50%) scale(${iconScale})`,
@@ -295,10 +250,7 @@ const FlightProgressBar = ({
           src="https://ik.imagekit.io/jv0j9qvtw/F9UqOabfPVMjAAAAAElFTkSuQmCC(1).png"
           alt="Flight"
           className="w-5 h-5 object-contain"
-          style={{ 
-            filter: colorFilter,
-            opacity: isLandingPulse ? 1 : 0.9,
-          }}
+          style={{ filter: colorFilter, opacity: isLandingPulse ? 1 : 0.9 }}
         />
       </div>
     </div>
