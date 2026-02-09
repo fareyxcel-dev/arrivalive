@@ -289,7 +289,7 @@ const NewHeader = ({
         <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-1">
           {/* Left: Time & Date - constrained to not invade center */}
           <div className={cn(
-            "space-y-0 transition-all duration-300 overflow-hidden",
+            "space-y-0 transition-all duration-300 overflow-hidden max-w-[35vw]",
             isScrolled ? "scale-[0.85] origin-top-left" : ""
           )}>
             <button 
@@ -420,7 +420,7 @@ const NewHeader = ({
           {/* Right: Weather - constrained to not invade center */}
           {weather ? (
             <div className={cn(
-              "text-right space-y-0 transition-all duration-300 overflow-hidden",
+              "text-right space-y-0 transition-all duration-300 overflow-hidden max-w-[35vw]",
               isScrolled ? "scale-[0.85] origin-top-right" : ""
             )}>
               <button
@@ -428,7 +428,7 @@ const NewHeader = ({
                 className="flex items-center justify-end gap-1 ml-auto hover:bg-white/5 rounded px-1 -mx-1 transition-colors"
               >
                 <p className={cn(
-                  "font-bold text-white transition-all whitespace-nowrap",
+                  "font-bold text-white transition-all whitespace-nowrap adaptive-shadow",
                   isScrolled ? "text-sm" : "text-base"
                 )}>
                   {convertTemperature(weather.temp, settings.temperatureUnit)}°{settings.temperatureUnit}

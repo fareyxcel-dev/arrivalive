@@ -16,6 +16,7 @@ interface NotificationEntry {
   flight_date: string;
   action: 'subscribed' | 'unsubscribed';
   created_at: string;
+  origin?: string;
 }
 
 interface AlertEntry {
@@ -65,7 +66,7 @@ const NotificationsModal = ({ isOpen, onClose }: Props) => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
-        // Load user's notification subscriptions
+        // Load user's notification subscriptions with flight details
         const { data: subs } = await supabase
           .from('notification_subscriptions')
           .select('id, flight_id, flight_date, created_at')
@@ -73,13 +74,23 @@ const NotificationsModal = ({ isOpen, onClose }: Props) => {
           .order('created_at', { ascending: false })
           .limit(50);
 
-        if (subs) {
+        if (subs && subs.length > 0) {
+          // Fetch flight details for subscribed flights
+          const flightIds = [...new Set(subs.map(s => s.flight_id))];
+          const { data: flightDetails } = await supabase
+            .from('flights')
+            .select('flight_id, origin')
+            .in('flight_id', flightIds);
+          
+          const flightMap = new Map(flightDetails?.map(f => [f.flight_id, f.origin]) || []);
+          
           setNotifications(subs.map(s => ({
             id: s.id,
             flight_id: s.flight_id,
             flight_date: s.flight_date,
             action: 'subscribed',
             created_at: s.created_at,
+            origin: flightMap.get(s.flight_id) || '',
           })));
         }
 
@@ -192,7 +203,7 @@ const NotificationsModal = ({ isOpen, onClose }: Props) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose} style={{ background: 'rgba(0,0,0,0.3)' }}>
       <div
-        className="rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden animate-scale-in"
+        className="rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden animate-scale-in glass-neumorphic"
         onClick={(e) => e.stopPropagation()}
         style={{ background: 'rgba(255, 255, 255, 0.08)', backdropFilter: 'blur(20px) saturate(1.2)', border: '1px solid rgba(255, 255, 255, 0.1)', fontFamily: settings.fontFamily }}
       >
@@ -307,12 +318,13 @@ const NotificationsModal = ({ isOpen, onClose }: Props) => {
                   {notifications.map((notif) => (
                     <div
                       key={notif.id}
-                      className="glass rounded-lg p-3 flex items-center gap-3"
+                      className="glass-neumorphic rounded-lg p-3 flex items-center gap-3"
                     >
                       <Bell className="w-4 h-4 text-foreground flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">
                           {notif.flight_id}
+                          {notif.origin && <span className="text-muted-foreground font-normal"> from {notif.origin}</span>}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           Subscribed {formatDate(notif.created_at)} at {formatTime(notif.created_at)}
