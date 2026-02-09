@@ -408,7 +408,7 @@ const Index = () => {
     }
   };
 
-  // Filter flights - 90 minute (1.5 hour) cutoff
+  // Filter flights - 60 minute (1 hour) cutoff
   const filteredFlights = flights.filter(flight => {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
@@ -416,7 +416,7 @@ const Index = () => {
     if (flight.date < todayStr) return false;
     if (flight.date > todayStr) return true;
     
-    const cutoffTime = new Date(now.getTime() - 90 * 60 * 1000); // 1.5 hours
+    const cutoffTime = new Date(now.getTime() - 60 * 60 * 1000); // 1 hour
     const statusUpper = flight.status.toUpperCase();
     
     // For landed/cancelled, use estimated time as reference

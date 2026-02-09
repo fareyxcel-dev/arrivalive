@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-// Extended fonts list - 200+ fonts for variety
+// Extended fonts list
 const AVAILABLE_FONTS = [
   'Poppins', 'Teko', 'Sulphur Point', 'Stick No Bills', 'Space Mono', 'Notable',
   'Archive', 'Bebas Neue', 'Oswald', 'Anton', 'Permanent Marker', 'Russo One',
@@ -45,20 +45,20 @@ const AVAILABLE_FONTS = [
   'Noto Sans KR', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans Arabic',
 ];
 
-// New Glass Presets - OS/design-inspired
+// Glass Presets - OS/design-inspired with updated values
 export const GLASS_PRESETS: Record<string, { blur: number; opacity: number; label: string; description: string }> = {
-  'frosted': { blur: 20, opacity: 0.08, label: 'Frosted', description: 'Standard frosted glass' },
-  'liquid': { blur: 30, opacity: 0.12, label: 'Liquid', description: 'Fluid, high-blur glass' },
-  'prismatic': { blur: 15, opacity: 0.06, label: 'Prismatic', description: 'Rainbow refraction feel' },
-  'stained': { blur: 18, opacity: 0.15, label: 'Stained', description: 'Colored glass tint' },
-  'polarized': { blur: 22, opacity: 0.10, label: 'Polarized', description: 'Sharp contrast glass' },
-  'ios': { blur: 25, opacity: 0.08, label: 'iOS', description: 'Apple-style frosted' },
-  'aero': { blur: 12, opacity: 0.20, label: 'Aero', description: 'Windows Aero translucency' },
-  'vista': { blur: 8, opacity: 0.25, label: 'Vista', description: 'Subtle Vista glass' },
-  'windows': { blur: 16, opacity: 0.18, label: 'Windows', description: 'Modern Windows acrylic' },
-  'linux': { blur: 5, opacity: 0.05, label: 'Linux', description: 'Minimal, clean' },
-  'mac': { blur: 20, opacity: 0.07, label: 'Mac', description: 'macOS vibrancy' },
-  'ubuntu': { blur: 10, opacity: 0.22, label: 'Ubuntu', description: 'Ubuntu desktop feel' },
+  'frosted': { blur: 20, opacity: 0.08, label: 'Frosted', description: 'Standard white frost' },
+  'liquid': { blur: 35, opacity: 0.05, label: 'Liquid', description: 'High blur, fluid feel' },
+  'prismatic': { blur: 12, opacity: 0.06, label: 'Prismatic', description: 'Rainbow refraction' },
+  'stained': { blur: 18, opacity: 0.15, label: 'Stained', description: 'Warm amber tint' },
+  'polarized': { blur: 25, opacity: 0.10, label: 'Polarized', description: 'Sharp contrast' },
+  'ios': { blur: 25, opacity: 0.08, label: 'iOS', description: 'Vibrancy + saturation' },
+  'aero': { blur: 14, opacity: 0.20, label: 'Aero', description: 'Classic transparency' },
+  'vista': { blur: 8, opacity: 0.25, label: 'Vista', description: 'Thick glass, low blur' },
+  'windows': { blur: 18, opacity: 0.12, label: 'Windows', description: 'Acrylic noise' },
+  'linux': { blur: 4, opacity: 0.04, label: 'Linux', description: 'Near-transparent' },
+  'mac': { blur: 22, opacity: 0.07, label: 'Mac', description: 'Warm vibrancy' },
+  'ubuntu': { blur: 10, opacity: 0.18, label: 'Ubuntu', description: 'Orange-tinted' },
 };
 
 interface SettingsState {
@@ -70,11 +70,11 @@ interface SettingsState {
   blurLevel: number;
   glassOpacity: number;
   iframeBrightness: number;
-  monochrome: boolean;
-  monochromeIntensity: number;
-  monoContrast: number;
-  monoShadows: number;
-  monoHighlights: number;
+  saturation: number; // 0-200, default 100. 0=grayscale, 100=normal, 200=oversaturated
+  contrast: number;   // 50-150, default 100
+  shadows: number;    // 0-100, default 50
+  highlights: number; // 0-100, default 50
+  hueShift: number;   // 0-360, default 0
   glassPreset: string;
   boldText: boolean;
   colorShift: number;
@@ -98,11 +98,11 @@ interface SettingsContextType {
   setBlurLevel: (level: number) => void;
   setGlassOpacity: (opacity: number) => void;
   setIframeBrightness: (value: number) => void;
-  setMonochrome: (enabled: boolean) => void;
-  setMonochromeIntensity: (value: number) => void;
-  setMonoContrast: (value: number) => void;
-  setMonoShadows: (value: number) => void;
-  setMonoHighlights: (value: number) => void;
+  setSaturation: (value: number) => void;
+  setContrast: (value: number) => void;
+  setShadows: (value: number) => void;
+  setHighlights: (value: number) => void;
+  setHueShift: (value: number) => void;
   setGlassPreset: (preset: string) => void;
   setBoldText: (enabled: boolean) => void;
   setColorShift: (value: number) => void;
@@ -115,6 +115,7 @@ interface SettingsContextType {
   updateProfile: (data: { display_name?: string; phone?: string }) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
   deleteAccount: () => Promise<void>;
+  resetSetting: (key: string) => void;
 }
 
 const defaultSettings: SettingsState = {
@@ -126,11 +127,11 @@ const defaultSettings: SettingsState = {
   blurLevel: 20,
   glassOpacity: 0.1,
   iframeBrightness: 100,
-  monochrome: false,
-  monochromeIntensity: 50,
-  monoContrast: 100,
-  monoShadows: 50,
-  monoHighlights: 50,
+  saturation: 100,
+  contrast: 100,
+  shadows: 50,
+  highlights: 50,
+  hueShift: 0,
   glassPreset: 'frosted',
   boldText: false,
   colorShift: 0,
@@ -143,6 +144,33 @@ const defaultSettings: SettingsState = {
     push: true,
     repeat: false,
   },
+};
+
+// Migrate old settings
+const migrateSettings = (saved: any): SettingsState => {
+  const migrated = { ...defaultSettings, ...saved };
+  // Migrate monochrome → saturation
+  if ('monochrome' in saved && !('saturation' in saved)) {
+    if (saved.monochrome && saved.monochromeIntensity !== undefined) {
+      migrated.saturation = Math.max(0, 100 - saved.monochromeIntensity);
+    }
+  }
+  if ('monoContrast' in saved && !('contrast' in saved)) {
+    migrated.contrast = saved.monoContrast;
+  }
+  if ('monoShadows' in saved && !('shadows' in saved)) {
+    migrated.shadows = saved.monoShadows;
+  }
+  if ('monoHighlights' in saved && !('highlights' in saved)) {
+    migrated.highlights = saved.monoHighlights;
+  }
+  // Remove old keys
+  delete migrated.monochrome;
+  delete migrated.monochromeIntensity;
+  delete migrated.monoContrast;
+  delete migrated.monoShadows;
+  delete migrated.monoHighlights;
+  return migrated;
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -158,7 +186,7 @@ export const useSettings = () => {
 export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const [settings, setSettings] = useState<SettingsState>(() => {
     const saved = localStorage.getItem('arriva-settings');
-    return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
+    return saved ? migrateSettings(JSON.parse(saved)) : defaultSettings;
   });
 
   useEffect(() => {
@@ -188,14 +216,9 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     // Apply text case
     let textTransform: string;
     switch (settings.textCase) {
-      case 'uppercase':
-        textTransform = 'uppercase';
-        break;
-      case 'lowercase':
-        textTransform = 'lowercase';
-        break;
-      default:
-        textTransform = 'none';
+      case 'uppercase': textTransform = 'uppercase'; break;
+      case 'lowercase': textTransform = 'lowercase'; break;
+      default: textTransform = 'none';
     }
     document.documentElement.style.setProperty('--text-case', textTransform);
     document.body.style.textTransform = textTransform;
@@ -204,9 +227,12 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     document.documentElement.style.setProperty('--glass-blur', `${effectiveBlur}px`);
     document.documentElement.style.setProperty('--glass-opacity', `${effectiveOpacity}`);
     document.documentElement.style.setProperty('--iframe-brightness', `${settings.iframeBrightness}%`);
-    document.documentElement.style.setProperty('--iframe-monochrome', settings.monochrome ? `${settings.monochromeIntensity}%` : '0%');
     document.documentElement.style.setProperty('--font-weight', settings.boldText ? '700' : '400');
     document.documentElement.style.setProperty('--color-shift', `${settings.colorShift}`);
+    
+    // Compute adaptive shadow opacity from brightness
+    const shadowOpacity = Math.max(0.2, Math.min(0.8, settings.iframeBrightness / 150));
+    document.documentElement.style.setProperty('--shadow-opacity', `${shadowOpacity.toFixed(2)}`);
     
     // Inject comprehensive global styles
     let globalStyle = document.getElementById('global-font-style');
@@ -290,49 +316,22 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [settings]);
 
-  const setFontFamily = (font: string) => {
-    setSettings(prev => ({ ...prev, fontFamily: font }));
-  };
-
-  const setFontSize = (size: number) => {
-    setSettings(prev => ({ ...prev, fontSize: size }));
-  };
-
-  const setTextCase = (textCase: 'default' | 'uppercase' | 'lowercase') => {
-    setSettings(prev => ({ ...prev, textCase }));
-  };
-
-  const setBlurLevel = (level: number) => {
-    setSettings(prev => ({ ...prev, blurLevel: level }));
-  };
-
-  const setGlassOpacity = (opacity: number) => {
-    setSettings(prev => ({ ...prev, glassOpacity: opacity }));
-  };
-
-  const setIframeBrightness = (value: number) => {
-    setSettings(prev => ({ ...prev, iframeBrightness: value }));
-  };
-
-  const setMonochrome = (enabled: boolean) => {
-    setSettings(prev => ({ ...prev, monochrome: enabled }));
-  };
-
-  const setMonochromeIntensity = (value: number) => {
-    setSettings(prev => ({ ...prev, monochromeIntensity: value }));
-  };
-
-  const setMonoContrast = (value: number) => {
-    setSettings(prev => ({ ...prev, monoContrast: value }));
-  };
-
-  const setMonoShadows = (value: number) => {
-    setSettings(prev => ({ ...prev, monoShadows: value }));
-  };
-
-  const setMonoHighlights = (value: number) => {
-    setSettings(prev => ({ ...prev, monoHighlights: value }));
-  };
+  const setFontFamily = (font: string) => setSettings(prev => ({ ...prev, fontFamily: font }));
+  const setFontSize = (size: number) => setSettings(prev => ({ ...prev, fontSize: size }));
+  const setTextCase = (textCase: 'default' | 'uppercase' | 'lowercase') => setSettings(prev => ({ ...prev, textCase }));
+  const setBlurLevel = (level: number) => setSettings(prev => ({ ...prev, blurLevel: level }));
+  const setGlassOpacity = (opacity: number) => setSettings(prev => ({ ...prev, glassOpacity: opacity }));
+  const setIframeBrightness = (value: number) => setSettings(prev => ({ ...prev, iframeBrightness: value }));
+  const setSaturation = (value: number) => setSettings(prev => ({ ...prev, saturation: value }));
+  const setContrast = (value: number) => setSettings(prev => ({ ...prev, contrast: value }));
+  const setShadows = (value: number) => setSettings(prev => ({ ...prev, shadows: value }));
+  const setHighlights = (value: number) => setSettings(prev => ({ ...prev, highlights: value }));
+  const setHueShift = (value: number) => setSettings(prev => ({ ...prev, hueShift: value }));
+  const setBoldText = (enabled: boolean) => setSettings(prev => ({ ...prev, boldText: enabled }));
+  const setColorShift = (value: number) => setSettings(prev => ({ ...prev, colorShift: value }));
+  const setDualGlass = (enabled: boolean) => setSettings(prev => ({ ...prev, dualGlass: enabled }));
+  const setDualGlassStyle1 = (preset: string) => setSettings(prev => ({ ...prev, dualGlassStyle1: preset }));
+  const setDualGlassStyle2 = (preset: string) => setSettings(prev => ({ ...prev, dualGlassStyle2: preset }));
 
   const setGlassPreset = (preset: string) => {
     const presetValues = GLASS_PRESETS[preset];
@@ -348,59 +347,20 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const setBoldText = (enabled: boolean) => {
-    setSettings(prev => ({ ...prev, boldText: enabled }));
-  };
-
-  const setColorShift = (value: number) => {
-    setSettings(prev => ({ ...prev, colorShift: value }));
-  };
-
-  const setDualGlass = (enabled: boolean) => {
-    setSettings(prev => ({ ...prev, dualGlass: enabled }));
-  };
-
-  const setDualGlassStyle1 = (preset: string) => {
-    setSettings(prev => ({ ...prev, dualGlassStyle1: preset }));
-  };
-
-  const setDualGlassStyle2 = (preset: string) => {
-    setSettings(prev => ({ ...prev, dualGlassStyle2: preset }));
-  };
-
-  const toggleTimeFormat = () => {
-    setSettings(prev => ({ 
-      ...prev, 
-      timeFormat: prev.timeFormat === '12h' ? '24h' : '12h' 
-    }));
-  };
-
-  const toggleTemperatureUnit = () => {
-    setSettings(prev => ({ 
-      ...prev, 
-      temperatureUnit: prev.temperatureUnit === 'C' ? 'F' : 'C' 
-    }));
-  };
-
+  const toggleTimeFormat = () => setSettings(prev => ({ ...prev, timeFormat: prev.timeFormat === '12h' ? '24h' : '12h' }));
+  const toggleTemperatureUnit = () => setSettings(prev => ({ ...prev, temperatureUnit: prev.temperatureUnit === 'C' ? 'F' : 'C' }));
   const setNotification = (key: keyof SettingsState['notifications'], value: boolean) => {
-    setSettings(prev => ({
-      ...prev,
-      notifications: { ...prev.notifications, [key]: value },
-    }));
+    setSettings(prev => ({ ...prev, notifications: { ...prev.notifications, [key]: value } }));
+  };
+
+  const resetSetting = (key: string) => {
+    setSettings(prev => ({ ...prev, [key]: (defaultSettings as any)[key] }));
   };
 
   const updateProfile = async (data: { display_name?: string; phone?: string }) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
-
-    const { error } = await supabase
-      .from('profiles')
-      .upsert({
-        user_id: user.id,
-        ...data,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
-
+    const { error } = await supabase.from('profiles').upsert({ user_id: user.id, ...data, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
     if (error) throw error;
   };
 
@@ -412,7 +372,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const deleteAccount = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
-
     await supabase.from('profiles').delete().eq('user_id', user.id);
     await supabase.from('notification_subscriptions').delete().eq('user_id', user.id);
     await supabase.auth.signOut();
@@ -423,29 +382,14 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       value={{
         settings,
         availableFonts: AVAILABLE_FONTS,
-        setFontFamily,
-        setFontSize,
-        setTextCase,
-        setBlurLevel,
-        setGlassOpacity,
-        setIframeBrightness,
-        setMonochrome,
-        setMonochromeIntensity,
-        setMonoContrast,
-        setMonoShadows,
-        setMonoHighlights,
-        setGlassPreset,
-        setBoldText,
-        setColorShift,
-        setDualGlass,
-        setDualGlassStyle1,
-        setDualGlassStyle2,
-        toggleTimeFormat,
-        toggleTemperatureUnit,
-        setNotification,
-        updateProfile,
-        updatePassword,
-        deleteAccount,
+        setFontFamily, setFontSize, setTextCase,
+        setBlurLevel, setGlassOpacity, setIframeBrightness,
+        setSaturation, setContrast, setShadows, setHighlights, setHueShift,
+        setGlassPreset, setBoldText, setColorShift,
+        setDualGlass, setDualGlassStyle1, setDualGlassStyle2,
+        toggleTimeFormat, toggleTemperatureUnit,
+        setNotification, updateProfile, updatePassword, deleteAccount,
+        resetSetting,
       }}
     >
       {children}

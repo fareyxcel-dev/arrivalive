@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, User, Type, Sparkles, Bell, Shield, Camera, Loader2, Check, FileArchive } from 'lucide-react';
+import { X, User, Type, Sparkles, Bell, Shield, Camera, Loader2, Check, FileArchive, Bug, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
 import { GLASS_PRESETS } from '@/contexts/SettingsContext';
@@ -14,7 +14,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'profile' | 'texts' | 'style' | 'notifications' | 'security' | 'admin';
+type Tab = 'profile' | 'texts' | 'style' | 'notifications' | 'security' | 'report' | 'admin';
 
 const ADMIN_EMAILS = ['fareyxcel@gmail.com', 'arrivamv@gmail.com', 'arrivalive@gmail.com'];
 
@@ -24,13 +24,32 @@ const MODAL_STYLE = {
   border: '1px solid rgba(255, 255, 255, 0.1)',
 };
 
+// Mini slider with reset button
+const MiniSlider = ({ label, value, defaultValue, min, max, step, onChange, onReset, suffix = '' }: {
+  label: string; value: number; defaultValue: number; min: number; max: number; step: number;
+  onChange: (val: number) => void; onReset: () => void; suffix?: string;
+}) => (
+  <div className="space-y-1">
+    <div className="flex items-center justify-between">
+      <label className="text-[10px] text-muted-foreground uppercase tracking-wide truncate">{label}: {value}{suffix}</label>
+      {value !== defaultValue && (
+        <button onClick={onReset} className="p-0.5 rounded hover:bg-white/10 transition-colors flex-shrink-0" title="Reset to default">
+          <RotateCcw className="w-3 h-3 text-muted-foreground" />
+        </button>
+      )}
+    </div>
+    <Slider value={[value]} onValueChange={([v]) => onChange(v)} min={min} max={max} step={step} className="w-full" />
+  </div>
+);
+
 const SettingsModal = ({ isOpen, onClose }: Props) => {
   const { 
     settings, availableFonts, setFontFamily, setFontSize, setTextCase,
-    setBlurLevel, setGlassOpacity, setIframeBrightness, setMonochrome,
-    setMonochromeIntensity, setMonoContrast, setMonoShadows, setMonoHighlights,
+    setBlurLevel, setGlassOpacity, setIframeBrightness,
+    setSaturation, setContrast, setShadows, setHighlights, setHueShift,
     setGlassPreset, setBoldText, setColorShift, setDualGlass, setDualGlassStyle1,
     setDualGlassStyle2, setNotification, updateProfile, updatePassword, deleteAccount,
+    resetSetting,
   } = useSettings();
   
   const [activeTab, setActiveTab] = useState<Tab>('profile');
@@ -48,11 +67,21 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
   const fontScrollRef = useRef<HTMLDivElement>(null);
   const fontObserverRef = useRef<IntersectionObserver | null>(null);
 
+  // Report tab state
+  const [reportType, setReportType] = useState<string>('Bug');
+  const [reportTitle, setReportTitle] = useState('');
+  const [reportDescription, setReportDescription] = useState('');
+  const [weatherIncorrect, setWeatherIncorrect] = useState(false);
+  const [correctedCondition, setCorrectedCondition] = useState('');
+  const [correctedTemp, setCorrectedTemp] = useState('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+
   // Dynamic title
   useEffect(() => {
     const tabTitles: Record<Tab, string> = {
       profile: 'Profile Settings', texts: 'Text Settings', style: 'Style Settings',
-      notifications: 'Notification Settings', security: 'Security Settings', admin: 'Admin Settings',
+      notifications: 'Notification Settings', security: 'Security Settings', 
+      report: 'Report Issue', admin: 'Admin Settings',
     };
     setDisplayTitle(tabTitles[activeTab]);
     if (titleTimeoutRef.current) clearTimeout(titleTimeoutRef.current);
@@ -92,8 +121,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
               const linkId = `lazy-font-${fontName.replace(/\s+/g, '-')}`;
               if (!document.getElementById(linkId)) {
                 const link = document.createElement('link');
-                link.id = linkId;
-                link.rel = 'stylesheet';
+                link.id = linkId; link.rel = 'stylesheet';
                 link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:wght@400;700&display=swap`;
                 document.head.appendChild(link);
               }
@@ -138,6 +166,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     { id: 'style', label: 'Style', icon: Sparkles },
     { id: 'notifications', label: 'Alerts', icon: Bell },
     { id: 'security', label: 'Security', icon: Shield },
+    { id: 'report', label: 'Report', icon: Bug },
     ...(isAdmin ? [{ id: 'admin' as Tab, label: 'Admin', icon: Shield }] : []),
   ];
 
@@ -165,6 +194,31 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     finally { setIsLoading(false); }
   };
 
+  const handleSubmitReport = async () => {
+    if (!reportTitle.trim()) { toast.error('Please enter a title'); return; }
+    setIsSubmittingReport(true);
+    try {
+      let description = reportDescription;
+      if (reportType === 'Weather Issue' && weatherIncorrect) {
+        description = JSON.stringify({
+          originalReport: reportDescription,
+          correctedCondition,
+          correctedTemp,
+        });
+      }
+      const { error } = await supabase.from('admin_reports').insert({
+        report_type: reportType === 'Weather Issue' && weatherIncorrect ? 'weather_correction' : reportType.toLowerCase().replace(/ /g, '_'),
+        title: reportTitle,
+        description,
+      });
+      if (error) throw error;
+      toast.success('Report submitted. Thank you!');
+      setReportTitle(''); setReportDescription(''); setWeatherIncorrect(false);
+      setCorrectedCondition(''); setCorrectedTemp('');
+    } catch { toast.error('Failed to submit report'); }
+    finally { setIsSubmittingReport(false); }
+  };
+
   const handleAdminExport = async () => {
     setIsExporting(true);
     try {
@@ -174,11 +228,8 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
       const blob = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `arriva-blueprint-${new Date().toISOString().split('T')[0]}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      a.href = url; a.download = `arriva-blueprint-${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast.success('Blueprint exported');
     } catch { toast.error('Export failed'); }
@@ -187,9 +238,6 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
 
   const glassPresetEntries = Object.entries(GLASS_PRESETS);
 
-  // Compute saturation from monochrome intensity (inverted: 100% = full color, 0% = grayscale)
-  const saturationValue = settings.monochrome ? (100 - settings.monochromeIntensity) : 100;
-
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-4" 
@@ -197,16 +245,16 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
       style={{ background: 'rgba(0,0,0,0.3)' }}
     >
       <div
-        className="rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden animate-scale-in"
+        className="rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden animate-scale-in glass-neumorphic"
         onClick={e => e.stopPropagation()}
         style={{ ...MODAL_STYLE, fontFamily: settings.fontFamily }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <h2 className="font-display text-lg font-bold text-foreground transition-all duration-500">
+          <h2 className="font-display text-lg font-bold text-foreground transition-all duration-500 adaptive-shadow">
             {displayTitle}
           </h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors glass-orb">
             <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
@@ -233,9 +281,9 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
           {activeTab === 'profile' && (
             <div className="space-y-4 animate-fade-in">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full glass flex items-center justify-center relative">
+                <div className="w-16 h-16 rounded-full glass-orb flex items-center justify-center relative">
                   <User className="w-8 h-8 text-muted-foreground" />
-                  <button className="absolute bottom-0 right-0 w-6 h-6 rounded-full glass-interactive flex items-center justify-center">
+                  <button className="absolute bottom-0 right-0 w-6 h-6 rounded-full glass-orb flex items-center justify-center">
                     <Camera className="w-3 h-3" />
                   </button>
                 </div>
@@ -254,7 +302,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                 {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                 Save Profile
               </button>
-              <div className="glass rounded-lg p-4">
+              <div className="glass-neumorphic rounded-lg p-4">
                 <p className="text-xs text-muted-foreground">Time spent on Arriva.MV</p>
                 <p className="font-display text-2xl font-bold text-foreground mt-1">{profileLoaded ? '0 days' : '...'}</p>
               </div>
@@ -275,19 +323,10 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                     {availableFonts.map((font) => {
                       const isSelected = font === settings.fontFamily;
                       return (
-                        <button
-                          key={font}
-                          data-font={font}
-                          onClick={() => setFontFamily(font)}
-                          className={cn(
-                            "w-full px-3 py-2 text-left rounded-md transition-all flex items-center gap-2",
-                            isSelected ? "bg-white/20 text-foreground" : "hover:bg-white/10 text-foreground/70"
-                          )}
-                          style={{ 
-                            fontFamily: visibleFonts.has(font) ? `'${font}', sans-serif` : 'inherit',
-                            fontWeight: settings.boldText ? 700 : 400,
-                          }}
-                        >
+                        <button key={font} data-font={font} onClick={() => setFontFamily(font)}
+                          className={cn("w-full px-3 py-2 text-left rounded-md transition-all flex items-center gap-2",
+                            isSelected ? "bg-white/20 text-foreground" : "hover:bg-white/10 text-foreground/70")}
+                          style={{ fontFamily: visibleFonts.has(font) ? `'${font}', sans-serif` : 'inherit', fontWeight: settings.boldText ? 700 : 400 }}>
                           {isSelected && <Check className="w-4 h-4 flex-shrink-0" />}
                           <span className="truncate">{font}</span>
                         </button>
@@ -326,9 +365,14 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
 
           {activeTab === 'style' && (
             <div className="space-y-5 animate-fade-in">
-              <div>
-                <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">Background Brightness: {settings.iframeBrightness}%</label>
-                <Slider value={[settings.iframeBrightness]} onValueChange={([val]) => setIframeBrightness(val)} min={0} max={200} step={5} className="w-full" />
+              {/* Mini Sliders Grid - 2 per row on wider screens */}
+              <div className="grid grid-cols-2 gap-3">
+                <MiniSlider label="Brightness" value={settings.iframeBrightness} defaultValue={100} min={0} max={200} step={5} onChange={setIframeBrightness} onReset={() => resetSetting('iframeBrightness')} suffix="%" />
+                <MiniSlider label="Contrast" value={settings.contrast} defaultValue={100} min={50} max={150} step={5} onChange={setContrast} onReset={() => resetSetting('contrast')} suffix="%" />
+                <MiniSlider label="Saturation" value={settings.saturation} defaultValue={100} min={0} max={200} step={5} onChange={setSaturation} onReset={() => resetSetting('saturation')} suffix="%" />
+                <MiniSlider label="Shadows" value={settings.shadows} defaultValue={50} min={0} max={100} step={5} onChange={setShadows} onReset={() => resetSetting('shadows')} />
+                <MiniSlider label="Highlights" value={settings.highlights} defaultValue={50} min={0} max={100} step={5} onChange={setHighlights} onReset={() => resetSetting('highlights')} />
+                <MiniSlider label="Hue Shift" value={settings.hueShift} defaultValue={0} min={0} max={360} step={10} onChange={setHueShift} onReset={() => resetSetting('hueShift')} suffix="°" />
               </div>
 
               <div>
@@ -339,44 +383,6 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
               <div>
                 <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">Glass Opacity: {Math.round(settings.glassOpacity * 100)}%</label>
                 <Slider value={[settings.glassOpacity * 100]} onValueChange={([val]) => setGlassOpacity(val / 100)} min={0} max={50} step={5} className="w-full" />
-              </div>
-
-              {/* Saturation slider instead of monochrome toggle */}
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground uppercase tracking-wide mb-1 block">
-                  Saturation: {saturationValue}%
-                </label>
-                <Slider 
-                  value={[saturationValue]} 
-                  onValueChange={([val]) => {
-                    if (val < 100) {
-                      setMonochrome(true);
-                      setMonochromeIntensity(100 - val);
-                    } else {
-                      setMonochrome(false);
-                      setMonochromeIntensity(0);
-                    }
-                  }} 
-                  min={0} max={100} step={5} className="w-full" 
-                />
-                <p className="text-[10px] text-muted-foreground">0% = grayscale, 100% = full color</p>
-                
-                {settings.monochrome && (
-                  <div className="space-y-3 pl-2 border-l border-white/10 mt-2">
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Contrast: {settings.monoContrast}%</label>
-                      <Slider value={[settings.monoContrast]} onValueChange={([val]) => setMonoContrast(val)} min={50} max={150} step={5} className="w-full" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Shadows: {settings.monoShadows}</label>
-                      <Slider value={[settings.monoShadows]} onValueChange={([val]) => setMonoShadows(val)} min={0} max={100} step={5} className="w-full" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Highlights: {settings.monoHighlights}</label>
-                      <Slider value={[settings.monoHighlights]} onValueChange={([val]) => setMonoHighlights(val)} min={0} max={100} step={5} className="w-full" />
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Dual Glass Toggle */}
@@ -409,24 +415,19 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                 )}
               </div>
 
-              {/* Glass Presets with visual preview */}
+              {/* Glass Presets */}
               <div>
                 <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">Glass Presets</label>
                 <div className="grid grid-cols-3 gap-2">
                   {glassPresetEntries.map(([id, preset]) => (
-                    <button
-                      key={id}
-                      onClick={() => setGlassPreset(id)}
-                      className={cn(
-                        "relative p-2 rounded-lg text-left transition-all border overflow-hidden",
-                        settings.glassPreset === id ? "border-white/40" : "border-white/10 hover:border-white/20"
-                      )}
+                    <button key={id} onClick={() => setGlassPreset(id)}
+                      className={cn("relative p-2 rounded-lg text-left transition-all border overflow-hidden glass-neumorphic",
+                        settings.glassPreset === id ? "border-white/40" : "border-white/10 hover:border-white/20")}
                       style={{
                         background: `rgba(255, 255, 255, ${preset.opacity})`,
                         backdropFilter: `blur(${preset.blur}px)`,
                         WebkitBackdropFilter: `blur(${preset.blur}px)`,
-                      }}
-                    >
+                      }}>
                       <span className="text-[10px] font-medium text-foreground block relative z-10">{preset.label}</span>
                       <span className="text-[7px] text-muted-foreground leading-tight relative z-10">{preset.blur}px / {Math.round(preset.opacity * 100)}%</span>
                     </button>
@@ -488,6 +489,59 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
             </div>
           )}
 
+          {activeTab === 'report' && (
+            <div className="space-y-4 animate-fade-in">
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">Report Type</label>
+                <div className="flex gap-2">
+                  {['Bug', 'Weather Issue', 'Feature Request'].map(type => (
+                    <button key={type} onClick={() => setReportType(type)}
+                      className={cn("flex-1 py-2 rounded-lg text-xs transition-colors",
+                        reportType === type ? "active-selection" : "glass hover:bg-white/10")}>
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {reportType === 'Weather Issue' && (
+                <div className="space-y-3 glass-neumorphic rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-muted-foreground">Weather text is incorrect</label>
+                    <LiveBlurToggle checked={weatherIncorrect} onChange={setWeatherIncorrect} />
+                  </div>
+                  {weatherIncorrect && (
+                    <div className="space-y-2">
+                      <input type="text" value={correctedCondition} onChange={e => setCorrectedCondition(e.target.value)}
+                        placeholder="Correct condition (e.g., Rain)"
+                        className="w-full px-3 py-1.5 rounded-lg glass bg-transparent border-0 text-sm outline-none" />
+                      <input type="text" value={correctedTemp} onChange={e => setCorrectedTemp(e.target.value)}
+                        placeholder="Correct temperature (e.g., 28)"
+                        className="w-full px-3 py-1.5 rounded-lg glass bg-transparent border-0 text-sm outline-none" />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide">Title</label>
+                <input type="text" value={reportTitle} onChange={e => setReportTitle(e.target.value)} placeholder="Brief description"
+                  className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-foreground/50 outline-none" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide">Details</label>
+                <textarea value={reportDescription} onChange={e => setReportDescription(e.target.value)} placeholder="Describe the issue..."
+                  rows={3}
+                  className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-foreground/50 outline-none resize-none" />
+              </div>
+              <button onClick={handleSubmitReport} disabled={isSubmittingReport || !reportTitle.trim()}
+                className="w-full py-2 rounded-lg glass-interactive flex items-center justify-center gap-2">
+                {isSubmittingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bug className="w-4 h-4" />}
+                Submit Report
+              </button>
+            </div>
+          )}
+
           {activeTab === 'admin' && isAdmin && (
             <div className="space-y-4 animate-fade-in">
               <p className="text-sm text-muted-foreground">
@@ -513,34 +567,27 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
   );
 };
 
-// Live blur toggle - replaces solid-color Switch
+// Live blur toggle
 const LiveBlurToggle = ({ checked, onChange }: { checked: boolean; onChange: (val: boolean) => void }) => (
   <button
     onClick={(e) => { e.stopPropagation(); onChange(!checked); }}
-    className={cn(
-      "relative w-10 h-6 rounded-full transition-all duration-300 border flex-shrink-0",
-      checked ? "border-white/30" : "border-white/15"
-    )}
+    className={cn("relative w-10 h-6 rounded-full transition-all duration-300 border flex-shrink-0",
+      checked ? "border-white/30" : "border-white/15")}
     style={{
-      background: checked 
-        ? 'rgba(255, 255, 255, 0.2)' 
-        : 'rgba(255, 255, 255, 0.05)',
-      backdropFilter: `blur(${checked ? 12 : 6}px) brightness(${checked ? 1.3 : 0.9})`,
-      WebkitBackdropFilter: `blur(${checked ? 12 : 6}px) brightness(${checked ? 1.3 : 0.9})`,
+      background: checked ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+      backdropFilter: `blur(${checked ? 12 : 6}px) brightness(${checked ? 1.3 : 0.7})`,
+      WebkitBackdropFilter: `blur(${checked ? 12 : 6}px) brightness(${checked ? 1.3 : 0.7})`,
     }}
   >
     <div 
-      className={cn(
-        "absolute top-0.5 w-4.5 h-4.5 rounded-full transition-all duration-300",
-        checked ? "translate-x-[18px]" : "translate-x-[2px]"
-      )}
+      className={cn("absolute top-0.5 rounded-full transition-all duration-300",
+        checked ? "translate-x-[18px]" : "translate-x-[2px]")}
       style={{
-        width: '20px',
-        height: '20px',
-        background: 'rgba(255, 255, 255, 0.5)',
+        width: '20px', height: '20px',
+        background: 'rgba(255, 255, 255, 0.45)',
         backdropFilter: 'blur(8px) brightness(1.5)',
         WebkitBackdropFilter: 'blur(8px) brightness(1.5)',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+        boxShadow: '0 0 6px rgba(255,255,255,0.08), inset 0 1px 1px rgba(255,255,255,0.15), 0 1px 4px rgba(0,0,0,0.3)',
       }}
     />
   </button>

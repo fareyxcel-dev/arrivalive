@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { cn } from '@/lib/utils';
 
 interface Props {
   scheduledTime: string;
@@ -58,37 +57,6 @@ const calculateProgress = (
   const minutesRemaining = Math.max(0, estimatedMinutes - currentMinutes);
   
   return { progress, minutesRemaining };
-};
-
-const getColorFilter = (hexColor: string): string => {
-  const hex = hexColor.replace('#', '').toLowerCase();
-  if (hex === 'ffffff' || hex === 'fff' || hex === 'dce0de') return 'brightness(0.95)';
-  if (hex === '81f0d8') return 'brightness(0) saturate(100%) invert(85%) sepia(25%) saturate(600%) hue-rotate(110deg) brightness(1.05)';
-  if (hex === 'f2763d') return 'brightness(0) saturate(100%) invert(55%) sepia(80%) saturate(500%) hue-rotate(350deg) brightness(1.1)';
-  if (hex === 'f7485d') return 'brightness(0) saturate(100%) invert(45%) sepia(80%) saturate(600%) hue-rotate(325deg) brightness(1.15)';
-  
-  const r = parseInt(hex.substr(0, 2), 16);
-  const g = parseInt(hex.substr(2, 2), 16);
-  const b = parseInt(hex.substr(4, 2), 16);
-  const rNorm = r / 255; const gNorm = g / 255; const bNorm = b / 255;
-  const max = Math.max(rNorm, gNorm, bNorm);
-  const min = Math.min(rNorm, gNorm, bNorm);
-  const l = (max + min) / 2;
-  let h = 0; let s = 0;
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    if (max === rNorm) h = ((gNorm - bNorm) / d + (gNorm < bNorm ? 6 : 0)) / 6;
-    else if (max === gNorm) h = ((bNorm - rNorm) / d + 2) / 6;
-    else h = ((rNorm - gNorm) / d + 4) / 6;
-  }
-  const hue = Math.round(h * 360);
-  const sat = Math.round(s * 100);
-  const light = Math.round(l * 100);
-  const hueRotate = hue - 50;
-  const saturation = Math.max(100, sat * 3);
-  const brightness = light > 50 ? light / 60 : 0.8;
-  return `brightness(0) saturate(100%) invert(${light > 50 ? 0.9 : 0.5}) sepia(1) saturate(${saturation}%) hue-rotate(${hueRotate}deg) brightness(${brightness})`;
 };
 
 function hexToRgb(hex: string): string {
@@ -185,7 +153,6 @@ const FlightProgressBar = ({
 
   if (!isVisible) return null;
 
-  const colorFilter = getColorFilter(textColor);
   const planePosition = Math.min(progress, 98);
   const barHeight = 10;
 
@@ -199,13 +166,13 @@ const FlightProgressBar = ({
         transformOrigin: 'center',
       }}
     >
-      {/* Track background */}
+      {/* Track background - glass pill style */}
       <div 
-        className="absolute inset-0 rounded-full"
+        className="absolute inset-0 rounded-full glass-pill"
         style={{ 
-          background: `linear-gradient(90deg, rgba(${hexToRgb(trackInactiveColor)}, 0.2) 0%, rgba(${hexToRgb(trackInactiveColor)}, 0.3) 100%)`,
-          backdropFilter: 'blur(8px)',
-          boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.1), inset 0 -1px 2px rgba(0,0,0,0.2)',
+          background: `rgba(${hexToRgb(trackInactiveColor)}, 0.15)`,
+          boxShadow: `inset 0 1px 2px rgba(255,255,255,0.08), inset 0 -1px 3px rgba(0,0,0,0.25)`,
+          border: `1px solid rgba(${hexToRgb(trackInactiveColor)}, 0.1)`,
         }}
       />
       
@@ -214,16 +181,14 @@ const FlightProgressBar = ({
         className="absolute inset-y-0 left-0 rounded-full transition-all duration-1000 ease-out"
         style={{ 
           width: `${progress}%`,
-          background: `linear-gradient(90deg, rgba(${hexToRgb(trackActiveColor)}, 0.4) 0%, rgba(${hexToRgb(trackActiveColor)}, 0.6) 100%)`,
-          boxShadow: `0 0 8px rgba(${hexToRgb(trackActiveColor)}, 0.4)`,
+          background: `linear-gradient(90deg, rgba(${hexToRgb(trackActiveColor)}, 0.3) 0%, rgba(${hexToRgb(trackActiveColor)}, 0.5) 100%)`,
+          boxShadow: `0 0 8px rgba(${hexToRgb(trackActiveColor)}, 0.3)`,
         }}
       />
 
       {/* Countdown inline overlay */}
       {showCountdownInline && countdownText && (
-        <div 
-          className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
-        >
+        <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
           <span 
             className="text-[7px] font-bold px-1 rounded"
             style={{ 
@@ -237,21 +202,25 @@ const FlightProgressBar = ({
         </div>
       )}
       
-      {/* Aircraft icon */}
+      {/* Aircraft icon - Glass Unicode Glyph ✈ */}
       <div 
         className="absolute top-1/2 -translate-y-1/2 transition-all duration-1000 ease-out z-10"
         style={{ 
           left: `${planePosition}%`,
           transform: `translate(-50%, -50%) scale(${iconScale})`,
-          filter: isLandingPulse ? `drop-shadow(0 0 6px rgba(${hexToRgb(textColor)}, 0.6))` : 'none',
         }}
       >
-        <img 
-          src="https://ik.imagekit.io/jv0j9qvtw/F9UqOabfPVMjAAAAAElFTkSuQmCC(1).png"
-          alt="Flight"
-          className="w-5 h-5 object-contain"
-          style={{ filter: colorFilter, opacity: isLandingPulse ? 1 : 0.9 }}
-        />
+        <span
+          className="text-sm leading-none select-none"
+          style={{ 
+            color: textColor,
+            textShadow: `0 0 6px rgba(${hexToRgb(textColor)}, ${isLandingPulse ? 0.8 : 0.4}), 0 1px 3px rgba(0,0,0,0.5)`,
+            filter: isLandingPulse ? `drop-shadow(0 0 6px rgba(${hexToRgb(textColor)}, 0.6))` : `drop-shadow(0 1px 2px rgba(0,0,0,0.4))`,
+            opacity: isLandingPulse ? 1 : 0.9,
+          }}
+        >
+          ✈
+        </span>
       </div>
     </div>
   );

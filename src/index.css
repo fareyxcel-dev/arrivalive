@@ -69,6 +69,9 @@
     /* Fonts */
     --font-display: 'Orbitron', sans-serif;
     --font-body: 'Inter', sans-serif;
+
+    /* Adaptive shadow opacity - computed from iframe brightness */
+    --shadow-opacity: 0.5;
   }
 }
 
@@ -92,6 +95,48 @@
 }
 
 @layer components {
+  /* ======= NEUMORPHIC GLASS CLASSES ======= */
+  
+  /* Base neumorphic glass with inset shadows and outer glow */
+  .glass-neumorphic {
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow:
+      0 0 15px rgba(255, 255, 255, 0.05),
+      inset 0 1px 1px rgba(255, 255, 255, 0.1),
+      inset 0 -1px 2px rgba(0, 0, 0, 0.2),
+      0 4px 16px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Rounded pill with neumorphic concave surface */
+  .glass-pill {
+    backdrop-filter: blur(12px) saturate(1.2);
+    -webkit-backdrop-filter: blur(12px) saturate(1.2);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 9999px;
+    box-shadow:
+      inset 0 1px 2px rgba(255, 255, 255, 0.08),
+      inset 0 -1px 3px rgba(0, 0, 0, 0.25),
+      0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Circular neumorphic button */
+  .glass-orb {
+    backdrop-filter: blur(10px) saturate(1.3);
+    -webkit-backdrop-filter: blur(10px) saturate(1.3);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 9999px;
+    box-shadow:
+      0 0 10px rgba(255, 255, 255, 0.06),
+      inset 0 1px 1px rgba(255, 255, 255, 0.12),
+      inset 0 -1px 2px rgba(0, 0, 0, 0.2),
+      0 2px 6px rgba(0, 0, 0, 0.12);
+  }
+
   /* Glass morphism effect */
   .glass {
     @apply backdrop-blur-xl border border-white/10;
@@ -128,34 +173,22 @@
     -webkit-backdrop-filter: blur(20px) saturate(1.2);
   }
 
-  /* Status-tinted glass effects - stronger tint for full card */
+  /* Status-tinted glass effects */
   .glass-delayed {
     @apply backdrop-blur-xl border;
-    background: linear-gradient(
-      135deg,
-      hsl(var(--status-delayed) / 0.25) 0%,
-      hsl(var(--status-delayed) / 0.1) 100%
-    );
+    background: linear-gradient(135deg, hsl(var(--status-delayed) / 0.25) 0%, hsl(var(--status-delayed) / 0.1) 100%);
     border-color: hsl(var(--status-delayed) / 0.4);
   }
 
   .glass-landed {
     @apply backdrop-blur-xl border;
-    background: linear-gradient(
-      135deg,
-      hsl(var(--status-landed) / 0.25) 0%,
-      hsl(var(--status-landed) / 0.1) 100%
-    );
+    background: linear-gradient(135deg, hsl(var(--status-landed) / 0.25) 0%, hsl(var(--status-landed) / 0.1) 100%);
     border-color: hsl(var(--status-landed) / 0.4);
   }
 
   .glass-cancelled {
     @apply backdrop-blur-xl border;
-    background: linear-gradient(
-      135deg,
-      hsl(var(--status-cancelled) / 0.25) 0%,
-      hsl(var(--status-cancelled) / 0.1) 100%
-    );
+    background: linear-gradient(135deg, hsl(var(--status-cancelled) / 0.25) 0%, hsl(var(--status-cancelled) / 0.1) 100%);
     border-color: hsl(var(--status-cancelled) / 0.4);
   }
 
@@ -166,45 +199,50 @@
     color: hsl(var(--active-text));
   }
 
-  /* Brightened glass interactive elements (buttons, toggles) */
+  /* Brightened glass interactive elements */
   .glass-interactive {
     @apply backdrop-blur-xl border border-white/20;
-    background: linear-gradient(
-      135deg,
-      hsl(0 0% 60% / 0.3) 0%,
-      hsl(0 0% 50% / 0.2) 100%
-    );
+    background: linear-gradient(135deg, hsl(0 0% 60% / 0.3) 0%, hsl(0 0% 50% / 0.2) 100%);
     transition: all 0.2s ease;
   }
 
   .glass-interactive:hover {
-    background: linear-gradient(
-      135deg,
-      hsl(0 0% 70% / 0.4) 0%,
-      hsl(0 0% 60% / 0.3) 100%
-    );
+    background: linear-gradient(135deg, hsl(0 0% 70% / 0.4) 0%, hsl(0 0% 60% / 0.3) 100%);
   }
 
   .glass-interactive:active {
-    background: linear-gradient(
-      135deg,
-      hsl(0 0% 80% / 0.5) 0%,
-      hsl(0 0% 70% / 0.4) 100%
-    );
+    background: linear-gradient(135deg, hsl(0 0% 80% / 0.5) 0%, hsl(0 0% 70% / 0.4) 100%);
   }
 
   /* Toggle switch - brightened glass fill */
   .toggle-on {
-    background: linear-gradient(
-      135deg,
-      hsl(0 0% 70% / 0.5) 0%,
-      hsl(0 0% 60% / 0.4) 100%
-    );
+    background: linear-gradient(135deg, hsl(0 0% 70% / 0.5) 0%, hsl(0 0% 60% / 0.4) 100%);
     backdrop-filter: blur(8px);
   }
 
   .toggle-off {
     background: hsl(0 0% 30% / 0.4);
+  }
+
+  /* ======= RADIX SLIDER GLASS OVERRIDES ======= */
+  [data-radix-slider-root] [data-radix-slider-track] {
+    background: rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(6px);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 -1px 1px rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  [data-radix-slider-root] [data-radix-slider-range] {
+    background: rgba(255, 255, 255, 0.18) !important;
+    backdrop-filter: brightness(1.4);
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.1);
+  }
+
+  [data-radix-slider-root] [data-radix-slider-thumb] {
+    background: rgba(255, 255, 255, 0.5) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    backdrop-filter: blur(8px) brightness(1.5);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.2), 0 2px 6px rgba(0, 0, 0, 0.2) !important;
   }
 
   /* Custom range slider - remove blue, use glass theme */
@@ -251,12 +289,7 @@
 
   /* Animated sky gradient */
   .sky-gradient {
-    background: linear-gradient(
-      180deg,
-      var(--current-sky-top) 0%,
-      var(--current-sky-mid) 50%,
-      var(--current-sky-bottom) 100%
-    );
+    background: linear-gradient(180deg, var(--current-sky-top) 0%, var(--current-sky-mid) 50%, var(--current-sky-bottom) 100%);
     transition: background 60s linear;
   }
 
@@ -278,25 +311,14 @@
     left: -50%;
     width: 200%;
     height: 200%;
-    background: linear-gradient(
-      45deg,
-      transparent 40%,
-      rgba(255, 255, 255, 0.03) 45%,
-      rgba(255, 255, 255, 0.08) 50%,
-      rgba(255, 255, 255, 0.03) 55%,
-      transparent 60%
-    );
+    background: linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, 0.03) 45%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.03) 55%, transparent 60%);
     animation: glass-shine 8s ease-in-out infinite;
     pointer-events: none;
   }
 
   @keyframes glass-shine {
-    0%, 100% {
-      transform: translateX(-100%) translateY(-100%) rotate(45deg);
-    }
-    50% {
-      transform: translateX(100%) translateY(100%) rotate(45deg);
-    }
+    0%, 100% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+    50% { transform: translateX(100%) translateY(100%) rotate(45deg); }
   }
 
   /* Orb button styles */
@@ -312,7 +334,7 @@
     border-color: hsl(0 0% 100% / 0.2);
   }
 
-  /* Flight card base - widened */
+  /* Flight card base */
   .flight-card {
     @apply glass rounded-xl p-4 transition-all duration-300 glass-reflect;
   }
@@ -336,7 +358,6 @@
   }
 
   .status-text-therilo {
-    font-family: 'Therilo', sans-serif;
     font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
@@ -351,14 +372,8 @@
   }
 
   @keyframes status-ripple-animation {
-    0% {
-      transform: scale(0.8);
-      opacity: 0.3;
-    }
-    100% {
-      transform: scale(1.5);
-      opacity: 0;
-    }
+    0% { transform: scale(0.8); opacity: 0.3; }
+    100% { transform: scale(1.5); opacity: 0; }
   }
 
   /* Terminal group */
@@ -400,47 +415,38 @@
     border: 1px solid hsl(var(--status-cancelled) / 0.4);
   }
 
-  /* Modal overlay - no full background blur, just subtle darkening */
+  /* Modal overlay - no full background blur */
   .modal-overlay {
     @apply fixed inset-0 z-50;
     background: hsl(0 0% 0% / 0.3);
   }
 
-   /* Toast glass styling */
-   [data-sonner-toaster] [data-sonner-toast] {
-     backdrop-filter: blur(20px) !important;
-     -webkit-backdrop-filter: blur(20px) !important;
-     background: rgba(255, 255, 255, 0.1) !important;
-     border: 1px solid rgba(255, 255, 255, 0.15) !important;
-   }
+  /* Toast glass styling with neumorphic feel */
+  [data-sonner-toaster] [data-sonner-toast] {
+    backdrop-filter: blur(20px) saturate(1.3) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(1.3) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.08), inset 0 -1px 2px rgba(0, 0, 0, 0.15), 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+  }
 
-   [data-sonner-toaster] [data-sonner-toast][data-type="success"] {
-     background: rgba(16, 232, 185, 0.15) !important;
-     border-color: rgba(16, 232, 185, 0.3) !important;
-   }
+  [data-sonner-toaster] [data-sonner-toast][data-type="success"] {
+    background: rgba(16, 232, 185, 0.1) !important;
+    border-color: rgba(16, 232, 185, 0.2) !important;
+    box-shadow: 0 0 15px rgba(16, 232, 185, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.08), 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+  }
 
-   [data-sonner-toaster] [data-sonner-toast][data-type="error"] {
-     background: rgba(191, 15, 36, 0.15) !important;
-     border-color: rgba(191, 15, 36, 0.3) !important;
-   }
+  [data-sonner-toaster] [data-sonner-toast][data-type="error"] {
+    background: rgba(191, 15, 36, 0.1) !important;
+    border-color: rgba(191, 15, 36, 0.2) !important;
+    box-shadow: 0 0 15px rgba(191, 15, 36, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.08), 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+  }
 
   /* Scrollbar styling */
-  ::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: hsl(var(--background));
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted));
-    border-radius: 3px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
-  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: hsl(var(--background)); }
+  ::-webkit-scrollbar-thumb { background: hsl(var(--muted)); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
 
   /* Auth logo animation */
   .auth-logo-animate {
@@ -448,52 +454,13 @@
   }
 
   @keyframes auth-float {
-    0%, 100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-8px);
-    }
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
   }
 
   @keyframes auth-glow {
-    0%, 100% {
-      filter: drop-shadow(0 0 10px hsl(0 0% 100% / 0.2));
-    }
-    50% {
-      filter: drop-shadow(0 0 20px hsl(0 0% 100% / 0.4));
-    }
-  }
-
-  /* Terminal plane animation */
-  @keyframes plane-landing {
-    0% {
-      transform: translateX(50px) translateY(-30px) rotate(-20deg);
-      opacity: 0;
-    }
-    100% {
-      transform: translateX(0) translateY(0) rotate(-45deg);
-      opacity: 0.3;
-    }
-  }
-
-  @keyframes plane-takeoff {
-    0% {
-      transform: translateX(0) translateY(0) rotate(-45deg);
-      opacity: 0.3;
-    }
-    100% {
-      transform: translateX(-50px) translateY(-30px) rotate(-20deg);
-      opacity: 0;
-    }
-  }
-
-  .plane-landing {
-    animation: plane-landing 0.5s ease-out forwards;
-  }
-
-  .plane-takeoff {
-    animation: plane-takeoff 0.4s ease-in forwards;
+    0%, 100% { filter: drop-shadow(0 0 10px hsl(0 0% 100% / 0.2)); }
+    50% { filter: drop-shadow(0 0 20px hsl(0 0% 100% / 0.4)); }
   }
 
   /* Rain animation styles */
@@ -512,56 +479,29 @@
   }
 
   @keyframes rain-fall {
-    0% {
-      transform: translateY(-100vh) translateX(0);
-      opacity: 0;
-    }
-    10% {
-      opacity: 1;
-    }
-    90% {
-      opacity: 1;
-    }
-    100% {
-      transform: translateY(100vh) translateX(var(--wind-offset, 0px));
-      opacity: 0;
-    }
+    0% { transform: translateY(-100vh) translateX(0); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(100vh) translateX(var(--wind-offset, 0px)); opacity: 0; }
   }
 
   /* Notification bell neutral color */
-  .bell-neutral {
-    color: hsl(var(--muted-foreground));
-  }
-
-  .bell-active {
-    color: hsl(var(--foreground));
-  }
+  .bell-neutral { color: hsl(var(--muted-foreground)); }
+  .bell-active { color: hsl(var(--foreground)); }
 
   /* Flight Progress Bar animations */
-  .flight-progress-pulse {
-    animation: progress-pulse 1s ease-in-out infinite;
-  }
+  .flight-progress-pulse { animation: progress-pulse 1s ease-in-out infinite; }
 
   @keyframes progress-pulse {
-    0%, 100% {
-      box-shadow: 0 0 4px rgba(255, 255, 255, 0.2);
-    }
-    50% {
-      box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
-    }
+    0%, 100% { box-shadow: 0 0 4px rgba(255, 255, 255, 0.2); }
+    50% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.4); }
   }
 
-  .countdown-pulse {
-    animation: countdown-pulse 1.5s ease-in-out infinite;
-  }
+  .countdown-pulse { animation: countdown-pulse 1.5s ease-in-out infinite; }
 
   @keyframes countdown-pulse {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.7;
-    }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
   }
 
   .flight-icon-glow {
@@ -570,19 +510,12 @@
   }
 
   @keyframes flight-glow {
-    0%, 100% {
-      filter: drop-shadow(0 0 2px currentColor);
-    }
-    50% {
-      filter: drop-shadow(0 0 8px currentColor);
-    }
+    0%, 100% { filter: drop-shadow(0 0 2px currentColor); }
+    50% { filter: drop-shadow(0 0 8px currentColor); }
   }
 
   /* Status badge v2 animations */
-  .status-badge-v2 {
-    position: relative;
-    overflow: hidden;
-  }
+  .status-badge-v2 { position: relative; overflow: hidden; }
 
   .status-ripple-v2 {
     position: absolute;
@@ -592,19 +525,11 @@
   }
 
   @keyframes status-ripple-v2 {
-    0% {
-      transform: scale(0.8);
-      opacity: 0.2;
-    }
-    100% {
-      transform: scale(1.5);
-      opacity: 0;
-    }
+    0% { transform: scale(0.8); opacity: 0.2; }
+    100% { transform: scale(1.5); opacity: 0; }
   }
 
-  .bell-active-v2 {
-    animation: bell-ring 0.5s ease-out;
-  }
+  .bell-active-v2 { animation: bell-ring 0.5s ease-out; }
 
   @keyframes bell-ring {
     0%, 100% { transform: rotate(0); }
@@ -613,125 +538,88 @@
     60% { transform: rotate(5deg); }
     80% { transform: rotate(-5deg); }
   }
+
+  /* Status change smooth transition */
+  .flight-card-animate {
+    transition: background 1s ease, border-color 1s ease, box-shadow 1s ease;
+  }
+
+  /* Status badge entrance animation */
+  .status-badge-enter {
+    animation: status-badge-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes status-badge-pop {
+    0% { transform: scale(0.6); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Adaptive drop shadows for text */
+  .adaptive-shadow {
+    text-shadow: 0 1px 3px rgba(0, 0, 0, var(--shadow-opacity, 0.5)), 0 2px 6px rgba(0, 0, 0, calc(var(--shadow-opacity, 0.5) * 0.6));
+  }
+
+  /* Adaptive drop shadow for icons */
+  .adaptive-icon-shadow {
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, var(--shadow-opacity, 0.5)));
+  }
 }
 
 @layer utilities {
   /* Text colors for flight statuses */
-  .text-delayed {
-    color: hsl(var(--status-delayed));
-  }
-
-  .text-landed {
-    color: hsl(var(--status-landed));
-  }
-
-  .text-cancelled {
-    color: hsl(var(--status-cancelled));
-  }
+  .text-delayed { color: hsl(var(--status-delayed)); }
+  .text-landed { color: hsl(var(--status-landed)); }
+  .text-cancelled { color: hsl(var(--status-cancelled)); }
 
   /* Background colors for flight statuses */
-  .bg-delayed {
-    background-color: hsl(var(--status-delayed));
-  }
-
-  .bg-landed {
-    background-color: hsl(var(--status-landed));
-  }
-
-  .bg-cancelled {
-    background-color: hsl(var(--status-cancelled));
-  }
+  .bg-delayed { background-color: hsl(var(--status-delayed)); }
+  .bg-landed { background-color: hsl(var(--status-landed)); }
+  .bg-cancelled { background-color: hsl(var(--status-cancelled)); }
 
   /* Floating animation */
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
-  }
+  .animate-float { animation: float 6s ease-in-out infinite; }
 
   @keyframes float {
-    0%, 100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-10px);
-    }
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
   }
 
-  /* Pulse glow - now neutral */
-  .animate-pulse-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
-  }
+  /* Pulse glow - neutral */
+  .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
 
   @keyframes pulse-glow {
-    0%, 100% {
-      box-shadow: 0 0 20px hsl(var(--foreground) / 0.2);
-    }
-    50% {
-      box-shadow: 0 0 40px hsl(var(--foreground) / 0.4);
-    }
+    0%, 100% { box-shadow: 0 0 20px hsl(var(--foreground) / 0.2); }
+    50% { box-shadow: 0 0 40px hsl(var(--foreground) / 0.4); }
   }
 
   /* Soft pulse for notification bell */
-  .animate-pulse-soft {
-    animation: pulse-soft 2s ease-in-out infinite;
-  }
+  .animate-pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
 
   @keyframes pulse-soft {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.6;
-    }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
   }
 
   /* Rotate animation for orb */
-  .animate-rotate-45 {
-    animation: rotate45 0.3s ease forwards;
-  }
+  .animate-rotate-45 { animation: rotate45 0.3s ease forwards; }
+  @keyframes rotate45 { to { transform: rotate(45deg); } }
 
-  @keyframes rotate45 {
-    to {
-      transform: rotate(45deg);
-    }
-  }
-
-  .animate-rotate-0 {
-    animation: rotate0 0.3s ease forwards;
-  }
-
-  @keyframes rotate0 {
-    to {
-      transform: rotate(0deg);
-    }
-  }
+  .animate-rotate-0 { animation: rotate0 0.3s ease forwards; }
+  @keyframes rotate0 { to { transform: rotate(0deg); } }
 
   /* Slide up animation */
-  .animate-slide-up {
-    animation: slide-up 0.3s ease-out;
-  }
+  .animate-slide-up { animation: slide-up 0.3s ease-out; }
 
   @keyframes slide-up {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   /* Drift animation for weather assets */
-  .animate-drift {
-    animation: drift 120s linear infinite;
-  }
+  .animate-drift { animation: drift 120s linear infinite; }
 
   @keyframes drift {
-    0% {
-      transform: translateX(0);
-    }
-    100% {
-      transform: translateX(-50%);
-    }
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
   }
 }
