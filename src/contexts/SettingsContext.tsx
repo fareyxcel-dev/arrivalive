@@ -45,20 +45,34 @@ const AVAILABLE_FONTS = [
   'Noto Sans KR', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans Arabic',
 ];
 
-// Glass Presets - OS/design-inspired with updated values
-export const GLASS_PRESETS: Record<string, { blur: number; opacity: number; label: string; description: string }> = {
-  'frosted': { blur: 20, opacity: 0.08, label: 'Frosted', description: 'Standard white frost' },
-  'liquid': { blur: 35, opacity: 0.05, label: 'Liquid', description: 'High blur, fluid feel' },
-  'prismatic': { blur: 12, opacity: 0.06, label: 'Prismatic', description: 'Rainbow refraction' },
-  'stained': { blur: 18, opacity: 0.15, label: 'Stained', description: 'Warm amber tint' },
-  'polarized': { blur: 25, opacity: 0.10, label: 'Polarized', description: 'Sharp contrast' },
-  'ios': { blur: 25, opacity: 0.08, label: 'iOS', description: 'Vibrancy + saturation' },
-  'aero': { blur: 14, opacity: 0.20, label: 'Aero', description: 'Classic transparency' },
-  'vista': { blur: 8, opacity: 0.25, label: 'Vista', description: 'Thick glass, low blur' },
-  'windows': { blur: 18, opacity: 0.12, label: 'Windows', description: 'Acrylic noise' },
-  'linux': { blur: 4, opacity: 0.04, label: 'Linux', description: 'Near-transparent' },
-  'mac': { blur: 22, opacity: 0.07, label: 'Mac', description: 'Warm vibrancy' },
-  'ubuntu': { blur: 10, opacity: 0.18, label: 'Ubuntu', description: 'Orange-tinted' },
+// Glass Presets - OS/design-inspired with unique tint/animation/saturate
+export interface GlassPreset {
+  blur: number; opacity: number; label: string; description: string;
+  tint: string; animation: string; saturateBoost: number;
+}
+export const GLASS_PRESETS: Record<string, GlassPreset> = {
+  'frosted':    { blur: 20, opacity: 0.08, label: 'Frosted',    description: 'Shimmer frost',        tint: 'white',      animation: 'glass-frosted-shimmer',    saturateBoost: 1.1 },
+  'liquid':     { blur: 35, opacity: 0.05, label: 'Liquid',     description: 'Ripple distortion',     tint: 'none',       animation: 'glass-liquid-ripple',      saturateBoost: 1.4 },
+  'prismatic':  { blur: 12, opacity: 0.06, label: 'Prismatic',  description: 'Rainbow border',        tint: 'rainbow',    animation: 'glass-prismatic-rotate',   saturateBoost: 1.0 },
+  'stained':    { blur: 18, opacity: 0.15, label: 'Stained',    description: 'Warm amber pulse',      tint: 'amber',      animation: 'glass-stained-pulse',      saturateBoost: 1.0 },
+  'polarized':  { blur: 25, opacity: 0.10, label: 'Polarized',  description: 'Glitch flash',          tint: 'cold-blue',  animation: 'glass-polarized-glitch',   saturateBoost: 1.2 },
+  'ios':        { blur: 25, opacity: 0.08, label: 'iOS',        description: 'Vibrancy bounce',       tint: 'none',       animation: 'glass-ios-vibrancy',       saturateBoost: 1.8 },
+  'aero':       { blur: 14, opacity: 0.20, label: 'Aero',       description: 'Glass reflection',      tint: 'blue-tint',  animation: 'glass-aero-sweep',         saturateBoost: 1.0 },
+  'vista':      { blur: 8,  opacity: 0.25, label: 'Vista',      description: 'Thick glass wobble',    tint: 'green-tint', animation: 'glass-vista-wobble',       saturateBoost: 1.1 },
+  'windows':    { blur: 18, opacity: 0.12, label: 'Windows',    description: 'Acrylic noise',         tint: 'noise',      animation: 'glass-windows-noise',      saturateBoost: 1.0 },
+  'linux':      { blur: 4,  opacity: 0.04, label: 'Linux',      description: 'Terminal blink',        tint: 'none',       animation: 'glass-linux-blink',        saturateBoost: 1.0 },
+  'mac':        { blur: 22, opacity: 0.07, label: 'Mac',        description: 'Warm vibrancy',         tint: 'warm',       animation: 'glass-mac-fadein',         saturateBoost: 1.3 },
+  'ubuntu':     { blur: 10, opacity: 0.18, label: 'Ubuntu',     description: 'Orange glow pulse',     tint: 'orange',     animation: 'glass-ubuntu-glow',        saturateBoost: 1.0 },
+  'nintendo':   { blur: 16, opacity: 0.10, label: 'Nintendo',   description: 'Playful bounce',        tint: 'red',        animation: 'glass-nintendo-bounce',    saturateBoost: 1.2 },
+  'playstation':{ blur: 20, opacity: 0.09, label: 'PlayStation',description: 'Blue pulse wave',       tint: 'deep-blue',  animation: 'glass-ps-pulse',           saturateBoost: 1.3 },
+  'xbox':       { blur: 15, opacity: 0.11, label: 'Xbox',       description: 'Green matrix rain',     tint: 'green',      animation: 'glass-xbox-matrix',        saturateBoost: 1.2 },
+  'rog':        { blur: 22, opacity: 0.07, label: 'ROG',        description: 'Red slash sweep',       tint: 'red-dark',   animation: 'glass-rog-slash',          saturateBoost: 1.4 },
+  'nokia':      { blur: 6,  opacity: 0.20, label: 'Nokia',      description: 'Retro pixel fade',      tint: 'blue-retro', animation: 'glass-nokia-pixel',        saturateBoost: 1.0 },
+  'samsung':    { blur: 24, opacity: 0.06, label: 'Samsung',    description: 'One UI gradient',       tint: 'blue-light', animation: 'glass-samsung-gradient',   saturateBoost: 1.5 },
+  'iphone':     { blur: 28, opacity: 0.07, label: 'iPhone',     description: 'Dynamic Island pop',    tint: 'none',       animation: 'glass-iphone-island',      saturateBoost: 1.8 },
+  'blackberry': { blur: 10, opacity: 0.22, label: 'BlackBerry', description: 'Corporate matte',       tint: 'dark',       animation: 'glass-bb-matte',           saturateBoost: 1.0 },
+  'raspberry':  { blur: 12, opacity: 0.14, label: 'Raspberry',  description: 'Pi circuit glow',       tint: 'raspberry',  animation: 'glass-rpi-circuit',        saturateBoost: 1.1 },
+  'steam':      { blur: 18, opacity: 0.10, label: 'Steam',      description: 'Dark vapor drift',      tint: 'steam-dark', animation: 'glass-steam-vapor',        saturateBoost: 1.2 },
 };
 
 interface SettingsState {
@@ -205,6 +219,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
+    const currentPreset = GLASS_PRESETS[settings.glassPreset];
+
     // Apply font globally
     const fontFamily = `'${settings.fontFamily}', sans-serif`;
     
@@ -290,6 +306,26 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         border-radius: 1rem;
         border: 1px solid rgba(255, 255, 255, 0.1);
       }
+      
+      ${currentPreset?.animation ? `
+      .terminal-group, .glass-neumorphic {
+        ${currentPreset.animation === 'glass-frosted-shimmer' ? 'background-image: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 75%, transparent 100%); background-size: 200% 100%; animation: glass-frosted-shimmer 6s ease-in-out infinite;' : ''}
+        ${currentPreset.animation === 'glass-liquid-ripple' ? 'animation: glass-liquid-ripple 4s ease-in-out infinite;' : ''}
+        ${currentPreset.animation === 'glass-prismatic-rotate' ? 'animation: glass-prismatic-rotate 8s linear infinite;' : ''}
+        ${currentPreset.animation === 'glass-stained-pulse' ? 'animation: glass-stained-pulse 5s ease-in-out infinite;' : ''}
+        ${currentPreset.animation === 'glass-polarized-glitch' ? 'animation: glass-polarized-glitch 8s ease infinite; filter: contrast(1.2);' : ''}
+        ${currentPreset.animation === 'glass-ios-vibrancy' ? 'animation: glass-ios-vibrancy 0.4s ease-out forwards; filter: saturate(1.8);' : ''}
+        ${currentPreset.animation === 'glass-vista-wobble' ? 'animation: glass-vista-wobble 7s ease-in-out infinite; filter: brightness(1.1);' : ''}
+        ${currentPreset.animation === 'glass-linux-blink' ? 'animation: glass-linux-blink 1.2s step-end infinite;' : ''}
+        ${currentPreset.animation === 'glass-mac-fadein' ? 'animation: glass-mac-fadein 0.6s ease-out forwards;' : ''}
+        ${currentPreset.animation === 'glass-ubuntu-glow' ? 'animation: glass-ubuntu-glow 4s ease-in-out infinite;' : ''}
+        ${currentPreset.animation === 'glass-nintendo-bounce' ? 'animation: glass-nintendo-bounce 3s ease-in-out infinite;' : ''}
+        ${currentPreset.animation === 'glass-ps-pulse' ? 'animation: glass-ps-pulse 5s ease-in-out infinite;' : ''}
+        ${currentPreset.animation === 'glass-iphone-island' ? 'animation: glass-iphone-island 4s ease-in-out infinite; filter: saturate(1.8);' : ''}
+        ${currentPreset.animation === 'glass-rpi-circuit' ? 'animation: glass-rpi-circuit 5s ease-in-out infinite;' : ''}
+        ${currentPreset.animation === 'glass-steam-vapor' ? 'background-image: linear-gradient(135deg, rgba(30,30,30,0.05) 25%, transparent 25%, transparent 50%, rgba(30,30,30,0.05) 50%, rgba(30,30,30,0.05) 75%, transparent 75%); background-size: 40px 40px; animation: glass-steam-vapor 10s linear infinite;' : ''}
+      }
+      ` : ''}
       
       ${settings.boldText ? `
         body, html, *, *::before, *::after {

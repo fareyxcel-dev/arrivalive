@@ -435,44 +435,23 @@ const NewHeader = ({
                 </p>
               </button>
               
-              <div className="relative">
-                <button
-                  onClick={handleWeatherClick}
-                  className={cn(
-                    "block text-right hover:bg-white/5 rounded px-1 -mx-1 transition-all duration-300 whitespace-nowrap",
-                    showForecast && "blur-sm opacity-0"
-                  )}
-                >
-                  <p className={cn(
-                    "font-bold text-white capitalize transition-all whitespace-nowrap truncate",
-                    isScrolled ? "text-[9px]" : "text-[10px]"
-                  )}>
-                    {weatherDurationRow1}
-                  </p>
-                  <p className={cn(
-                    "font-medium text-white/70 transition-all whitespace-nowrap truncate",
-                    isScrolled ? "text-[8px]" : "text-[9px]"
-                  )}>
-                    {weatherDurationRow2}
-                  </p>
-                </button>
-
-                {showForecast && (
-                  <button
-                    onClick={handleWeatherClick}
-                    className="absolute top-0 right-0 animate-fade-in text-right px-1 -mx-1 whitespace-nowrap"
-                  >
-                    <p className={cn("font-bold text-white capitalize whitespace-nowrap truncate", isScrolled ? "text-[9px]" : "text-[10px]")}>
-                      {upcomingRow1}
-                    </p>
-                    {upcomingRow2 && (
-                      <p className={cn("font-medium text-white/70 whitespace-nowrap truncate", isScrolled ? "text-[8px]" : "text-[9px]")}>
-                        {upcomingRow2}
-                      </p>
-                    )}
-                  </button>
-                )}
-              </div>
+              <button
+                onClick={handleWeatherClick}
+                className="block text-right hover:bg-white/5 rounded px-1 -mx-1 transition-all duration-300 whitespace-nowrap"
+              >
+                <p className={cn(
+                  "font-bold text-white capitalize transition-all whitespace-nowrap truncate adaptive-shadow",
+                  isScrolled ? "text-[9px]" : "text-[10px]"
+                )}>
+                  {showForecast ? upcomingRow1 : weatherDurationRow1}
+                </p>
+                <p className={cn(
+                  "font-medium text-white/70 transition-all whitespace-nowrap truncate adaptive-shadow",
+                  isScrolled ? "text-[8px]" : "text-[9px]"
+                )}>
+                  {showForecast ? (upcomingRow2 || '') : weatherDurationRow2}
+                </p>
+              </button>
             </div>
           ) : <div />}
         </div>

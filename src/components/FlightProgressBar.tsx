@@ -12,6 +12,8 @@ interface Props {
   onCountdownChange?: (countdown: string) => void;
   rightLabel?: string;
   showCountdownInline?: boolean;
+  centerText?: string;
+  forceVisible?: boolean;
 }
 
 const formatCountdown = (minutes: number): string => {
@@ -77,6 +79,8 @@ const FlightProgressBar = ({
   onCountdownChange,
   rightLabel,
   showCountdownInline = false,
+  centerText,
+  forceVisible = false,
 }: Props) => {
   const [progress, setProgress] = useState(0);
   const [minutesRemaining, setMinutesRemaining] = useState(0);
@@ -107,6 +111,7 @@ const FlightProgressBar = ({
   }, [isLanded, scheduledTime, estimatedTime, flightDate]);
 
   useEffect(() => {
+    if (forceVisible) { setIsVisible(true); setProgress(isCancelled ? 0 : 100); setFadeProgress(1); return; }
     if (isCancelled) { setIsVisible(false); return; }
     if (isLanded) {
       const fadeOutDuration = 45 + Math.random() * 45;
@@ -125,7 +130,7 @@ const FlightProgressBar = ({
                        (hoursUntilLanding <= 4 && hoursUntilLanding > 0);
     setIsVisible(shouldShow);
     setFadeProgress(1);
-  }, [isCancelled, isLanded, trackingProgress, hoursUntilLanding, minutesSinceLanding]);
+  }, [isCancelled, isLanded, trackingProgress, hoursUntilLanding, minutesSinceLanding, forceVisible]);
 
   useEffect(() => {
     if (!isVisible || isLanded) return;
@@ -186,8 +191,8 @@ const FlightProgressBar = ({
         }}
       />
 
-      {/* Countdown inline overlay */}
-      {showCountdownInline && countdownText && (
+      {/* Center text overlay: centerText (for landed/cancelled) or countdown */}
+      {showCountdownInline && (centerText || countdownText) && (
         <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
           <span 
             className="text-[7px] font-bold px-1 rounded"
@@ -197,7 +202,7 @@ const FlightProgressBar = ({
               opacity: 0.9,
             }}
           >
-            {countdownText}
+            {centerText || countdownText}
           </span>
         </div>
       )}
