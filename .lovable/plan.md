@@ -1,309 +1,226 @@
 
-
-# Comprehensive Glass UI, Flight Card, and Settings Overhaul
+# Comprehensive UI Polish: Glass Variants, Notifications, Header Fix, Flight Cards, and Settings
 
 ## Overview
-This plan addresses glass UI refinement matching the uploaded reference images, flight card layout fixes, notification bell functionality, flight tracker improvements, settings slider overhaul, error reporting, haptic feedback, adaptive drop shadows, and the 1-hour flight removal cutoff.
+This plan addresses unique glass preset animations, notification bell visual fixes, header weather text alignment, flight card expanded row updates, airline logo matching improvements, settings UI improvements (fonts, dual glass, sliders/toggles), and more live blur gradience across UI elements.
 
 ---
 
-## 1. Glass UI Overhaul (Matching Reference Images)
+## 1. Unique Glass Preset Variants with Animations
 
-**Files: `src/index.css`, `src/components/FlightCard.tsx`, `src/components/TerminalGroup.tsx`, `src/components/SettingsModal.tsx`**
+**Files: `src/contexts/SettingsContext.tsx`, `src/index.css`**
 
-The reference images show a neumorphic/glass aesthetic with:
-- Inset shadows creating depth (concave surfaces)
-- Outer glow borders (subtle white glow around containers)
-- Frosted glass with inner shadow effects
-- Status-colored outer glow for badges (gold for DELAYED, green for LANDED)
+Each glass preset gets unique visual properties beyond just blur/opacity. Add `tint`, `borderStyle`, `animation`, and `saturate` fields to each preset definition:
 
-### New CSS Classes
-- `.glass-neumorphic` - Base neumorphic glass with inset shadows and outer glow
-- `.glass-pill` - Rounded pill with neumorphic concave surface (for progress bars, sliders, status badges)
-- `.glass-orb` - Circular neumorphic button (for bell icons, toggles)
-- Status pills get colored outer glow: `box-shadow: 0 0 15px rgba(statusColor, 0.3), inset 0 2px 4px rgba(255,255,255,0.1)`
+| Preset | Blur | Opacity | Tint | Animation | Extra |
+|--------|------|---------|------|-----------|-------|
+| Frosted | 20 | 0.08 | white | Subtle shimmer (slow sweeping light) | saturate(1.1) |
+| Liquid | 35 | 0.05 | none | Ripple distortion pulse (CSS scale oscillation) | saturate(1.4) |
+| Prismatic | 12 | 0.06 | rainbow | Rainbow border gradient rotation | hue-rotate animation |
+| Stained | 18 | 0.15 | amber | Warm color pulse | sepia tint |
+| Polarized | 25 | 0.10 | cold-blue | Glitch flash every 8s | contrast(1.2) |
+| iOS | 25 | 0.08 | none | Vibrancy bounce on appear | saturate(1.8) |
+| Aero | 14 | 0.20 | blue-tint | Glass reflection sweep (existing glass-shine) | none |
+| Vista | 8 | 0.25 | green-tint | Thick glass wobble | brightness(1.1) |
+| Windows | 18 | 0.12 | noise | Acrylic noise texture overlay | noise pseudo-element |
+| Linux | 4 | 0.04 | none | Terminal cursor blink on border | minimal |
+| Mac | 22 | 0.07 | warm | Vibrancy fade-in | saturate(1.3) |
+| Ubuntu | 10 | 0.18 | orange | Warm glow pulse | orange border-glow |
 
-### Apply Consistently To
-- Toast notifications (Sonner)
-- All modal containers
-- Flight cards and their contents (keeping status coloring)
-- Terminal groups
-- Settings sliders and toggles
-- Header menu pill
+Additionally add more presets from reference image 4: **Nintendo, PlayStation, Xbox, ROG, Nokia, Samsung, iPhone, BlackBerry, Raspberry, Steam** (each with unique tint/animation).
+
+### CSS Implementation
+- Add keyframe animations per preset (e.g., `@keyframes glass-prismatic-rotate`, `@keyframes glass-liquid-ripple`)
+- In `SettingsContext.tsx`, expand the `GLASS_PRESETS` type to include `tint: string`, `animation: string`, `saturateBoost: number`
+- When a preset is selected, inject the animation class name into the global style sheet alongside blur/opacity
 
 ---
 
-## 2. Flight Card Status Badge as Multi-Layered Pill
+## 2. Notification Bell Fix - Remove Pulse Animation Confusion
 
 **File: `src/components/FlightCard.tsx`**
 
-Based on reference images, the right-side pill container will have these states:
+### Problem
+The bell pulses periodically for ALL bells (active and inactive), making it impossible to distinguish active from inactive.
 
-### Collapsed Card States
-- **No status**: `[ EST 02:42 PM | Bell ]` - time + bell in glass pill
-- **Delayed**: `[ 02:42 PM | DELAYED | Bell ]` - time, status badge (gold glow), bell
-- **Landed**: `[ LANDED 9:07 AM ]` - no bell (landed/cancelled remove bell)
-- **Cancelled**: `[ CANCELLED 3:15 PM ]` - no bell
+### Fix
+- Remove the periodic `bellPulse` animation entirely (delete the `useEffect` that sets up `pulseInterval`)
+- Active bell: Full opacity (1.0), glowing silhouette (`filter: drop-shadow(0 0 8px color)`), `BellRing` icon, bright background tint
+- Inactive bell: Reduced opacity (0.5), no glow, plain `Bell` icon, no background
+- This makes active/inactive instantly distinguishable without any pulsing
 
-### Expanded Card States
-- **No status**: `[ Bell ]` - time fades out, bell remains as an orb
-- **Delayed**: `[ DELAYED | Bell ]` - time fades out, status + bell remain
-- **Landed**: Status badge hidden, shows expanded tracker row
-- **Cancelled**: Status badge hidden, shows expanded tracker row
-
-### Key Changes
-- Do NOT abbreviate texts -- show full "DELAYED", "LANDED", "CANCELLED"
-- Pill width transitions smoothly using `transition: width 0.5s`
-- Bell icon stays visible when card expands (unless landed/cancelled)
-- Bell silhouette glows when active (notification subscribed): apply `filter: drop-shadow(0 0 8px currentColor)` and brighter opacity
+### Changes to `BellButton` component
+- Remove `isPulsing` prop entirely
+- Active state: `opacity: 1`, `boxShadow: 0 0 12px glow, 0 0 20px glow`, `background: rgba(color, 0.15)`
+- Inactive state: `opacity: 0.5`, no shadow, transparent background
 
 ---
 
-## 3. Extended Flight Card Bottom Row
-
-**File: `src/components/FlightCard.tsx`, `src/components/FlightProgressBar.tsx`**
-
-### Equal Height for All Cards When Expanded
-- All cards get the same extended row height regardless of status
-- Single row layout: `SCH {time} | [Flight Tracker with countdown] | EST {time}`
-- For landed: `SCH {time} | [Tracker showing "LND {time}" center text] | LND {time}`
-- For cancelled: `SCH {time} | [Empty bar with "Cancelled" center text] | CNL {time}`
-- Do NOT abbreviate -- show "SCH", "EST", "LND" labels clearly
-
-### Countdown Inside Tracker Bar
-- Small font countdown centered inside the progress bar track
-- Text: "{Xh Ym}" or "{Xm}" remaining
-- Positioned with `position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;`
-
----
-
-## 4. Flight Tracker Aircraft Icon
-
-**File: `src/components/FlightProgressBar.tsx`**
-
-### Replace Image Icon with Glass Unicode Glyph
-- Use the `✈` character styled as a glass element instead of the external image
-- Apply neumorphic glass styling: text-shadow, drop-shadow matching status color
-- Remove the external image URL dependency
-- Icon moves along the progress bar accurately based on `planePosition`
-- Remove flight icon animations from terminal groups (no plane animations on group headers)
-
----
-
-## 5. Notification Bell Fixes
-
-**Files: `src/components/FlightCard.tsx`, `src/lib/onesignal.ts`, `src/components/NotificationsModal.tsx`**
-
-### Bell Behavior
-- Bell stays visible when card expands (only hidden for landed/cancelled)
-- One-click subscribe/unsubscribe with toast showing actual flight details
-- Bell glows when active: `filter: drop-shadow(0 0 8px color); opacity: 1`
-- Bell dim when inactive: `opacity: 0.5`
-
-### Notification Content Fix
-- Toast messages currently show flight ID correctly
-- NotificationsModal needs to show actual flight_id and origin from database, not random IDs
-- Query notification_subscriptions joined with flights table to get full flight details
-
-### Push Notification Flow
-1. Click bell on flight card
-2. Request OneSignal permission if not granted
-3. Save subscription to database with correct flight_id and flight_date
-4. OneSignal tags the user with flight identifier
-5. When status changes, edge function sends push with real flight data
-
-### Haptic Feedback
-- Add `navigator.vibrate(50)` on bell toggle for mobile devices
-- Wrapped in try-catch for browser compatibility
-
----
-
-## 6. Settings Style Tab Overhaul
-
-**File: `src/components/SettingsModal.tsx`, `src/contexts/SettingsContext.tsx`**
-
-### Replace Monochrome Toggle with Mini Sliders
-Remove the single monochrome toggle. Instead show these sliders always:
-- **Brightness** (0-200%, default 100%)
-- **Contrast** (50-150%, default 100%)
-- **Saturation** (0-200%, default 100%) -- replaces monochrome logic
-- **Shadows** (0-100, default 50)
-- **Highlights** (0-100, default 50)
-- **Hue Shift** (0-360deg, default 0)
-
-### Compact Layout
-- On wider screens (>360px), show 2 sliders per row using CSS grid
-- Each slider has a compact label with value display
-- Remove the monochrome-specific conditional rendering
-
-### Settings State Updates
-Add `hueShift: number` (0-360, default 0) to SettingsState.
-Rename saturation logic: saturation slider directly controls CSS filter `saturate()`.
-Remove `monochrome` boolean -- saturation at 0% = grayscale, 100% = normal, 200% = oversaturated.
-
-### Reset to Default Button
-- Add a small reset icon (RotateCcw) next to each slider label
-- Clicking resets that specific setting to its default value
-- Compact: icon-only button, 16x16px
-
----
-
-## 7. Updated Glass Presets
-
-**File: `src/contexts/SettingsContext.tsx`, `src/components/SettingsModal.tsx`**
-
-Replace current presets with more visually distinct ones. Each preset will store blur, opacity, and additional properties (border style, shadow style, tint color):
-
-| Preset | Blur | Opacity | Special |
-|--------|------|---------|---------|
-| Frosted | 20px | 0.08 | Standard white frost |
-| Liquid | 35px | 0.05 | High blur, low opacity, fluid feel |
-| Prismatic | 12px | 0.06 | Rainbow border gradient |
-| Stained | 18px | 0.15 | Warm amber tint |
-| Polarized | 25px | 0.10 | High contrast, sharp edges |
-| iOS | 25px | 0.08 | Vibrancy + saturation boost |
-| Aero | 14px | 0.20 | Classic Windows transparency |
-| Vista | 8px | 0.25 | Thick glass, low blur |
-| Windows | 18px | 0.12 | Acrylic noise texture |
-| Linux | 4px | 0.04 | Near-transparent minimal |
-| Mac | 22px | 0.07 | Warm vibrancy |
-| Ubuntu | 10px | 0.18 | Orange-tinted desktop |
-
-### Dual Glass
-- Keep existing dual glass toggle
-- When enabled, averages blur and opacity from two selected presets
-
----
-
-## 8. Adaptive Drop Shadows for All Text/Icons
-
-**File: `src/index.css`, various components**
-
-### Implementation
-Add a global CSS class or CSS variable that applies `text-shadow` and `filter: drop-shadow()` to:
-- All text elements
-- Icons and logos  
-- Glyphs and illustrations
-
-### Shadow Style
-```css
-text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
-```
-
-For icons:
-```css
-filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
-```
-
-### Adaptive to iframe
-The shadow adapts based on the iframe brightness setting:
-- Darker iframe = lighter shadows (reduce shadow opacity)
-- Brighter iframe = darker shadows (increase shadow opacity)
-- Controlled via CSS variable `--shadow-opacity` computed from `iframeBrightness`
-
----
-
-## 9. Header Weather Text Verification
+## 3. Header Weather Text Alignment Fix
 
 **File: `src/components/NewHeader.tsx`**
 
-### Fix Weather Alignment (Red Circle in 4th Image)
-- The weather text on the right side can overflow into the center logo area
-- Add `max-width` constraint: `max-w-[35vw]` on both left and right columns
-- Ensure `overflow: hidden` and `text-overflow: ellipsis` for safety
-- Reduce font sizes further if needed on very narrow screens
+### Problem (Reference Image 2)
+The default weather text ("CLOUDS" / "FOR NEXT 3H 22M") is rendering in the wrong position -- it appears overlapping/displaced from the right column into the center logo area.
 
-### Verify Weather Match
-- The header weather text comes from the `get-weather` edge function
-- The iframe uses its own weather logic in `live-skyview.html`
-- These should match since they both compute from the same data source
-- If mismatch detected, the error report feature (see below) lets users flag it
+### Root Cause
+The weather text container uses `showForecast && "blur-sm opacity-0"` to hide default text when showing alternative, but the default text positioning itself is not constrained properly. The absolute positioning of the forecast text doesn't replace the default text layout correctly.
 
----
+### Fix
+- Change both default and alternative weather text to share the same container using conditional rendering (no `absolute` positioning)
+- Remove the `blur-sm opacity-0` approach -- instead use a simple ternary: show either default text OR forecast text, never both
+- Add `text-right` and proper `justify-end` alignment
+- Apply adaptive-shadow to all weather text elements
+- Ensure `max-w-[35vw]` constraint is enforced on the right column container
 
-## 10. Error Report Tab in Settings
-
-**File: `src/components/SettingsModal.tsx`**
-
-### New "Report" Tab
-Add a tab with Bug icon between Security and Admin:
-
-**Report Tab Contents:**
-- Report type selector: "Bug", "Weather Issue", "Feature Request"
-- If "Weather Issue" selected:
-  - Toggle: "Weather text is incorrect"
-  - If toggled on, show text inputs to correct the current condition and temperature
-  - "Submit correction" button stores the correction to the `admin_reports` table with `report_type: 'weather_correction'`
-  - Include the user's corrected values as JSON in the description field
-- Title input field
-- Description textarea
-- Submit button
-
-### Database
-Uses existing `admin_reports` table (already has report_type, title, description columns).
-
----
-
-## 11. Flight Removal Cutoff: 1 Hour
-
-**File: `src/pages/Index.tsx`**
-
-### Change
-Update the flight filter cutoff from 90 minutes to 60 minutes (1 hour):
-```typescript
-const cutoffTime = new Date(now.getTime() - 60 * 60 * 1000); // 1 hour
+```tsx
+// Instead of two overlapping buttons with absolute positioning:
+<button onClick={handleWeatherClick} className="block text-right ...">
+  <p className="font-bold text-white ...">
+    {showForecast ? upcomingRow1 : weatherDurationRow1}
+  </p>
+  <p className="font-medium text-white/70 ...">
+    {showForecast ? upcomingRow2 : weatherDurationRow2}
+  </p>
+</button>
 ```
 
-This applies to all statuses: landed, cancelled, delayed, and scheduled flights.
+This eliminates the absolute positioning issue entirely.
 
 ---
 
-## 12. Smooth Status Change Animations
+## 4. Extended Flight Card: Always Show SCH / Tracker / EST
 
-**File: `src/components/FlightCard.tsx`, `src/index.css`**
+**File: `src/components/FlightCard.tsx`, `src/components/FlightProgressBar.tsx`**
 
-### Implementation
-When a flight status changes (via realtime update):
-- Card background color transitions smoothly over 1 second
-- Status badge fades in with scale animation
-- Use CSS `transition: background 1s ease, border-color 1s ease` on card container
+### Current Behavior
+- Landed cards show "LND" label on right
+- Cancelled cards show "CNL" label on right and "Cancelled" text inside empty bar
 
-### Auto-Collapse on Scroll
-Already implemented. Verify it triggers on parent scroll container, not just window scroll.
+### Updated Behavior
+- ALL expanded cards always show: `SCH {time}` on left, progress bar in center, `EST {time}` on right
+- For **landed** status: The countdown text inside the progress bar is replaced with the actual landed time (formatted)
+- For **cancelled** status: The countdown text inside the progress bar is replaced with the actual cancelled time (formatted)
+- The `rightLabel` prop is no longer needed -- always show "EST"
+- The right side always shows `estimatedTimeFormatted`
+
+### FlightProgressBar Changes
+- Add new prop `centerText?: string` that overrides the countdown display
+- When `status === 'LANDED'`, parent passes `centerText={estimatedTimeFormatted}` (the landed time)
+- When `status === 'CANCELLED'`, parent passes `centerText={estimatedTimeFormatted}` (the cancellation time)
+- For cancelled, still show the empty bar but with the time centered
+- Make the cancelled bar visible (currently returns null via `isVisible` check)
 
 ---
 
-## 13. Slider and Toggle Visual Overhaul
+## 5. Airline Logo IATA Code Matching Fix
+
+**File: `src/components/FlightCard.tsx`**
+
+### Problem
+Some logos (H4, OQ, C6, HB, FD, MF) aren't being matched because the airline name in `AIRLINE_NAMES` doesn't match the filename format in the ImageKit directory.
+
+### Fix
+- Add missing entries to `AIRLINE_NAMES`:
+  - `'H4': 'HiSky Europe'`
+  - `'OQ': 'Chongqing Airlines'`
+  - `'C6': 'Centrum Air'`
+  - `'HB': 'Greater Bay Airlines'`
+  - `'MF': 'XiamenAir'`
+- `FD` is already mapped to `'Thai AirAsia'` but the URL uses `Thai%20AirAsia` -- verify the URL pattern handles this (the `encodeURIComponent` should work but `AirAsia` vs `Air Asia` might mismatch). Fix: change `'FD': 'Thai AirAsia'` in the mapping (no space between Air and Asia, matching the filename).
+- Also update `'AK': 'Air Asia'` to match the logo filename `AK (Air Asia).png` -- this one has a space so keep it
+
+### Airline Name Click
+When clicking a logo that shows the IATA code fallback (no logo found), it should still show the full airline name from `AIRLINE_NAMES`. This already works via the `handleLogoClick` function.
+
+---
+
+## 6. Settings: Font Styles Visible During Scroll
 
 **File: `src/components/SettingsModal.tsx`**
 
-### LiveBlurToggle Updates
-- Remove any solid/black colors from toggle tracks
-- Track uses `backdrop-filter: blur() brightness()` with varying brightness:
-  - OFF: brightness 0.7 (darker glass)
-  - ON: brightness 1.3 (brighter glass)
-- Thumb uses frosted glass with white semi-transparent background
+### Problem (Reference Image 3)
+Each font name in the font list should render in its actual typeface (e.g., "OSWALD" in Oswald, "BEBAS NEUE" in Bebas Neue).
 
-### Slider Styling
-- Override Radix slider styles in `src/index.css`:
-  - Track: glass background with inset shadow
-  - Range (filled part): brighter glass with `backdrop-filter: brightness(1.4)`
-  - Thumb: neumorphic glass circle with drop shadow
+### Current Implementation
+Uses `IntersectionObserver` to lazy-load fonts, and applies `fontFamily` via inline style only when `visibleFonts.has(font)`.
+
+### Fix
+The `IntersectionObserver` setup has a timing issue -- it's set up in a `useCallback` with `visibleFonts` as a dependency, which causes the observer to be recreated and miss elements. Fix:
+- Remove `visibleFonts` from the `useCallback` dependency array (the observer should persist)
+- Use a `ref` (`Set`) instead of state for tracking visible fonts to avoid re-renders breaking the observer
+- Always apply `fontFamily: font` to the button style (don't conditionally check `visibleFonts.has(font)`) -- the browser will use the fallback until the font loads
+- Load the font CSS link as soon as the element intersects (keep this behavior)
+
+---
+
+## 7. Settings: Dual Glass Scrollable Grid (Reference Image 4)
+
+**File: `src/components/SettingsModal.tsx`**
+
+### Current Implementation
+Dual glass uses two `<select>` dropdowns. The glass presets are a 3-column grid.
+
+### Updated Implementation
+- When dual glass is ON, show "Primary Glass" label above the existing preset grid, and "Secondary Glass" label below with a second grid
+- Both grids are scrollable within the modal's scroll area
+- The selected preset in each grid gets a highlighted border (`border-white/40`)
+- Show the blend result label: `{Style1.label} + {Style2.label}`
+- Add more presets (Nintendo, PlayStation, Xbox, ROG, Nokia, Samsung, iPhone, BlackBerry, Raspberry, Steam) to total ~22 presets
+
+---
+
+## 8. Settings: Glass Sliders and Toggles
+
+**File: `src/components/SettingsModal.tsx`, `src/index.css`**
+
+### Problem
+Current sliders and toggles use default Radix styling with black/grey fills.
+
+### Fix (Already Partially Done)
+The `LiveBlurToggle` component already uses backdrop-filter. The Radix slider overrides in `index.css` already set glass-styled tracks/thumbs. Verify and enhance:
+- Slider track: `rgba(255,255,255,0.08)` with `backdrop-filter: blur(6px)`, inset shadow
+- Slider range (filled): `rgba(255,255,255,0.18)` with `backdrop-filter: brightness(1.4)`
+- Slider thumb: `rgba(255,255,255,0.5)` with glass border and shadow
+- These CSS overrides already exist in `index.css` -- verify they're being applied (check for specificity issues with Radix data attributes)
+
+---
+
+## 9. More Live Blur Gradience in UI Elements
+
+**File: `src/index.css`**
+
+### Enhancements
+- **Buttons**: All interactive buttons get `backdrop-filter: blur(8px) brightness(varies)` -- brighter on hover, darker on press
+- **Menu pill**: Already has blur. Add brightness variation: collapsed = `brightness(0.8)`, expanded = `brightness(1.2)`
+- **Icons in header**: Add subtle `backdrop-filter` halos behind each icon
+- **Toast notifications**: Already have glass styling. Add brightness gradient: `brightness(1.1)` on success, `brightness(0.9)` on error
+- **Terminal group headers**: Add `brightness(1.05)` to distinguish from body
+- **Status badges in flight cards**: Add `backdrop-filter: blur(6px) brightness(1.2)` for brighter appearance
+
+### CSS Updates
+Add/update these utility styles:
+```css
+.glass-interactive {
+  backdrop-filter: blur(12px) brightness(1.0);
+}
+.glass-interactive:hover {
+  backdrop-filter: blur(12px) brightness(1.3);
+}
+.glass-interactive:active {
+  backdrop-filter: blur(12px) brightness(0.8);
+}
+```
 
 ---
 
 ## Files Summary
 
-| File | Action | Changes |
-|------|--------|---------|
-| `src/components/FlightCard.tsx` | Major | Glass pill container, bell fixes, haptic feedback, status animations |
-| `src/components/FlightProgressBar.tsx` | Modify | Unicode plane icon, glass styling, remove image dependency |
-| `src/components/NewHeader.tsx` | Modify | Weather alignment fix, max-width constraints |
-| `src/components/SettingsModal.tsx` | Major | Mini sliders grid, reset buttons, error report tab, glass slider styling |
-| `src/contexts/SettingsContext.tsx` | Modify | Add hueShift, remove monochrome boolean, update filter computation |
-| `src/components/SkyIframeBackground.tsx` | Modify | Apply hue-rotate filter, compute adaptive shadow opacity |
-| `src/components/TerminalGroup.tsx` | Modify | Remove plane animations, glass styling |
-| `src/components/NotificationsModal.tsx` | Modify | Show real flight details |
-| `src/pages/Index.tsx` | Modify | 1-hour cutoff |
-| `src/index.css` | Major | Neumorphic glass classes, slider overrides, adaptive shadows, status animations |
-
+| File | Changes |
+|------|---------|
+| `src/contexts/SettingsContext.tsx` | Expand GLASS_PRESETS with tint/animation/saturate fields, add ~10 more presets |
+| `src/index.css` | Add per-preset animation keyframes, enhance glass-interactive brightness, update slider overrides |
+| `src/components/FlightCard.tsx` | Remove bell pulse animation, fix airline name mappings, always show SCH/EST in expanded row |
+| `src/components/FlightProgressBar.tsx` | Add `centerText` prop for landed/cancelled time display, show bar for cancelled |
+| `src/components/NewHeader.tsx` | Fix weather text alignment using conditional rendering instead of absolute positioning |
+| `src/components/SettingsModal.tsx` | Fix font observer, expand dual glass to grid UI, add more presets to grid |
