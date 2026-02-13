@@ -563,7 +563,165 @@
   .adaptive-icon-shadow {
     filter: drop-shadow(0 1px 3px rgba(0, 0, 0, var(--shadow-opacity, 0.5)));
   }
-}
+  }
+
+  /* ======= GLASS PRESET UNIQUE ANIMATIONS ======= */
+  @keyframes glass-frosted-shimmer {
+    0%, 100% { background-position: -200% 0; }
+    50% { background-position: 200% 0; }
+  }
+  .glass-frosted-shimmer {
+    background-image: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 75%, transparent 100%);
+    background-size: 200% 100%;
+    animation: glass-frosted-shimmer 6s ease-in-out infinite;
+  }
+
+  @keyframes glass-liquid-ripple {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.003); }
+  }
+  .glass-liquid-ripple { animation: glass-liquid-ripple 4s ease-in-out infinite; }
+
+  @keyframes glass-prismatic-rotate {
+    0% { filter: hue-rotate(0deg); border-color: rgba(255,0,0,0.2); }
+    33% { filter: hue-rotate(120deg); border-color: rgba(0,255,0,0.2); }
+    66% { filter: hue-rotate(240deg); border-color: rgba(0,0,255,0.2); }
+    100% { filter: hue-rotate(360deg); border-color: rgba(255,0,0,0.2); }
+  }
+  .glass-prismatic-rotate { animation: glass-prismatic-rotate 8s linear infinite; }
+
+  @keyframes glass-stained-pulse {
+    0%, 100% { box-shadow: inset 0 0 30px rgba(255,180,50,0.05); }
+    50% { box-shadow: inset 0 0 60px rgba(255,180,50,0.12); }
+  }
+  .glass-stained-pulse { animation: glass-stained-pulse 5s ease-in-out infinite; }
+
+  @keyframes glass-polarized-glitch {
+    0%, 95%, 100% { opacity: 1; }
+    96% { opacity: 0.7; transform: translateX(1px); }
+    97% { opacity: 1; transform: translateX(-1px); }
+    98% { opacity: 0.8; }
+  }
+  .glass-polarized-glitch { animation: glass-polarized-glitch 8s ease infinite; filter: contrast(1.2); }
+
+  @keyframes glass-ios-vibrancy {
+    0% { transform: scale(0.98); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .glass-ios-vibrancy { animation: glass-ios-vibrancy 0.4s ease-out forwards; filter: saturate(1.8); }
+
+  .glass-aero-sweep { position: relative; overflow: hidden; }
+  .glass-aero-sweep::after {
+    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+    background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.04) 50%, transparent 60%);
+    animation: glass-shine 6s ease-in-out infinite; pointer-events: none;
+  }
+
+  @keyframes glass-vista-wobble {
+    0%, 100% { transform: perspective(500px) rotateY(0deg); }
+    50% { transform: perspective(500px) rotateY(0.3deg); }
+  }
+  .glass-vista-wobble { animation: glass-vista-wobble 7s ease-in-out infinite; filter: brightness(1.1); }
+
+  .glass-windows-noise { position: relative; }
+  .glass-windows-noise::before {
+    content: ''; position: absolute; inset: 0; opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    pointer-events: none; border-radius: inherit;
+  }
+
+  @keyframes glass-linux-blink {
+    0%, 49% { border-color: rgba(0,255,0,0.15); }
+    50%, 100% { border-color: rgba(0,255,0,0.03); }
+  }
+  .glass-linux-blink { animation: glass-linux-blink 1.2s step-end infinite; }
+
+  @keyframes glass-mac-fadein {
+    0% { opacity: 0.5; filter: saturate(0.5); }
+    100% { opacity: 1; filter: saturate(1.3); }
+  }
+  .glass-mac-fadein { animation: glass-mac-fadein 0.6s ease-out forwards; }
+
+  @keyframes glass-ubuntu-glow {
+    0%, 100% { box-shadow: 0 0 8px rgba(233,84,32,0.1); }
+    50% { box-shadow: 0 0 20px rgba(233,84,32,0.2); }
+  }
+  .glass-ubuntu-glow { animation: glass-ubuntu-glow 4s ease-in-out infinite; }
+
+  @keyframes glass-nintendo-bounce {
+    0%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-2px); }
+    60% { transform: translateY(1px); }
+  }
+  .glass-nintendo-bounce { animation: glass-nintendo-bounce 3s ease-in-out infinite; }
+
+  @keyframes glass-ps-pulse {
+    0%, 100% { box-shadow: inset 0 0 20px rgba(0,55,145,0.05); }
+    50% { box-shadow: inset 0 0 40px rgba(0,55,145,0.15); }
+  }
+  .glass-ps-pulse { animation: glass-ps-pulse 5s ease-in-out infinite; }
+
+  @keyframes glass-xbox-matrix {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 -100px; }
+  }
+  .glass-xbox-matrix {
+    background-image: linear-gradient(0deg, transparent 0%, rgba(16,124,16,0.03) 50%, transparent 100%);
+    background-size: 100% 50px;
+    animation: glass-xbox-matrix 3s linear infinite;
+  }
+
+  @keyframes glass-rog-slash {
+    0%, 100% { background-position: -200% 0; }
+    50% { background-position: 200% 0; }
+  }
+  .glass-rog-slash {
+    background-image: linear-gradient(135deg, transparent 45%, rgba(255,0,0,0.06) 50%, transparent 55%);
+    background-size: 200% 100%;
+    animation: glass-rog-slash 4s ease-in-out infinite;
+  }
+
+  @keyframes glass-nokia-pixel {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.92; }
+  }
+  .glass-nokia-pixel { animation: glass-nokia-pixel 2s step-end infinite; }
+
+  @keyframes glass-samsung-gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .glass-samsung-gradient {
+    background: linear-gradient(135deg, rgba(0,100,200,0.04), rgba(100,0,200,0.04), rgba(0,100,200,0.04));
+    background-size: 200% 200%;
+    animation: glass-samsung-gradient 8s ease infinite;
+  }
+
+  @keyframes glass-iphone-island {
+    0% { border-radius: 1rem; }
+    50% { border-radius: 1.5rem; }
+    100% { border-radius: 1rem; }
+  }
+  .glass-iphone-island { animation: glass-iphone-island 4s ease-in-out infinite; filter: saturate(1.8); }
+
+  .glass-bb-matte { filter: contrast(1.05) brightness(0.95); }
+
+  @keyframes glass-rpi-circuit {
+    0%, 100% { box-shadow: inset 0 0 15px rgba(196,17,73,0.05); }
+    50% { box-shadow: inset 0 0 30px rgba(196,17,73,0.12); }
+  }
+  .glass-rpi-circuit { animation: glass-rpi-circuit 5s ease-in-out infinite; }
+
+  @keyframes glass-steam-vapor {
+    0% { background-position: 0 0; }
+    100% { background-position: 100px 50px; }
+  }
+  .glass-steam-vapor {
+    background-image: linear-gradient(135deg, rgba(30,30,30,0.05) 25%, transparent 25%, transparent 50%, rgba(30,30,30,0.05) 50%, rgba(30,30,30,0.05) 75%, transparent 75%);
+    background-size: 40px 40px;
+    animation: glass-steam-vapor 10s linear infinite;
+  }
 
 @layer utilities {
   /* Text colors for flight statuses */

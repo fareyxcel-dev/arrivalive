@@ -49,7 +49,7 @@ const DiagnosticsPanel = ({ isOpen, onClose }: Props) => {
     // Check Push Subscription
     try {
       const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
+      const sub = await (reg as any).pushManager?.getSubscription?.();
       results.push({
         label: 'Push Subscription',
         status: sub ? 'ok' : 'error',

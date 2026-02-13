@@ -61,7 +61,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [displayTitle, setDisplayTitle] = useState('Settings');
   const titleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [visibleFonts, setVisibleFonts] = useState<Set<string>>(new Set());
+  const visibleFontsRef = useRef<Set<string>>(new Set());
   const [isAdmin, setIsAdmin] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const fontScrollRef = useRef<HTMLDivElement>(null);
@@ -117,7 +117,8 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const fontName = (entry.target as HTMLElement).dataset.font;
-            if (fontName && !visibleFonts.has(fontName)) {
+            if (fontName && !visibleFontsRef.current.has(fontName)) {
+              visibleFontsRef.current.add(fontName);
               const linkId = `lazy-font-${fontName.replace(/\s+/g, '-')}`;
               if (!document.getElementById(linkId)) {
                 const link = document.createElement('link');
@@ -125,7 +126,6 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                 link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:wght@400;700&display=swap`;
                 document.head.appendChild(link);
               }
-              setVisibleFonts(prev => new Set(prev).add(fontName));
             }
           }
         });
@@ -134,7 +134,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     );
     const items = node.querySelectorAll('[data-font]');
     items.forEach(item => fontObserverRef.current?.observe(item));
-  }, [visibleFonts]);
+  }, []);
 
   useEffect(() => {
     if (activeTab !== 'texts') return;
@@ -326,7 +326,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                         <button key={font} data-font={font} onClick={() => setFontFamily(font)}
                           className={cn("w-full px-3 py-2 text-left rounded-md transition-all flex items-center gap-2",
                             isSelected ? "bg-white/20 text-foreground" : "hover:bg-white/10 text-foreground/70")}
-                          style={{ fontFamily: visibleFonts.has(font) ? `'${font}', sans-serif` : 'inherit', fontWeight: settings.boldText ? 700 : 400 }}>
+                          style={{ fontFamily: `'${font}', sans-serif`, fontWeight: settings.boldText ? 700 : 400 }}>
                           {isSelected && <Check className="w-4 h-4 flex-shrink-0" />}
                           <span className="truncate">{font}</span>
                         </button>
@@ -386,54 +386,61 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
               </div>
 
               {/* Dual Glass Toggle */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-xs text-muted-foreground uppercase tracking-wide">Dual Glass Blend</label>
                   <LiveBlurToggle checked={settings.dualGlass} onChange={setDualGlass} />
                 </div>
                 {settings.dualGlass && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[9px] text-muted-foreground mb-1 block">Style 1</label>
-                      <select value={settings.dualGlassStyle1} onChange={e => setDualGlassStyle1(e.target.value)}
-                        className="w-full px-2 py-1.5 rounded-lg glass bg-transparent border-0 text-xs">
-                        {glassPresetEntries.map(([id, p]) => (
-                          <option key={id} value={id} className="bg-popover">{p.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-[9px] text-muted-foreground mb-1 block">Style 2</label>
-                      <select value={settings.dualGlassStyle2} onChange={e => setDualGlassStyle2(e.target.value)}
-                        className="w-full px-2 py-1.5 rounded-lg glass bg-transparent border-0 text-xs">
-                        {glassPresetEntries.map(([id, p]) => (
-                          <option key={id} value={id} className="bg-popover">{p.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                  <p className="text-[9px] text-muted-foreground">
+                    Blend: {GLASS_PRESETS[settings.dualGlassStyle1]?.label || '?'} + {GLASS_PRESETS[settings.dualGlassStyle2]?.label || '?'}
+                  </p>
                 )}
               </div>
 
-              {/* Glass Presets */}
+              {/* Glass Presets Grid */}
               <div>
-                <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">Glass Presets</label>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">
+                  {settings.dualGlass ? 'Primary Glass' : 'Glass Presets'}
+                </label>
                 <div className="grid grid-cols-3 gap-2">
                   {glassPresetEntries.map(([id, preset]) => (
-                    <button key={id} onClick={() => setGlassPreset(id)}
+                    <button key={id} onClick={() => { setGlassPreset(id); if (settings.dualGlass) setDualGlassStyle1(id); }}
                       className={cn("relative p-2 rounded-lg text-left transition-all border overflow-hidden glass-neumorphic",
-                        settings.glassPreset === id ? "border-white/40" : "border-white/10 hover:border-white/20")}
+                        (settings.dualGlass ? settings.dualGlassStyle1 : settings.glassPreset) === id ? "border-white/40" : "border-white/10 hover:border-white/20")}
                       style={{
                         background: `rgba(255, 255, 255, ${preset.opacity})`,
                         backdropFilter: `blur(${preset.blur}px)`,
                         WebkitBackdropFilter: `blur(${preset.blur}px)`,
                       }}>
                       <span className="text-[10px] font-medium text-foreground block relative z-10">{preset.label}</span>
-                      <span className="text-[7px] text-muted-foreground leading-tight relative z-10">{preset.blur}px / {Math.round(preset.opacity * 100)}%</span>
+                      <span className="text-[7px] text-muted-foreground leading-tight relative z-10">{preset.description}</span>
                     </button>
                   ))}
                 </div>
               </div>
+
+              {/* Secondary Glass Grid (only when dual glass is on) */}
+              {settings.dualGlass && (
+                <div>
+                  <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">Secondary Glass</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {glassPresetEntries.map(([id, preset]) => (
+                      <button key={`sec-${id}`} onClick={() => setDualGlassStyle2(id)}
+                        className={cn("relative p-2 rounded-lg text-left transition-all border overflow-hidden glass-neumorphic",
+                          settings.dualGlassStyle2 === id ? "border-white/40" : "border-white/10 hover:border-white/20")}
+                        style={{
+                          background: `rgba(255, 255, 255, ${preset.opacity})`,
+                          backdropFilter: `blur(${preset.blur}px)`,
+                          WebkitBackdropFilter: `blur(${preset.blur}px)`,
+                        }}>
+                        <span className="text-[10px] font-medium text-foreground block relative z-10">{preset.label}</span>
+                        <span className="text-[7px] text-muted-foreground leading-tight relative z-10">{preset.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

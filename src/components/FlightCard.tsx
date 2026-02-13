@@ -31,13 +31,15 @@ interface Props {
 const AIRLINE_NAMES: Record<string, string> = {
   '3U': 'Sichuan Airlines', '4Y': 'Discover Airlines', '6E': 'IndiGo', '8D': 'FitsAir',
   'AF': 'Air France', 'AI': 'Air India', 'AK': 'Air Asia', 'AZ': 'ITA Airways',
-  'B4': 'beOnd', 'BA': 'British Airways', 'BS': 'US-Bangla Airlines', 'DE': 'Condor',
-  'EK': 'Emirates', 'EY': 'Etihad Airways', 'FD': 'Thai Air Asia', 'FZ': 'FlyDubai',
-  'G9': 'Air Arabia', 'GF': 'Gulf Air', 'HX': 'Hong Kong Airlines', 'HY': 'Uzbekistan Airways',
+  'B4': 'beOnd', 'BA': 'British Airways', 'BS': 'US-Bangla Airlines', 'C6': 'Centrum Air',
+  'DE': 'Condor', 'EK': 'Emirates', 'EY': 'Etihad Airways', 'FD': 'Thai AirAsia', 'FZ': 'FlyDubai',
+  'G9': 'Air Arabia', 'GF': 'Gulf Air', 'H4': 'HiSky Europe', 'HB': 'Greater Bay Airlines',
+  'HX': 'Hong Kong Airlines', 'HY': 'Uzbekistan Airways',
   'IB': 'Iberia', 'J2': 'Azerbaijan Airlines', 'J9': 'Jazeera Airways', 'JD': 'Beijing Capital Airlines',
-  'KC': 'Air Astana', 'KU': 'Kuwait Airways', 'LO': 'LOT Polish Airlines', 'MH': 'Malaysia Airlines',
-  'MU': 'China Eastern Airlines', 'NO': 'Neos', 'NR': 'MantaAir', 'OD': 'Batik Air Malaysia',
-  'OS': 'Austrian Airlines', 'PG': 'Bangkok Airways', 'Q2': 'Maldivian', 'QR': 'Qatar Airways',
+  'KC': 'Air Astana', 'KU': 'Kuwait Airways', 'LO': 'LOT Polish Airlines', 'MF': 'XiamenAir',
+  'MH': 'Malaysia Airlines', 'MU': 'China Eastern Airlines', 'NO': 'Neos', 'NR': 'MantaAir',
+  'OD': 'Batik Air Malaysia', 'OQ': 'Chongqing Airlines', 'OS': 'Austrian Airlines',
+  'PG': 'Bangkok Airways', 'Q2': 'Maldivian', 'QR': 'Qatar Airways',
   'SH': 'FlyMe', 'SQ': 'Singapore Airlines', 'SU': 'Aeroflot', 'SV': 'Saudia',
   'TK': 'Turkish Airlines', 'UL': 'SriLankan Airlines', 'VP': 'VillaAir', 'VS': 'Virgin Atlantic',
   'W6': 'Wizz Air', 'WK': 'Edelweiss Air', 'WY': 'Oman Air', 'XY': 'Flynas', 'ZF': 'Azur Air',
@@ -183,18 +185,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
     };
   }, [isExpanded]);
 
-  // Bell pulse animation
-  useEffect(() => {
-    if (!showBell) return;
-    const pulseInterval = isDelayed ? 7000 + Math.random() * 2000 : 6000 + Math.random() * 2000;
-    const doPulse = () => {
-      setBellPulse(true);
-      setTimeout(() => setBellPulse(false), 800);
-      bellPulseRef.current = setTimeout(doPulse, pulseInterval);
-    };
-    bellPulseRef.current = setTimeout(doPulse, pulseInterval);
-    return () => { if (bellPulseRef.current) clearTimeout(bellPulseRef.current); };
-  }, [showBell, isDelayed]);
+  // No bell pulse animation - active/inactive distinguished by glow only
 
   const handleLogoClick = () => {
     if (showAirlineName) return;
@@ -354,12 +345,10 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             <div className="px-1.5 py-1 flex-shrink-0">
               <BellButton
                 isActive={isNotificationEnabled}
-                isPulsing={bellPulse}
                 isSubscribing={isSubscribing}
                 bellColor={theme.bellColor}
                 bellGlow={theme.bellGlow}
                 onClick={handleBellClick}
-                isDelayed={isDelayed}
               />
             </div>
           )}
@@ -377,33 +366,24 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           </div>
           
           <div className="flex-1 relative">
-            {!isCancelled ? (
-              <FlightProgressBar
-                scheduledTime={flight.scheduledTime}
-                estimatedTime={flight.estimatedTime}
-                flightDate={flight.date}
-                status={flight.status}
-                trackingProgress={flight.trackingProgress}
-                textColor={theme.textColor}
-                trackActiveColor={theme.progressActive}
-                trackInactiveColor={theme.progressInactive}
-                onCountdownChange={handleCountdownChange}
-                rightLabel={getRightLabel()}
-                showCountdownInline={true}
-              />
-            ) : (
-              <div className="h-[10px] rounded-full glass-pill relative" style={{ background: `rgba(${hexToRgb(theme.progressInactive)}, 0.2)` }}>
-                <span className="absolute inset-0 flex items-center justify-center text-[7px] font-bold adaptive-shadow" style={{ color: theme.textColor, opacity: 0.7 }}>
-                  Cancelled
-                </span>
-              </div>
-            )}
+            <FlightProgressBar
+              scheduledTime={flight.scheduledTime}
+              estimatedTime={flight.estimatedTime}
+              flightDate={flight.date}
+              status={flight.status}
+              trackingProgress={flight.trackingProgress}
+              textColor={theme.textColor}
+              trackActiveColor={theme.progressActive}
+              trackInactiveColor={theme.progressInactive}
+              onCountdownChange={handleCountdownChange}
+              showCountdownInline={true}
+              centerText={(isLanded || isCancelled) ? estimatedTimeFormatted : undefined}
+              forceVisible={isLanded || isCancelled}
+            />
           </div>
           
           <div className="flex flex-col items-end flex-shrink-0">
-            <span className="text-[7px] uppercase tracking-wide adaptive-shadow" style={{ color: theme.textColor, opacity: 0.6 }}>
-              {isLanded ? 'LND' : isCancelled ? 'CNL' : 'EST'}
-            </span>
+            <span className="text-[7px] uppercase tracking-wide adaptive-shadow" style={{ color: theme.textColor, opacity: 0.6 }}>EST</span>
             <span className="font-bold text-[9px] whitespace-nowrap adaptive-shadow" style={{ color: theme.textColor, opacity: 0.8 }}>
               {estimatedTimeFormatted}
             </span>
@@ -414,9 +394,9 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   );
 };
 
-// Bell button component
-const BellButton = ({ isActive, isPulsing, isSubscribing, bellColor, bellGlow, onClick, isDelayed = false }: {
-  isActive: boolean; isPulsing: boolean; isSubscribing: boolean; bellColor: string; bellGlow: string; onClick: () => void; isDelayed?: boolean;
+// Bell button component - no pulse, glow only when active
+const BellButton = ({ isActive, isSubscribing, bellColor, bellGlow, onClick }: {
+  isActive: boolean; isSubscribing: boolean; bellColor: string; bellGlow: string; onClick: () => void;
 }) => (
   <button
     onClick={(e) => { e.stopPropagation(); onClick(); }}
@@ -424,15 +404,14 @@ const BellButton = ({ isActive, isPulsing, isSubscribing, bellColor, bellGlow, o
     className={cn("p-0.5 rounded-full flex-shrink-0 transition-all duration-300 bell-button glass-orb", isSubscribing && "opacity-50")}
     style={{
       boxShadow: isActive ? `0 0 12px ${bellGlow}, 0 0 20px ${bellGlow}` : 'none',
-      transform: isPulsing && !isActive ? (isDelayed ? 'scale(1.06)' : 'scale(1.05)') : 'scale(1)',
-      opacity: isActive ? 1 : (isPulsing ? 1 : 0.5),
-      background: isActive ? `rgba(${hexToRgb(bellColor)}, 0.1)` : 'transparent',
+      opacity: isActive ? 1 : 0.5,
+      background: isActive ? `rgba(${hexToRgb(bellColor)}, 0.15)` : 'transparent',
     }}
   >
     {isActive ? (
       <BellRing className="w-3 h-3" style={{ color: bellColor, filter: `drop-shadow(0 0 8px ${bellColor})` }} />
     ) : (
-      <Bell className="w-3 h-3" style={{ color: bellColor, opacity: isPulsing ? 1 : 0.65, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.4))' }} />
+      <Bell className="w-3 h-3" style={{ color: bellColor, opacity: 0.65, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.4))' }} />
     )}
   </button>
 );
