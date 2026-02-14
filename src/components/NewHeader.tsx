@@ -304,42 +304,23 @@ const NewHeader = ({
               </p>
             </button>
             
-            <div className="relative">
-              <button
-                onClick={handleDayDateClick}
-                className={cn(
-                  "block text-left hover:bg-white/5 rounded px-1 -mx-1 transition-all duration-300 whitespace-nowrap",
-                  showSunCountdown && "blur-sm opacity-0"
-                )}
-              >
-                <p className={cn(
-                  "font-bold text-white transition-all whitespace-nowrap",
-                  isScrolled ? "text-[9px]" : "text-[10px]"
-                )}>
-                  {formatDay(currentTime)}
-                </p>
-                <p className={cn(
-                  "font-medium text-white/70 transition-all whitespace-nowrap",
-                  isScrolled ? "text-[8px]" : "text-[9px]"
-                )}>
-                  {formatDate(currentTime)}
-                </p>
-              </button>
-
-              {showSunCountdown && (
-                <button
-                  onClick={handleDayDateClick}
-                  className="absolute top-0 left-0 animate-fade-in text-left px-1 -mx-1 whitespace-nowrap"
-                >
-                  <p className={cn("font-bold text-white whitespace-nowrap", isScrolled ? "text-[9px]" : "text-[10px]")}>
-                    {sunData.label} in {sunData.countdown}
-                  </p>
-                  <p className={cn("font-medium text-white/70 whitespace-nowrap", isScrolled ? "text-[8px]" : "text-[9px]")}>
-                    at {sunData.time}
-                  </p>
-                </button>
-              )}
-            </div>
+            <button
+              onClick={handleDayDateClick}
+              className="block text-left hover:bg-white/5 rounded px-1 -mx-1 transition-all duration-300 whitespace-nowrap"
+            >
+              <p className={cn(
+                "font-bold text-white transition-all whitespace-nowrap adaptive-shadow",
+                isScrolled ? "text-[9px]" : "text-[10px]"
+              )}>
+                {showSunCountdown ? `${sunData.label} in ${sunData.countdown}` : formatDay(currentTime)}
+              </p>
+              <p className={cn(
+                "font-medium text-white/70 transition-all whitespace-nowrap adaptive-shadow",
+                isScrolled ? "text-[8px]" : "text-[9px]"
+              )}>
+                {showSunCountdown ? `at ${sunData.time}` : formatDate(currentTime)}
+              </p>
+            </button>
           </div>
 
           {/* Center: Logo - stays fixed in center */}
@@ -420,7 +401,7 @@ const NewHeader = ({
           {/* Right: Weather - constrained to not invade center */}
           {weather ? (
             <div className={cn(
-              "text-right space-y-0 transition-all duration-300 overflow-hidden max-w-[35vw]",
+              "text-right space-y-0 transition-all duration-300 overflow-hidden max-w-[35vw] justify-self-end",
               isScrolled ? "scale-[0.85] origin-top-right" : ""
             )}>
               <button

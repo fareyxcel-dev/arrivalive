@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, User, Type, Sparkles, Bell, Shield, Camera, Loader2, Check, FileArchive, Bug, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -108,42 +108,46 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     return () => clearTimeout(timer);
   }, [activeTab, isOpen, settings.fontFamily]);
 
-  // IntersectionObserver for lazy font loading
-  const setupFontObserver = useCallback((node: HTMLDivElement | null) => {
+  // IntersectionObserver for lazy font loading - find ScrollArea viewport
+  useEffect(() => {
+    if (activeTab !== 'texts' || !isOpen) return;
     if (fontObserverRef.current) fontObserverRef.current.disconnect();
-    if (!node) return;
-    fontObserverRef.current = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const fontName = (entry.target as HTMLElement).dataset.font;
-            if (fontName && !visibleFontsRef.current.has(fontName)) {
-              visibleFontsRef.current.add(fontName);
-              const linkId = `lazy-font-${fontName.replace(/\s+/g, '-')}`;
-              if (!document.getElementById(linkId)) {
-                const link = document.createElement('link');
-                link.id = linkId; link.rel = 'stylesheet';
-                link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:wght@400;700&display=swap`;
-                document.head.appendChild(link);
+    
+    const timer = setTimeout(() => {
+      const viewport = fontScrollRef.current?.closest('[data-radix-scroll-area-root]')?.querySelector('[data-radix-scroll-area-viewport]') 
+        || document.querySelector('[data-radix-scroll-area-viewport]');
+      if (!viewport) return;
+      
+      fontObserverRef.current = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              const fontName = (entry.target as HTMLElement).dataset.font;
+              if (fontName && !visibleFontsRef.current.has(fontName)) {
+                visibleFontsRef.current.add(fontName);
+                const linkId = `lazy-font-${fontName.replace(/\s+/g, '-')}`;
+                if (!document.getElementById(linkId)) {
+                  const link = document.createElement('link');
+                  link.id = linkId; link.rel = 'stylesheet';
+                  link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:wght@400;700&display=swap`;
+                  document.head.appendChild(link);
+                }
               }
             }
-          }
-        });
-      },
-      { root: node, rootMargin: '100px', threshold: 0 }
-    );
-    const items = node.querySelectorAll('[data-font]');
-    items.forEach(item => fontObserverRef.current?.observe(item));
-  }, []);
-
-  useEffect(() => {
-    if (activeTab !== 'texts') return;
-    const timer = setTimeout(() => {
-      const scrollContainer = fontScrollRef.current;
-      if (scrollContainer) setupFontObserver(scrollContainer);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [activeTab, setupFontObserver]);
+          });
+        },
+        { root: viewport as Element, rootMargin: '200px', threshold: 0 }
+      );
+      
+      const items = fontScrollRef.current?.querySelectorAll('[data-font]');
+      items?.forEach(item => fontObserverRef.current?.observe(item));
+    }, 300);
+    
+    return () => {
+      clearTimeout(timer);
+      if (fontObserverRef.current) fontObserverRef.current.disconnect();
+    };
+  }, [activeTab, isOpen]);
 
   // Load user profile
   useEffect(() => {

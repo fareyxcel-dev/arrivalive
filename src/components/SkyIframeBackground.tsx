@@ -16,9 +16,10 @@ interface WeatherData {
 
 interface Props {
   weatherData: WeatherData | null;
+  onLoad?: () => void;
 }
 
-const SkyIframeBackground = ({ weatherData }: Props) => {
+const SkyIframeBackground = ({ weatherData, onLoad }: Props) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const { settings } = useSettings();
@@ -77,7 +78,7 @@ const SkyIframeBackground = ({ weatherData }: Props) => {
           filter: getIframeFilter(),
           transition: 'filter 0.3s ease',
         }}
-        onLoad={() => setIsLoaded(true)}
+        onLoad={() => { setIsLoaded(true); onLoad?.(); }}
         title="Live Sky Background"
         sandbox="allow-scripts allow-same-origin"
       />

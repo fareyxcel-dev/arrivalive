@@ -8,6 +8,7 @@ import ExportModal from '@/components/ExportModal';
 import NotificationsModal from '@/components/NotificationsModal';
 import AdminDashboard from '@/components/AdminDashboard';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import SplashScreen from '@/components/SplashScreen';
 import { Flight } from '@/components/FlightCard';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,6 +48,7 @@ const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
 
   // Request notification permission on first visit for non-PWA
   useEffect(() => {
@@ -304,12 +306,10 @@ const Index = () => {
   }, []);
 
   const loadUserSubscriptions = async (userId: string) => {
-    const today = new Date().toISOString().split('T')[0];
     const { data } = await supabase
       .from('notification_subscriptions')
       .select('flight_id')
-      .eq('user_id', userId)
-      .eq('flight_date', today);
+      .eq('user_id', userId);
 
     if (data) {
       setNotificationIds(new Set(data.map(s => s.flight_id)));
@@ -343,57 +343,19 @@ const Index = () => {
     fetchFlights(true);
   };
 
-  const handleToggleNotification = async (flightId: string) => {
-    if (!user) {
-      toast.info('Please sign in to enable notifications');
-      navigate('/auth');
-      return;
-    }
-
-    if ('Notification' in window && Notification.permission === 'default') {
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        toast.error('Please enable notifications in your browser');
-        return;
-      }
-    }
-
-    const today = new Date().toISOString().split('T')[0];
+  // handleToggleNotification now only updates local state; FlightCard handles DB
+  const handleToggleNotification = (flightId: string) => {
     const isSubscribed = notificationIds.has(flightId);
-
     if (isSubscribed) {
-      const { error } = await supabase
-        .from('notification_subscriptions')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('flight_id', flightId)
-        .eq('flight_date', today);
-
-      if (!error) {
-        setNotificationIds(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(flightId);
-          return newSet;
-        });
-        setNotificationCount(prev => Math.max(0, prev - 1));
-        toast.info('Notifications disabled');
-      }
+      setNotificationIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(flightId);
+        return newSet;
+      });
+      setNotificationCount(prev => Math.max(0, prev - 1));
     } else {
-      const { error } = await supabase
-        .from('notification_subscriptions')
-        .insert({
-          user_id: user.id,
-          flight_id: flightId,
-          flight_date: today,
-          notify_push: true,
-          notify_email: true,
-        });
-
-      if (!error) {
-        setNotificationIds(prev => new Set(prev).add(flightId));
-        setNotificationCount(prev => prev + 1);
-        toast.success('You\'ll be notified when this flight lands or is delayed');
-      }
+      setNotificationIds(prev => new Set(prev).add(flightId));
+      setNotificationCount(prev => prev + 1);
     }
   };
 
@@ -451,7 +413,7 @@ const Index = () => {
     <div className="relative min-h-screen">
       {/* Full-screen iframe background */}
       <div className="fixed inset-0 z-0">
-        <SkyIframeBackground weatherData={null} />
+        <SkyIframeBackground weatherData={null} onLoad={() => setIframeLoaded(true)} />
       </div>
       
       <div className="relative z-10">
@@ -528,6 +490,9 @@ const Index = () => {
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}
       />
+
+      {/* Splash screen overlay */}
+      <SplashScreen isReady={!isLoading && iframeLoaded} />
     </div>
   );
 };
