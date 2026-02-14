@@ -192,7 +192,7 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, no
                         <FlightCard
                           key={flight.id}
                           flight={flight}
-                          isNotificationEnabled={notificationIds.has(flight.id)}
+                          isNotificationEnabled={notificationIds.has(flight.flightId)}
                           onToggleNotification={onToggleNotification}
                         />
                       ))}
