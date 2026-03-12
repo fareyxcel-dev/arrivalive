@@ -435,6 +435,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         setSaturation, setContrast, setShadows, setHighlights, setHueShift,
         setGlassPreset, setBoldText, setColorShift,
         setDualGlass, setDualGlassStyle1, setDualGlassStyle2,
+        setCardStyle, setHideCancelled, setHideLanded,
         toggleTimeFormat, toggleTemperatureUnit,
         setNotification, updateProfile, updatePassword, deleteAccount,
         resetSetting,
