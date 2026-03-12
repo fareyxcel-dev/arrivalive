@@ -505,7 +505,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
             </div>
           )}
 
-
+          {activeTab === 'notifications' && (
             <div className="space-y-3 animate-fade-in">
               {[
                 { key: 'sms' as const, label: 'SMS Notifications' },
