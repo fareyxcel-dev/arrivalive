@@ -126,6 +126,9 @@ interface SettingsContextType {
   setDualGlass: (enabled: boolean) => void;
   setDualGlassStyle1: (preset: string) => void;
   setDualGlassStyle2: (preset: string) => void;
+  setCardStyle: (style: string) => void;
+  setHideCancelled: (hide: boolean) => void;
+  setHideLanded: (hide: boolean) => void;
   toggleTimeFormat: () => void;
   toggleTemperatureUnit: () => void;
   setNotification: (key: keyof SettingsState['notifications'], value: boolean) => void;
