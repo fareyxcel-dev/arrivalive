@@ -170,6 +170,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'texts', label: 'Texts', icon: Type },
     { id: 'style', label: 'Style', icon: Sparkles },
+    { id: 'cards', label: 'Cards', icon: Palette },
     { id: 'notifications', label: 'Alerts', icon: Bell },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'report', label: 'Report', icon: Bug },
