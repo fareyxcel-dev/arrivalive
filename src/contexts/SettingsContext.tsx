@@ -158,6 +158,9 @@ const defaultSettings: SettingsState = {
   dualGlass: false,
   dualGlassStyle1: 'frosted',
   dualGlassStyle2: 'ios',
+  cardStyle: 'plain-main',
+  hideCancelled: false,
+  hideLanded: false,
   notifications: {
     sms: false,
     email: false,
