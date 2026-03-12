@@ -377,6 +377,9 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const setDualGlass = (enabled: boolean) => setSettings(prev => ({ ...prev, dualGlass: enabled }));
   const setDualGlassStyle1 = (preset: string) => setSettings(prev => ({ ...prev, dualGlassStyle1: preset }));
   const setDualGlassStyle2 = (preset: string) => setSettings(prev => ({ ...prev, dualGlassStyle2: preset }));
+  const setCardStyle = (style: string) => setSettings(prev => ({ ...prev, cardStyle: style }));
+  const setHideCancelled = (hide: boolean) => setSettings(prev => ({ ...prev, hideCancelled: hide }));
+  const setHideLanded = (hide: boolean) => setSettings(prev => ({ ...prev, hideLanded: hide }));
 
   const setGlassPreset = (preset: string) => {
     const presetValues = GLASS_PRESETS[preset];
