@@ -84,17 +84,20 @@ interface SettingsState {
   blurLevel: number;
   glassOpacity: number;
   iframeBrightness: number;
-  saturation: number; // 0-200, default 100. 0=grayscale, 100=normal, 200=oversaturated
-  contrast: number;   // 50-150, default 100
-  shadows: number;    // 0-100, default 50
-  highlights: number; // 0-100, default 50
-  hueShift: number;   // 0-360, default 0
+  saturation: number;
+  contrast: number;
+  shadows: number;
+  highlights: number;
+  hueShift: number;
   glassPreset: string;
   boldText: boolean;
   colorShift: number;
   dualGlass: boolean;
   dualGlassStyle1: string;
   dualGlassStyle2: string;
+  cardStyle: string;
+  hideCancelled: boolean;
+  hideLanded: boolean;
   notifications: {
     sms: boolean;
     email: boolean;
