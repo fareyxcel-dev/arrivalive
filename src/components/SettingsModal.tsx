@@ -15,7 +15,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'profile' | 'texts' | 'style' | 'notifications' | 'security' | 'report' | 'admin';
+type Tab = 'profile' | 'texts' | 'style' | 'cards' | 'notifications' | 'security' | 'report' | 'admin';
 
 const ADMIN_EMAILS = ['fareyxcel@gmail.com', 'arrivamv@gmail.com', 'arrivalive@gmail.com'];
 
