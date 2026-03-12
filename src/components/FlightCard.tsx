@@ -6,6 +6,7 @@ import FlightProgressBar from './FlightProgressBar';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { subscribeToNotifications, addFlightTag, removeFlightTag, setExternalUserId } from '@/lib/onesignal';
+import { AIRLINE_NAMES, getLogoUrls, getCardTheme, hexToRgb } from '@/lib/cardStyles';
 
 export interface Flight {
   id: string;
@@ -27,38 +28,6 @@ interface Props {
   onToggleNotification: (flightId: string) => void;
 }
 
-// Airline name mapping
-const AIRLINE_NAMES: Record<string, string> = {
-  '3U': 'Sichuan Airlines', '4Y': 'Discover Airlines', '6E': 'IndiGo', '8D': 'FitsAir',
-  'AF': 'Air France', 'AI': 'Air India', 'AK': 'Air Asia', 'AZ': 'ITA Airways',
-  'B4': 'beOnd', 'BA': 'British Airways', 'BS': 'US-Bangla Airlines', 'C6': 'Centrum Air',
-  'DE': 'Condor', 'EK': 'Emirates', 'EY': 'Etihad Airways', 'FD': 'Thai AirAsia', 'FZ': 'FlyDubai',
-  'G9': 'Air Arabia', 'GF': 'Gulf Air', 'H4': 'HiSky Europe', 'HB': 'Greater Bay Airlines',
-  'HX': 'Hong Kong Airlines', 'HY': 'Uzbekistan Airways',
-  'IB': 'Iberia', 'J2': 'Azerbaijan Airlines', 'J9': 'Jazeera Airways', 'JD': 'Beijing Capital Airlines',
-  'KC': 'Air Astana', 'KU': 'Kuwait Airways', 'LO': 'LOT Polish Airlines', 'MF': 'XiamenAir',
-  'MH': 'Malaysia Airlines', 'MU': 'China Eastern Airlines', 'NO': 'Neos', 'NR': 'MantaAir',
-  'OD': 'Batik Air Malaysia', 'OQ': 'Chongqing Airlines', 'OS': 'Austrian Airlines',
-  'PG': 'Bangkok Airways', 'Q2': 'Maldivian', 'QR': 'Qatar Airways',
-  'SH': 'FlyMe', 'SQ': 'Singapore Airlines', 'SU': 'Aeroflot', 'SV': 'Saudia',
-  'TK': 'Turkish Airlines', 'UL': 'SriLankan Airlines', 'VP': 'VillaAir', 'VS': 'Virgin Atlantic',
-  'W6': 'Wizz Air', 'WK': 'Edelweiss Air', 'WY': 'Oman Air', 'XY': 'Flynas', 'ZF': 'Azur Air',
-};
-
-// Theme colors per status
-const getStatusTheme = (status: string) => {
-  switch (status.toUpperCase()) {
-    case 'LANDED':
-      return { cardTint: '#10e8b9', progressInactive: '#0f6955', progressActive: '#30c2a2', textColor: '#81f0d8', bellColor: '#81f0d8', bellGlow: 'rgba(16, 232, 185, 0.4)' };
-    case 'DELAYED':
-      return { cardTint: '#eb520c', progressInactive: '#a1441a', progressActive: '#c25e30', textColor: '#f2763d', bellColor: '#f2763d', bellGlow: 'rgba(235, 82, 12, 0.4)' };
-    case 'CANCELLED':
-      return { cardTint: '#bf0f24', progressInactive: '#7a081b', progressActive: '#bf0f24', textColor: '#f7485d', bellColor: '#f7485d', bellGlow: 'rgba(191, 15, 36, 0.4)' };
-    default:
-      return { cardTint: '#3a4a5c', progressInactive: '#2a3a4c', progressActive: '#5a6a7c', textColor: '#DCE0DE', bellColor: '#DCE0DE', bellGlow: 'rgba(220, 224, 222, 0.35)' };
-  }
-};
-
 const formatTime = (time: string, format: '12h' | '24h') => {
   if (format === '24h' || !time) return time;
   const [hours, minutes] = time.split(':').map(Number);
@@ -68,70 +37,46 @@ const formatTime = (time: string, format: '12h' | '24h') => {
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
 };
 
-const getColorFilter = (hexColor: string): string => {
-  const hex = hexColor.replace('#', '').toLowerCase();
-  if (hex === 'ffffff' || hex === 'fff' || hex === 'dce0de') return 'brightness(0.95)';
-  if (hex === '81f0d8') return 'brightness(0) saturate(100%) invert(85%) sepia(25%) saturate(600%) hue-rotate(110deg) brightness(1.05)';
-  if (hex === 'f2763d') return 'brightness(0) saturate(100%) invert(55%) sepia(80%) saturate(500%) hue-rotate(350deg) brightness(1.1)';
-  if (hex === 'f7485d') return 'brightness(0) saturate(100%) invert(45%) sepia(80%) saturate(600%) hue-rotate(325deg) brightness(1.15)';
-  const r = parseInt(hex.substr(0, 2), 16);
-  const g = parseInt(hex.substr(2, 2), 16);
-  const b = parseInt(hex.substr(4, 2), 16);
-  const rNorm = r / 255; const gNorm = g / 255; const bNorm = b / 255;
-  const max = Math.max(rNorm, gNorm, bNorm);
-  const min = Math.min(rNorm, gNorm, bNorm);
-  const l = (max + min) / 2;
-  let h = 0; let s = 0;
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    if (max === rNorm) h = ((gNorm - bNorm) / d + (gNorm < bNorm ? 6 : 0)) / 6;
-    else if (max === gNorm) h = ((bNorm - rNorm) / d + 2) / 6;
-    else h = ((rNorm - gNorm) / d + 4) / 6;
-  }
-  const hue = Math.round(h * 360);
-  const sat = Math.round(s * 100);
-  const light = Math.round(l * 100);
-  const hueRotate = hue - 50;
-  const saturation = Math.max(100, sat * 3);
-  const brightness = light > 50 ? light / 60 : 0.8;
-  return `brightness(0) saturate(100%) invert(${light > 50 ? 0.9 : 0.5}) sepia(1) saturate(${saturation}%) hue-rotate(${hueRotate}deg) brightness(${brightness})`;
-};
-
-// Airline Icon with 30-minute retry
-const AirlineIcon = ({ airlineCode, color }: { airlineCode: string; color: string }) => {
-  const [imageError, setImageError] = useState(false);
+// Airline Icon using pre-colored logos from ImageKit
+const AirlineIcon = ({ flightId, airlineCode, cardStyle, status }: { 
+  flightId: string; airlineCode: string; cardStyle: string; status: string; 
+}) => {
   const [urlIndex, setUrlIndex] = useState(0);
+  const [imageError, setImageError] = useState(false);
   const retryIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const airlineName = AIRLINE_NAMES[airlineCode] || airlineCode;
-  const colorFilter = getColorFilter(color);
-  const getUrlPatterns = () => {
-    const base = 'https://ik.imagekit.io/jv0j9qvtw/White%20Airline%20Logos/';
-    return [
-      `${base}${airlineCode}%20(${encodeURIComponent(airlineName)}).png`,
-      `${base}${airlineCode}%20%28${encodeURIComponent(airlineName)}%29.png`,
-      `${base}${airlineCode}%20(${airlineName.replace(/ /g, '%20')}).png`,
-      `${base}${airlineCode}.png`,
-    ];
-  };
-  const urls = getUrlPatterns();
+
+  const urls = getLogoUrls(cardStyle, status, flightId, airlineCode);
+
   const handleError = () => {
     if (urlIndex < urls.length - 1) setUrlIndex(urlIndex + 1);
     else setImageError(true);
   };
+
   useEffect(() => {
     if (!imageError) return;
     retryIntervalRef.current = setInterval(() => { setImageError(false); setUrlIndex(0); }, 30 * 60 * 1000);
     return () => { if (retryIntervalRef.current) clearInterval(retryIntervalRef.current); };
   }, [imageError]);
-  useEffect(() => { return () => { if (retryIntervalRef.current) clearInterval(retryIntervalRef.current); }; }, []);
+
+  useEffect(() => {
+    return () => { if (retryIntervalRef.current) clearInterval(retryIntervalRef.current); };
+  }, []);
+
+  // Reset when card style or status changes
+  useEffect(() => {
+    setUrlIndex(0);
+    setImageError(false);
+  }, [cardStyle, status]);
+
   if (imageError) {
-    return <span className="text-sm font-bold adaptive-shadow" style={{ color }}>{airlineCode}</span>;
+    return <span className="text-sm font-bold adaptive-shadow">{airlineCode}</span>;
   }
+
   return (
-    <img src={urls[urlIndex]} alt={airlineName}
+    <img
+      src={urls[urlIndex]}
+      alt={AIRLINE_NAMES[airlineCode] || airlineCode}
       className="max-w-[42px] max-h-[38px] object-contain adaptive-icon-shadow"
-      style={{ filter: colorFilter }}
       onError={handleError}
     />
   );
@@ -159,13 +104,11 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [countdown, setCountdown] = useState('');
   const [isSubscribing, setIsSubscribing] = useState(false);
-  const [bellPulse, setBellPulse] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const bellPulseRef = useRef<NodeJS.Timeout | null>(null);
   const autoCollapseRef = useRef<NodeJS.Timeout | null>(null);
-  
-  const theme = getStatusTheme(flight.status);
+
+  const theme = getCardTheme(settings.cardStyle, flight.status);
   const airlineName = AIRLINE_NAMES[flight.airlineCode] || flight.airlineCode;
   const isLanded = flight.status.toUpperCase() === 'LANDED';
   const isCancelled = flight.status.toUpperCase() === 'CANCELLED';
@@ -185,8 +128,6 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
     };
   }, [isExpanded]);
 
-  // No bell pulse animation - active/inactive distinguished by glow only
-
   const handleLogoClick = () => {
     if (showAirlineName) return;
     setShowAirlineName(true);
@@ -201,14 +142,12 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      if (bellPulseRef.current) clearTimeout(bellPulseRef.current);
       if (autoCollapseRef.current) clearTimeout(autoCollapseRef.current);
     };
   }, []);
 
   const handleBellClick = async () => {
     if (isSubscribing) return;
-    // Haptic feedback
     try { navigator?.vibrate?.(50); } catch {}
     setIsSubscribing(true);
     try {
@@ -245,12 +184,6 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
     setIsExpanded(!isExpanded);
   };
 
-  const getRightLabel = () => {
-    if (isLanded) return 'Landed';
-    if (isCancelled) return 'Cancelled';
-    return 'EST';
-  };
-
   const getStatusText = () => {
     if (isLanded) return 'LANDED';
     if (isCancelled) return 'CANCELLED';
@@ -259,7 +192,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   };
 
   return (
-    <div 
+    <div
       className="rounded-2xl overflow-hidden flight-card-animate cursor-pointer glass-neumorphic"
       style={cardStyle}
       onClick={handleCardClick}
@@ -276,7 +209,12 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
               </span>
             </div>
           ) : (
-            <AirlineIcon airlineCode={flight.airlineCode} color={theme.textColor} />
+            <AirlineIcon
+              flightId={flight.flightId}
+              airlineCode={flight.airlineCode}
+              cardStyle={settings.cardStyle}
+              status={flight.status}
+            />
           )}
         </button>
 
@@ -293,19 +231,18 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
         </div>
 
         {/* RIGHT: Multi-layered pill container */}
-        <div 
+        <div
           className="flex items-center gap-0 flex-shrink-0 rounded-full overflow-hidden transition-all duration-500 ease-out glass-pill"
           style={{
             background: `rgba(${hexToRgb(theme.cardTint)}, ${hasStatus ? 0.12 : 0.06})`,
             border: `1px solid rgba(${hexToRgb(theme.cardTint)}, ${hasStatus ? 0.2 : 0.1})`,
-            boxShadow: hasStatus 
-              ? `0 0 12px rgba(${hexToRgb(theme.cardTint)}, 0.2), inset 0 1px 2px rgba(255,255,255,0.08), inset 0 -1px 3px rgba(0,0,0,0.2)` 
+            boxShadow: hasStatus
+              ? `0 0 12px rgba(${hexToRgb(theme.cardTint)}, 0.2), inset 0 1px 2px rgba(255,255,255,0.08), inset 0 -1px 3px rgba(0,0,0,0.2)`
               : `inset 0 1px 2px rgba(255,255,255,0.06), inset 0 -1px 3px rgba(0,0,0,0.15)`,
           }}
         >
-          {/* Status text layer */}
           {hasStatus && (
-            <span 
+            <span
               className="text-[8px] font-semibold uppercase tracking-wide px-2 py-1.5 whitespace-nowrap status-badge-enter adaptive-shadow"
               style={{ color: theme.textColor }}
             >
@@ -313,13 +250,11 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             </span>
           )}
 
-          {/* Separator between status and time */}
           {hasStatus && !isExpanded && (
             <div className="w-px h-3 flex-shrink-0" style={{ background: `rgba(${hexToRgb(theme.textColor)}, 0.2)` }} />
           )}
 
-          {/* Time layer - transitions out when expanded */}
-          <div 
+          <div
             className="overflow-hidden transition-all duration-500 ease-out"
             style={{
               maxWidth: isExpanded ? '0px' : '80px',
@@ -327,7 +262,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
               padding: isExpanded ? '0' : undefined,
             }}
           >
-            <span 
+            <span
               className="text-[10px] font-medium px-2 py-1.5 whitespace-nowrap block adaptive-shadow"
               style={{ color: theme.textColor, opacity: 0.85 }}
             >
@@ -335,12 +270,10 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             </span>
           </div>
 
-          {/* Separator before bell */}
           {showBell && (hasStatus || !isExpanded) && (
             <div className="w-px h-3 flex-shrink-0" style={{ background: `rgba(${hexToRgb(theme.textColor)}, 0.2)` }} />
           )}
 
-          {/* Bell layer */}
           {showBell && (
             <div className="px-1.5 py-1 flex-shrink-0">
               <BellButton
@@ -355,7 +288,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
         </div>
       </div>
 
-      {/* Expanded bottom: single row - SCH time | tracker | EST time */}
+      {/* Expanded bottom: SCH time | tracker | EST time */}
       {isExpanded && (
         <div className="flex items-center gap-1.5 px-2.5 pb-2.5 animate-fade-in" style={{ height: '28px' }}>
           <div className="flex flex-col items-start flex-shrink-0">
@@ -364,7 +297,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
               {scheduledTimeFormatted}
             </span>
           </div>
-          
+
           <div className="flex-1 relative">
             <FlightProgressBar
               scheduledTime={flight.scheduledTime}
@@ -381,7 +314,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
               forceVisible={isLanded || isCancelled}
             />
           </div>
-          
+
           <div className="flex flex-col items-end flex-shrink-0">
             <span className="text-[7px] uppercase tracking-wide adaptive-shadow" style={{ color: theme.textColor, opacity: 0.6 }}>EST</span>
             <span className="font-bold text-[9px] whitespace-nowrap adaptive-shadow" style={{ color: theme.textColor, opacity: 0.8 }}>
@@ -394,7 +327,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   );
 };
 
-// Bell button component - no pulse, glow only when active
+// Bell button component
 const BellButton = ({ isActive, isSubscribing, bellColor, bellGlow, onClick }: {
   isActive: boolean; isSubscribing: boolean; bellColor: string; bellGlow: string; onClick: () => void;
 }) => (
@@ -415,11 +348,5 @@ const BellButton = ({ isActive, isSubscribing, bellColor, bellGlow, onClick }: {
     )}
   </button>
 );
-
-function hexToRgb(hex: string): string {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  if (!result) return '255, 255, 255';
-  return `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`;
-}
 
 export default FlightCard;

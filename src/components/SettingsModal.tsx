@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, User, Type, Sparkles, Bell, Shield, Camera, Loader2, Check, FileArchive, Bug, RotateCcw } from 'lucide-react';
+import { X, User, Type, Sparkles, Bell, Shield, Camera, Loader2, Check, FileArchive, Bug, RotateCcw, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
 import { GLASS_PRESETS } from '@/contexts/SettingsContext';
+import { CARD_STYLES } from '@/lib/cardStyles';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Slider } from './ui/slider';
