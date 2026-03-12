@@ -82,7 +82,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
   useEffect(() => {
     const tabTitles: Record<Tab, string> = {
       profile: 'Profile Settings', texts: 'Text Settings', style: 'Style Settings',
-      notifications: 'Notification Settings', security: 'Security Settings', 
+      cards: 'Card Style', notifications: 'Notification Settings', security: 'Security Settings', 
       report: 'Report Issue', admin: 'Admin Settings',
     };
     setDisplayTitle(tabTitles[activeTab]);
