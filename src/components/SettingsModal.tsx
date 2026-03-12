@@ -49,7 +49,8 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     setBlurLevel, setGlassOpacity, setIframeBrightness,
     setSaturation, setContrast, setShadows, setHighlights, setHueShift,
     setGlassPreset, setBoldText, setColorShift, setDualGlass, setDualGlassStyle1,
-    setDualGlassStyle2, setNotification, updateProfile, updatePassword, deleteAccount,
+    setDualGlassStyle2, setCardStyle, setHideCancelled, setHideLanded,
+    setNotification, updateProfile, updatePassword, deleteAccount,
     resetSetting,
   } = useSettings();
   
