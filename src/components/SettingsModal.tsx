@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, User, Type, Sparkles, Bell, Shield, Camera, Loader2, Check, FileArchive, Bug, RotateCcw } from 'lucide-react';
+import { X, User, Type, Sparkles, Bell, Shield, Camera, Loader2, Check, FileArchive, Bug, RotateCcw, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
 import { GLASS_PRESETS } from '@/contexts/SettingsContext';
+import { CARD_STYLES } from '@/lib/cardStyles';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Slider } from './ui/slider';
@@ -14,7 +15,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'profile' | 'texts' | 'style' | 'notifications' | 'security' | 'report' | 'admin';
+type Tab = 'profile' | 'texts' | 'style' | 'cards' | 'notifications' | 'security' | 'report' | 'admin';
 
 const ADMIN_EMAILS = ['fareyxcel@gmail.com', 'arrivamv@gmail.com', 'arrivalive@gmail.com'];
 
@@ -48,7 +49,8 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     setBlurLevel, setGlassOpacity, setIframeBrightness,
     setSaturation, setContrast, setShadows, setHighlights, setHueShift,
     setGlassPreset, setBoldText, setColorShift, setDualGlass, setDualGlassStyle1,
-    setDualGlassStyle2, setNotification, updateProfile, updatePassword, deleteAccount,
+    setDualGlassStyle2, setCardStyle, setHideCancelled, setHideLanded,
+    setNotification, updateProfile, updatePassword, deleteAccount,
     resetSetting,
   } = useSettings();
   
@@ -80,7 +82,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
   useEffect(() => {
     const tabTitles: Record<Tab, string> = {
       profile: 'Profile Settings', texts: 'Text Settings', style: 'Style Settings',
-      notifications: 'Notification Settings', security: 'Security Settings', 
+      cards: 'Card Style', notifications: 'Notification Settings', security: 'Security Settings', 
       report: 'Report Issue', admin: 'Admin Settings',
     };
     setDisplayTitle(tabTitles[activeTab]);
@@ -168,6 +170,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'texts', label: 'Texts', icon: Type },
     { id: 'style', label: 'Style', icon: Sparkles },
+    { id: 'cards', label: 'Cards', icon: Palette },
     { id: 'notifications', label: 'Alerts', icon: Bell },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'report', label: 'Report', icon: Bug },
@@ -445,6 +448,60 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'cards' && (
+            <div className="space-y-4 animate-fade-in">
+              <p className="text-xs text-muted-foreground">Choose how flight cards and airline logos appear.</p>
+              
+              {/* Card Style Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                {Object.entries(CARD_STYLES).map(([id, style]) => (
+                  <button
+                    key={id}
+                    onClick={() => setCardStyle(id)}
+                    className={cn(
+                      "relative p-3 rounded-xl text-left transition-all border overflow-hidden glass-neumorphic",
+                      settings.cardStyle === id ? "border-white/40 bg-white/15" : "border-white/10 hover:border-white/20 bg-white/[0.04]"
+                    )}
+                  >
+                    <span className="text-xs font-semibold text-foreground block">{style.label}</span>
+                    <span className="text-[9px] text-muted-foreground">{style.description}</span>
+                    <div className="flex gap-1 mt-2">
+                      {Object.entries(style.textColors).map(([status, color]) => (
+                        <div key={status} className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: color }} title={status} />
+                      ))}
+                    </div>
+                    {settings.cardStyle === id && (
+                      <div className="absolute top-1.5 right-1.5">
+                        <Check className="w-3.5 h-3.5 text-foreground" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Flight Filters */}
+              <div className="space-y-3 pt-2 border-t border-white/10">
+                <label className="text-xs text-muted-foreground uppercase tracking-wide block">Flight Filters</label>
+                <button
+                  onClick={() => setHideCancelled(!settings.hideCancelled)}
+                  className={cn("w-full flex items-center justify-between p-3 rounded-lg transition-colors",
+                    !settings.hideCancelled ? "active-selection" : "glass hover:bg-white/10")}
+                >
+                  <span className="text-sm">Show Cancelled Flights</span>
+                  <LiveBlurToggle checked={!settings.hideCancelled} onChange={() => setHideCancelled(!settings.hideCancelled)} />
+                </button>
+                <button
+                  onClick={() => setHideLanded(!settings.hideLanded)}
+                  className={cn("w-full flex items-center justify-between p-3 rounded-lg transition-colors",
+                    !settings.hideLanded ? "active-selection" : "glass hover:bg-white/10")}
+                >
+                  <span className="text-sm">Show Landed Flights</span>
+                  <LiveBlurToggle checked={!settings.hideLanded} onChange={() => setHideLanded(!settings.hideLanded)} />
+                </button>
+              </div>
             </div>
           )}
 

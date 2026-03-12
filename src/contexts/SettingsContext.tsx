@@ -84,17 +84,20 @@ interface SettingsState {
   blurLevel: number;
   glassOpacity: number;
   iframeBrightness: number;
-  saturation: number; // 0-200, default 100. 0=grayscale, 100=normal, 200=oversaturated
-  contrast: number;   // 50-150, default 100
-  shadows: number;    // 0-100, default 50
-  highlights: number; // 0-100, default 50
-  hueShift: number;   // 0-360, default 0
+  saturation: number;
+  contrast: number;
+  shadows: number;
+  highlights: number;
+  hueShift: number;
   glassPreset: string;
   boldText: boolean;
   colorShift: number;
   dualGlass: boolean;
   dualGlassStyle1: string;
   dualGlassStyle2: string;
+  cardStyle: string;
+  hideCancelled: boolean;
+  hideLanded: boolean;
   notifications: {
     sms: boolean;
     email: boolean;
@@ -123,6 +126,9 @@ interface SettingsContextType {
   setDualGlass: (enabled: boolean) => void;
   setDualGlassStyle1: (preset: string) => void;
   setDualGlassStyle2: (preset: string) => void;
+  setCardStyle: (style: string) => void;
+  setHideCancelled: (hide: boolean) => void;
+  setHideLanded: (hide: boolean) => void;
   toggleTimeFormat: () => void;
   toggleTemperatureUnit: () => void;
   setNotification: (key: keyof SettingsState['notifications'], value: boolean) => void;
@@ -152,6 +158,9 @@ const defaultSettings: SettingsState = {
   dualGlass: false,
   dualGlassStyle1: 'frosted',
   dualGlassStyle2: 'ios',
+  cardStyle: 'plain-main',
+  hideCancelled: false,
+  hideLanded: false,
   notifications: {
     sms: false,
     email: false,
@@ -368,6 +377,9 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const setDualGlass = (enabled: boolean) => setSettings(prev => ({ ...prev, dualGlass: enabled }));
   const setDualGlassStyle1 = (preset: string) => setSettings(prev => ({ ...prev, dualGlassStyle1: preset }));
   const setDualGlassStyle2 = (preset: string) => setSettings(prev => ({ ...prev, dualGlassStyle2: preset }));
+  const setCardStyle = (style: string) => setSettings(prev => ({ ...prev, cardStyle: style }));
+  const setHideCancelled = (hide: boolean) => setSettings(prev => ({ ...prev, hideCancelled: hide }));
+  const setHideLanded = (hide: boolean) => setSettings(prev => ({ ...prev, hideLanded: hide }));
 
   const setGlassPreset = (preset: string) => {
     const presetValues = GLASS_PRESETS[preset];
@@ -423,6 +435,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         setSaturation, setContrast, setShadows, setHighlights, setHueShift,
         setGlassPreset, setBoldText, setColorShift,
         setDualGlass, setDualGlassStyle1, setDualGlassStyle2,
+        setCardStyle, setHideCancelled, setHideLanded,
         toggleTimeFormat, toggleTemperatureUnit,
         setNotification, updateProfile, updatePassword, deleteAccount,
         resetSetting,

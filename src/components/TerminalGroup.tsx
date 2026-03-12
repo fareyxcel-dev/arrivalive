@@ -1,5 +1,5 @@
 import { useState, useMemo, forwardRef } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, EyeOff, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
 import FlightCard, { Flight } from './FlightCard';
@@ -11,38 +11,26 @@ interface Props {
   onToggleNotification: (flightId: string) => void;
 }
 
-// Group flights by their actual date field from the database
 const groupFlightsByDate = (flights: Flight[]) => {
   const grouped: Record<string, Flight[]> = {};
-  
   flights.forEach(flight => {
     const date = flight.date;
-    if (!grouped[date]) {
-      grouped[date] = [];
-    }
+    if (!grouped[date]) grouped[date] = [];
     grouped[date].push(flight);
   });
-  
-  // Sort flights within each date: LANDED flights first, then by scheduled time
   Object.keys(grouped).forEach(date => {
     grouped[date].sort((a, b) => {
       const aLanded = a.status.toUpperCase() === 'LANDED' ? 0 : 1;
       const bLanded = b.status.toUpperCase() === 'LANDED' ? 0 : 1;
-      
-      if (aLanded !== bLanded) {
-        return aLanded - bLanded;
-      }
-      
+      if (aLanded !== bLanded) return aLanded - bLanded;
       const timeA = a.scheduledTime.replace(':', '');
       const timeB = b.scheduledTime.replace(':', '');
       return parseInt(timeA) - parseInt(timeB);
     });
   });
-
   return grouped;
 };
 
-// Format date as "18 Dec, Wednesday"
 const formatDateDisplay = (dateStr: string) => {
   const date = new Date(dateStr + 'T00:00:00+05:00');
   const day = date.getDate();
@@ -56,93 +44,86 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, no
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
 
-  const groupedFlights = useMemo(() => groupFlightsByDate(flights), [flights]);
+  // Apply filters from settings
+  const visibleFlights = useMemo(() => {
+    return flights.filter(f => {
+      const statusUpper = f.status.toUpperCase();
+      if (settings.hideCancelled && statusUpper === 'CANCELLED') return false;
+      if (settings.hideLanded && statusUpper === 'LANDED') return false;
+      return true;
+    });
+  }, [flights, settings.hideCancelled, settings.hideLanded]);
+
+  const groupedFlights = useMemo(() => groupFlightsByDate(visibleFlights), [visibleFlights]);
   const dates = Object.keys(groupedFlights).sort();
 
-  // Calculate terminal stats from date groups
   const terminalStats = useMemo(() => {
-    let total = 0;
-    let landed = 0;
-    let cancelled = 0;
-    
+    let total = 0, landed = 0, cancelled = 0;
     Object.values(groupedFlights).forEach(dateFlights => {
       total += dateFlights.length;
       landed += dateFlights.filter(f => f.status.toUpperCase().includes('LANDED')).length;
       cancelled += dateFlights.filter(f => f.status.toUpperCase().includes('CANCELLED')).length;
     });
-    
-    return {
-      total,
-      landed,
-      cancelled,
-      remaining: total - landed - cancelled
-    };
+    return { total, landed, cancelled, remaining: total - landed - cancelled };
   }, [groupedFlights]);
-
-  const handleToggleExpand = () => {
-    setIsExpanded(!isExpanded);
-  };
 
   const toggleDate = (date: string) => {
     const newExpandedDates = new Set(expandedDates);
-    if (newExpandedDates.has(date)) {
-      newExpandedDates.delete(date);
-    } else {
-      newExpandedDates.add(date);
-    }
+    if (newExpandedDates.has(date)) newExpandedDates.delete(date);
+    else newExpandedDates.add(date);
     setExpandedDates(newExpandedDates);
   };
 
   const getTerminalName = (t: string) => {
     switch (t) {
-      case 'T1':
-        return 'International Terminal 1';
-      case 'T2':
-        return 'International Terminal 2';
-      case 'DOM':
-        return 'Domestic Terminal';
-      default:
-        return t;
+      case 'T1': return 'International Terminal 1';
+      case 'T2': return 'International Terminal 2';
+      case 'DOM': return 'Domestic Terminal';
+      default: return t;
     }
   };
 
   return (
-    <div 
+    <div
       ref={ref}
-      className={cn(
-        "terminal-group transition-all duration-300",
-        isExpanded ? "bg-white/[0.08]" : "bg-white/[0.02]"
-      )} 
+      className={cn("terminal-group transition-all duration-300", isExpanded ? "bg-white/[0.08]" : "bg-white/[0.02]")}
       style={{ fontFamily: settings.fontFamily }}
     >
       {/* Terminal Header */}
       <button
-        onClick={handleToggleExpand}
+        onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
       >
         <div className="text-left">
-          <h2 className="text-lg font-bold text-white">
-            {getTerminalName(terminal)}
-          </h2>
+          <h2 className="text-lg font-bold text-white">{getTerminalName(terminal)}</h2>
           <p className="text-xs text-white/60 uppercase tracking-wider">
             {terminalStats.total} FLIGHTS · {terminalStats.remaining} REMAINING · {terminalStats.landed} LANDED
           </p>
         </div>
-        <ChevronDown
-          className={cn(
-            "w-5 h-5 text-muted-foreground transition-transform duration-300",
-            isExpanded && "rotate-180"
-          )}
-        />
+        <ChevronDown className={cn("w-5 h-5 text-muted-foreground transition-transform duration-300", isExpanded && "rotate-180")} />
       </button>
+
+      {/* Filter Bar - visible when expanded */}
+      {isExpanded && (
+        <div className="flex items-center gap-2 px-4 pb-2">
+          <FilterToggle
+            label="Cancelled"
+            isHidden={settings.hideCancelled}
+            onToggle={() => settings.hideCancelled ? null : null}
+          />
+          <FilterToggle
+            label="Landed"
+            isHidden={settings.hideLanded}
+            onToggle={() => settings.hideLanded ? null : null}
+          />
+        </div>
+      )}
 
       {/* Expanded Content */}
       {isExpanded && (
         <div className="px-4 pb-4 space-y-2">
           {dates.length === 0 ? (
-            <p className="text-center text-white/50 py-8">
-              No flights scheduled
-            </p>
+            <p className="text-center text-white/50 py-8">No flights to show</p>
           ) : (
             dates.map(date => {
               const dateFlights = groupedFlights[date];
@@ -151,41 +132,28 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, no
               const dateCancelledCount = dateFlights.filter(f => f.status.toUpperCase().includes('CANCELLED')).length;
               const remainingCount = totalCount - dateLandedCount - dateCancelledCount;
               const isDateExpanded = expandedDates.has(date);
-              
+
               return (
                 <div key={date} className="space-y-2">
-                  {/* Date Pill - compact single row */}
                   <button
                     onClick={() => toggleDate(date)}
                     className={cn(
                       "w-full flex items-center justify-between px-3 py-1.5 rounded-md transition-all",
-                      isDateExpanded 
-                        ? "bg-white/15 border border-white/20" 
-                        : "bg-white/[0.03] hover:bg-white/[0.06]"
+                      isDateExpanded ? "bg-white/15 border border-white/20" : "bg-white/[0.03] hover:bg-white/[0.06]"
                     )}
                   >
-                    <span className="font-medium text-white/90 text-sm">
-                      {formatDateDisplay(date)}
-                    </span>
+                    <span className="font-medium text-white/90 text-sm">{formatDateDisplay(date)}</span>
                     <div className="flex items-center gap-2">
                       <div className="text-right flex flex-col">
-                        <span className="text-[10px] text-white/70">
-                          {totalCount} flights
-                        </span>
+                        <span className="text-[10px] text-white/70">{totalCount} flights</span>
                         <span className="text-[9px] text-white/50">
                           {dateLandedCount} Landed · {dateCancelledCount} Cancelled · {remainingCount} Remaining
                         </span>
                       </div>
-                      <ChevronDown
-                        className={cn(
-                          "w-4 h-4 text-white/50 transition-transform duration-300",
-                          isDateExpanded && "rotate-180"
-                        )}
-                      />
+                      <ChevronDown className={cn("w-4 h-4 text-white/50 transition-transform duration-300", isDateExpanded && "rotate-180")} />
                     </div>
                   </button>
 
-                  {/* Flights for this date */}
                   {isDateExpanded && (
                     <div className="space-y-1.5 pl-1">
                       {groupedFlights[date].map(flight => (
@@ -207,6 +175,31 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, no
     </div>
   );
 });
+
+// Filter toggle pill
+const FilterToggle = ({ label, isHidden, onToggle }: { label: string; isHidden: boolean; onToggle: () => void }) => {
+  const { settings, setHideCancelled, setHideLanded } = useSettings();
+  
+  const handleClick = () => {
+    if (label === 'Cancelled') setHideCancelled(!settings.hideCancelled);
+    else if (label === 'Landed') setHideLanded(!settings.hideLanded);
+  };
+  
+  return (
+    <button
+      onClick={handleClick}
+      className={cn(
+        "flex items-center gap-1 px-2 py-1 rounded-full text-[10px] transition-all border",
+        isHidden
+          ? "border-white/10 text-white/40 bg-white/[0.02]"
+          : "border-white/20 text-white/80 bg-white/[0.08]"
+      )}
+    >
+      {isHidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+      {label}
+    </button>
+  );
+};
 
 TerminalGroup.displayName = 'TerminalGroup';
 
