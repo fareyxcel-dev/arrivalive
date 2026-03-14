@@ -173,6 +173,18 @@ const AIRLINE_NAMES_ALT: Record<string, string> = {
   'JD': 'Beijing Capital Airlines, Capital Airlines',
 };
 
+// Get the logo base path for a given card style and flight status
+export const getLogoBasePath = (cardStyleId: string, status: string): string => {
+  const style = CARD_STYLES[cardStyleId] || CARD_STYLES['plain-main'];
+  const statusUpper = status.toUpperCase();
+  switch (statusUpper) {
+    case 'LANDED': return style.logoPaths.landed;
+    case 'DELAYED': return style.logoPaths.delayed;
+    case 'CANCELLED': return style.logoPaths.cancelled;
+    default: return style.logoPaths.default;
+  }
+};
+
 // Build logo URL patterns for a flight
 // Uses ONLY the 2-char IATA code extracted from flightId, NOT the full flight ID
 export const getLogoUrls = (cardStyleId: string, status: string, flightId: string, airlineCode: string): string[] => {
@@ -182,18 +194,11 @@ export const getLogoUrls = (cardStyleId: string, status: string, flightId: strin
   const altName = AIRLINE_NAMES_ALT[iataCode];
 
   const urls: string[] = [];
-
-  // Primary: "EK (Emirates).png"
   urls.push(`${basePath}${encodeURIComponent(iataCode)}%20(${encodeURIComponent(airlineName)}).png`);
-
-  // Alt name if exists: "JD (Beijing Capital Airlines, Capital Airlines).png"
   if (altName) {
     urls.push(`${basePath}${encodeURIComponent(iataCode)}%20(${encodeURIComponent(altName)}).png`);
   }
-
-  // Fallback
   urls.push(`${basePath}Unidentified%20Flight.png`);
-
   return urls;
 };
 
