@@ -166,13 +166,20 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error('Please sign in to enable notifications'); setIsSubscribing(false); return; }
       if (isNotificationEnabled) {
-        await removeFlightTag(flight.flightId, flight.date);
+        try { await removeFlightTag(flight.flightId, flight.date); } catch {}
         await supabase.from('notification_subscriptions').delete().eq('user_id', user.id).eq('flight_id', flight.flightId).eq('flight_date', flight.date);
         onToggleNotification(flight.flightId);
         toast.success(`Notifications disabled for ${flight.flightId}`);
       } else {
-        const success = await subscribeToFlightNotifications(user.id, flight.flightId, flight.date);
-        if (success) { onToggleNotification(flight.flightId); toast.success(`Notifications enabled for ${flight.flightId} from ${flight.origin}`); }
+        const result = await subscribeToFlightNotifications(user.id, flight.flightId, flight.date);
+        if (result.success) {
+          onToggleNotification(flight.flightId);
+          if (result.pushWorked) {
+            toast.success(`Notifications enabled for ${flight.flightId} from ${flight.origin}`);
+          } else {
+            toast.success(`Subscribed to ${flight.flightId} (push notifications active on published app)`);
+          }
+        }
       }
     } catch (error) { console.error('Notification toggle error:', error); toast.error('Failed to update notifications'); }
     finally { setIsSubscribing(false); }

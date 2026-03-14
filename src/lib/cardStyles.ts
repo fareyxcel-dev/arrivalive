@@ -150,6 +150,7 @@ export const CARD_STYLES: Record<string, CardStyle> = {
 };
 
 // Airline name mapping for logo filename matching
+// Keys are 2-char IATA codes, values must match exact filenames in ImageKit
 export const AIRLINE_NAMES: Record<string, string> = {
   '3U': 'Sichuan Airlines', '4Y': 'Discover Airlines', '6E': 'IndiGo', '8D': 'FitsAir',
   'AF': 'Air France', 'AI': 'Air India', 'AK': 'Air Asia', 'AZ': 'ITA Airways',
@@ -157,44 +158,43 @@ export const AIRLINE_NAMES: Record<string, string> = {
   'DE': 'Condor', 'EK': 'Emirates', 'EY': 'Etihad Airways', 'FD': 'Thai AirAsia', 'FZ': 'FlyDubai',
   'G9': 'Air Arabia', 'GF': 'Gulf Air', 'H4': 'HiSky Europe', 'HB': 'Greater Bay Airlines',
   'HX': 'Hong Kong Airlines', 'HY': 'Uzbekistan Airways',
-  'IB': 'Iberia', 'J2': 'Azerbaijan Airlines', 'J9': 'Jazeera Airways', 'JD': 'Beijing Capital Airlines',
+  'IB': 'Iberia', 'J2': 'Azerbaijan Airlines', 'J9': 'Jazeera Airways',
   'KC': 'Air Astana', 'KU': 'Kuwait Airways', 'LO': 'LOT Polish Airlines', 'MF': 'XiamenAir',
   'MH': 'Malaysia Airlines', 'MU': 'China Eastern Airlines', 'NO': 'Neos', 'NR': 'MantaAir',
   'OD': 'Batik Air Malaysia', 'OQ': 'Chongqing Airlines', 'OS': 'Austrian Airlines',
   'PG': 'Bangkok Airways', 'Q2': 'Maldivian', 'QR': 'Qatar Airways',
   'SH': 'FlyMe', 'SQ': 'Singapore Airlines', 'SU': 'Aeroflot', 'SV': 'Saudia',
-  'TK': 'Turkish Airlines', 'UL': 'SriLankan Airlines', 'VP': 'VillaAir', 'VS': 'Virgin Atlantic',
+  'TK': 'Turkish Airlines', 'UL': 'SriLankan Airlines', 'VP': 'FlyMe', 'VS': 'Virgin Atlantic',
   'W6': 'Wizz Air', 'WK': 'Edelweiss Air', 'WY': 'Oman Air', 'XY': 'Flynas', 'ZF': 'Azur Air',
 };
 
-// Get the logo base path for a given card style and flight status
-export const getLogoBasePath = (cardStyleId: string, status: string): string => {
-  const style = CARD_STYLES[cardStyleId] || CARD_STYLES['plain-main'];
-  const statusUpper = status.toUpperCase();
-  switch (statusUpper) {
-    case 'LANDED': return style.logoPaths.landed;
-    case 'DELAYED': return style.logoPaths.delayed;
-    case 'CANCELLED': return style.logoPaths.cancelled;
-    default: return style.logoPaths.default;
-  }
+// Some airlines have alternate/extended filenames in ImageKit
+const AIRLINE_NAMES_ALT: Record<string, string> = {
+  'JD': 'Beijing Capital Airlines, Capital Airlines',
 };
 
 // Build logo URL patterns for a flight
-// Matches first 2 letters of flightId to IATA code in filename
+// Uses ONLY the 2-char IATA code extracted from flightId, NOT the full flight ID
 export const getLogoUrls = (cardStyleId: string, status: string, flightId: string, airlineCode: string): string[] => {
   const basePath = getLogoBasePath(cardStyleId, status);
-  const airlineName = AIRLINE_NAMES[airlineCode] || airlineCode;
-  const encodedFlightId = encodeURIComponent(flightId);
-  const encodedAirlineName = encodeURIComponent(airlineName);
+  const iataCode = flightId.substring(0, 2).toUpperCase();
+  const airlineName = AIRLINE_NAMES[iataCode] || AIRLINE_NAMES[airlineCode] || airlineCode;
+  const altName = AIRLINE_NAMES_ALT[iataCode];
 
-  return [
-    // Try exact match: "EK 652 (Emirates).png"
-    `${basePath}${encodedFlightId}%20(${encodedAirlineName}).png`,
-    // Try duplicate name format: "EK 652 (Emirates, Emirates).png"
-    `${basePath}${encodedFlightId}%20(${encodedAirlineName},%20${encodedAirlineName}).png`,
-    // Fallback
-    `${basePath}Unidentified%20Flight.png`,
-  ];
+  const urls: string[] = [];
+
+  // Primary: "EK (Emirates).png"
+  urls.push(`${basePath}${encodeURIComponent(iataCode)}%20(${encodeURIComponent(airlineName)}).png`);
+
+  // Alt name if exists: "JD (Beijing Capital Airlines, Capital Airlines).png"
+  if (altName) {
+    urls.push(`${basePath}${encodeURIComponent(iataCode)}%20(${encodeURIComponent(altName)}).png`);
+  }
+
+  // Fallback
+  urls.push(`${basePath}Unidentified%20Flight.png`);
+
+  return urls;
 };
 
 // Get text color based on card style and status
