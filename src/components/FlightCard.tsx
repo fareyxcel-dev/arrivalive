@@ -54,7 +54,8 @@ const AirlineIcon = ({ flightId, airlineCode, cardStyle, status }: {
 
   useEffect(() => {
     if (!imageError) return;
-    retryIntervalRef.current = setInterval(() => { setImageError(false); setUrlIndex(0); }, 30 * 60 * 1000);
+    // Retry every 60 minutes for newly uploaded logos
+    retryIntervalRef.current = setInterval(() => { setImageError(false); setUrlIndex(0); }, 60 * 60 * 1000);
     return () => { if (retryIntervalRef.current) clearInterval(retryIntervalRef.current); };
   }, [imageError]);
 
@@ -82,20 +83,31 @@ const AirlineIcon = ({ flightId, airlineCode, cardStyle, status }: {
   );
 };
 
-// Subscribe to push notifications via OneSignal
-const subscribeToFlightNotifications = async (userId: string, flightId: string, flightDate: string): Promise<boolean> => {
+// Subscribe to push notifications via OneSignal (gracefully handles failures on preview domains)
+const subscribeToFlightNotifications = async (userId: string, flightId: string, flightDate: string): Promise<{ success: boolean; pushWorked: boolean }> => {
+  let pushWorked = false;
   try {
-    const playerId = await subscribeToNotifications();
-    if (!playerId) { toast.error('Push notification permission denied'); return false; }
-    await setExternalUserId(userId);
-    await addFlightTag(flightId, flightDate);
-    await supabase.from('profiles').upsert({ user_id: userId, onesignal_player_id: playerId }, { onConflict: 'user_id' });
+    // Try OneSignal - may fail on preview domains
+    let playerId: string | null = null;
+    try {
+      playerId = await subscribeToNotifications();
+      if (playerId) {
+        pushWorked = true;
+        await setExternalUserId(userId);
+        await addFlightTag(flightId, flightDate);
+        await supabase.from('profiles').upsert({ user_id: userId, onesignal_player_id: playerId }, { onConflict: 'user_id' });
+      }
+    } catch (pushError) {
+      console.warn('Push provider unavailable (preview domain?):', pushError);
+    }
+
+    // Always save the subscription to the database
     const { error } = await supabase.from('notification_subscriptions').upsert({
       user_id: userId, flight_id: flightId, flight_date: flightDate, notify_push: true,
     }, { onConflict: 'user_id,flight_id,flight_date' });
-    if (error) { console.error('Subscription error:', error); return false; }
-    return true;
-  } catch (error) { console.error('Push subscription error:', error); return false; }
+    if (error) { console.error('Subscription error:', error); return { success: false, pushWorked }; }
+    return { success: true, pushWorked };
+  } catch (error) { console.error('Subscription error:', error); return { success: false, pushWorked }; }
 };
 
 const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Props) => {
@@ -154,13 +166,20 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error('Please sign in to enable notifications'); setIsSubscribing(false); return; }
       if (isNotificationEnabled) {
-        await removeFlightTag(flight.flightId, flight.date);
+        try { await removeFlightTag(flight.flightId, flight.date); } catch {}
         await supabase.from('notification_subscriptions').delete().eq('user_id', user.id).eq('flight_id', flight.flightId).eq('flight_date', flight.date);
         onToggleNotification(flight.flightId);
         toast.success(`Notifications disabled for ${flight.flightId}`);
       } else {
-        const success = await subscribeToFlightNotifications(user.id, flight.flightId, flight.date);
-        if (success) { onToggleNotification(flight.flightId); toast.success(`Notifications enabled for ${flight.flightId} from ${flight.origin}`); }
+        const result = await subscribeToFlightNotifications(user.id, flight.flightId, flight.date);
+        if (result.success) {
+          onToggleNotification(flight.flightId);
+          if (result.pushWorked) {
+            toast.success(`Notifications enabled for ${flight.flightId} from ${flight.origin}`);
+          } else {
+            toast.success(`Subscribed to ${flight.flightId} (push notifications active on published app)`);
+          }
+        }
       }
     } catch (error) { console.error('Notification toggle error:', error); toast.error('Failed to update notifications'); }
     finally { setIsSubscribing(false); }
