@@ -83,20 +83,31 @@ const AirlineIcon = ({ flightId, airlineCode, cardStyle, status }: {
   );
 };
 
-// Subscribe to push notifications via OneSignal
-const subscribeToFlightNotifications = async (userId: string, flightId: string, flightDate: string): Promise<boolean> => {
+// Subscribe to push notifications via OneSignal (gracefully handles failures on preview domains)
+const subscribeToFlightNotifications = async (userId: string, flightId: string, flightDate: string): Promise<{ success: boolean; pushWorked: boolean }> => {
+  let pushWorked = false;
   try {
-    const playerId = await subscribeToNotifications();
-    if (!playerId) { toast.error('Push notification permission denied'); return false; }
-    await setExternalUserId(userId);
-    await addFlightTag(flightId, flightDate);
-    await supabase.from('profiles').upsert({ user_id: userId, onesignal_player_id: playerId }, { onConflict: 'user_id' });
+    // Try OneSignal - may fail on preview domains
+    let playerId: string | null = null;
+    try {
+      playerId = await subscribeToNotifications();
+      if (playerId) {
+        pushWorked = true;
+        await setExternalUserId(userId);
+        await addFlightTag(flightId, flightDate);
+        await supabase.from('profiles').upsert({ user_id: userId, onesignal_player_id: playerId }, { onConflict: 'user_id' });
+      }
+    } catch (pushError) {
+      console.warn('Push provider unavailable (preview domain?):', pushError);
+    }
+
+    // Always save the subscription to the database
     const { error } = await supabase.from('notification_subscriptions').upsert({
       user_id: userId, flight_id: flightId, flight_date: flightDate, notify_push: true,
     }, { onConflict: 'user_id,flight_id,flight_date' });
-    if (error) { console.error('Subscription error:', error); return false; }
-    return true;
-  } catch (error) { console.error('Push subscription error:', error); return false; }
+    if (error) { console.error('Subscription error:', error); return { success: false, pushWorked }; }
+    return { success: true, pushWorked };
+  } catch (error) { console.error('Subscription error:', error); return { success: false, pushWorked }; }
 };
 
 const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Props) => {
