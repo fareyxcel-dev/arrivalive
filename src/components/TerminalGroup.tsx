@@ -1,5 +1,5 @@
 import { useState, useMemo, forwardRef } from 'react';
-import { ChevronDown, EyeOff, Eye } from 'lucide-react';
+import { ChevronDown, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
 import FlightCard, { Flight } from './FlightCard';
@@ -40,9 +40,10 @@ const formatDateDisplay = (dateStr: string) => {
 };
 
 const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, notificationIds, onToggleNotification }, ref) => {
-  const { settings } = useSettings();
+  const { settings, setHideCancelled, setHideLanded } = useSettings();
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
+  const [filterOpenDates, setFilterOpenDates] = useState<Set<string>>(new Set());
 
   // Apply filters from settings
   const visibleFlights = useMemo(() => {
@@ -55,6 +56,7 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, no
   }, [flights, settings.hideCancelled, settings.hideLanded]);
 
   const groupedFlights = useMemo(() => groupFlightsByDate(visibleFlights), [visibleFlights]);
+  const allGrouped = useMemo(() => groupFlightsByDate(flights), [flights]);
   const dates = Object.keys(groupedFlights).sort();
 
   const terminalStats = useMemo(() => {
@@ -74,6 +76,14 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, no
     setExpandedDates(newExpandedDates);
   };
 
+  const toggleFilterForDate = (e: React.MouseEvent, date: string) => {
+    e.stopPropagation();
+    const newSet = new Set(filterOpenDates);
+    if (newSet.has(date)) newSet.delete(date);
+    else newSet.add(date);
+    setFilterOpenDates(newSet);
+  };
+
   const getTerminalName = (t: string) => {
     switch (t) {
       case 'T1': return 'International Terminal 1';
@@ -81,6 +91,16 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, no
       case 'DOM': return 'Domestic Terminal';
       default: return t;
     }
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = settings.hideCancelled || settings.hideLanded;
+
+  // Count hidden flights for a date
+  const getHiddenCount = (date: string) => {
+    const all = allGrouped[date]?.length || 0;
+    const visible = groupedFlights[date]?.length || 0;
+    return all - visible;
   };
 
   return (
@@ -103,22 +123,6 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, no
         <ChevronDown className={cn("w-5 h-5 text-muted-foreground transition-transform duration-300", isExpanded && "rotate-180")} />
       </button>
 
-      {/* Filter Bar - visible when expanded */}
-      {isExpanded && (
-        <div className="flex items-center gap-2 px-4 pb-2">
-          <FilterToggle
-            label="Cancelled"
-            isHidden={settings.hideCancelled}
-            onToggle={() => settings.hideCancelled ? null : null}
-          />
-          <FilterToggle
-            label="Landed"
-            isHidden={settings.hideLanded}
-            onToggle={() => settings.hideLanded ? null : null}
-          />
-        </div>
-      )}
-
       {/* Expanded Content */}
       {isExpanded && (
         <div className="px-4 pb-4 space-y-2">
@@ -132,27 +136,78 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, no
               const dateCancelledCount = dateFlights.filter(f => f.status.toUpperCase().includes('CANCELLED')).length;
               const remainingCount = totalCount - dateLandedCount - dateCancelledCount;
               const isDateExpanded = expandedDates.has(date);
+              const isFilterOpen = filterOpenDates.has(date);
+              const hiddenCount = getHiddenCount(date);
 
               return (
-                <div key={date} className="space-y-2">
-                  <button
-                    onClick={() => toggleDate(date)}
-                    className={cn(
-                      "w-full flex items-center justify-between px-3 py-1.5 rounded-md transition-all",
-                      isDateExpanded ? "bg-white/15 border border-white/20" : "bg-white/[0.03] hover:bg-white/[0.06]"
-                    )}
-                  >
-                    <span className="font-medium text-white/90 text-sm">{formatDateDisplay(date)}</span>
-                    <div className="flex items-center gap-2">
-                      <div className="text-right flex flex-col">
-                        <span className="text-[10px] text-white/70">{totalCount} flights</span>
-                        <span className="text-[9px] text-white/50">
-                          {dateLandedCount} Landed · {dateCancelledCount} Cancelled · {remainingCount} Remaining
-                        </span>
+                <div key={date} className="space-y-1.5">
+                  {/* Date divider with filter pill */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => toggleDate(date)}
+                      className={cn(
+                        "flex-1 flex items-center justify-between px-3 py-1.5 rounded-md transition-all",
+                        isDateExpanded ? "bg-white/15 border border-white/20" : "bg-white/[0.03] hover:bg-white/[0.06]"
+                      )}
+                    >
+                      <span className="font-medium text-white/90 text-sm">{formatDateDisplay(date)}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="text-right flex flex-col">
+                          <span className="text-[10px] text-white/70">{totalCount} flights</span>
+                          <span className="text-[9px] text-white/50">
+                            {remainingCount} Remaining
+                          </span>
+                        </div>
+                        <ChevronDown className={cn("w-4 h-4 text-white/50 transition-transform duration-300", isDateExpanded && "rotate-180")} />
                       </div>
-                      <ChevronDown className={cn("w-4 h-4 text-white/50 transition-transform duration-300", isDateExpanded && "rotate-180")} />
+                    </button>
+
+                    {/* Filter pill */}
+                    <div className={cn(
+                      "flex items-center rounded-full transition-all duration-300 overflow-hidden border",
+                      isFilterOpen
+                        ? "border-white/20 bg-white/[0.08] gap-1 px-1.5 py-1"
+                        : "border-white/10 bg-white/[0.03] px-1.5 py-1",
+                      hasActiveFilters && !isFilterOpen && "border-white/25"
+                    )}>
+                      <button
+                        onClick={(e) => toggleFilterForDate(e, date)}
+                        className="flex items-center gap-1 flex-shrink-0"
+                      >
+                        <Filter className={cn("w-3 h-3", hasActiveFilters ? "text-white/80" : "text-white/40")} />
+                        {hiddenCount > 0 && !isFilterOpen && (
+                          <span className="text-[8px] text-white/60 font-medium">{hiddenCount}</span>
+                        )}
+                      </button>
+
+                      {isFilterOpen && (
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setHideCancelled(!settings.hideCancelled); }}
+                            className={cn(
+                              "text-[8px] px-1.5 py-0.5 rounded-full transition-all whitespace-nowrap",
+                              !settings.hideCancelled
+                                ? "bg-white/15 text-white/80"
+                                : "bg-white/[0.03] text-white/40 line-through"
+                            )}
+                          >
+                            Cancelled
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setHideLanded(!settings.hideLanded); }}
+                            className={cn(
+                              "text-[8px] px-1.5 py-0.5 rounded-full transition-all whitespace-nowrap",
+                              !settings.hideLanded
+                                ? "bg-white/15 text-white/80"
+                                : "bg-white/[0.03] text-white/40 line-through"
+                            )}
+                          >
+                            Landed
+                          </button>
+                        </>
+                      )}
                     </div>
-                  </button>
+                  </div>
 
                   {isDateExpanded && (
                     <div className="space-y-1.5 pl-1">
@@ -175,31 +230,6 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, no
     </div>
   );
 });
-
-// Filter toggle pill
-const FilterToggle = ({ label, isHidden, onToggle }: { label: string; isHidden: boolean; onToggle: () => void }) => {
-  const { settings, setHideCancelled, setHideLanded } = useSettings();
-  
-  const handleClick = () => {
-    if (label === 'Cancelled') setHideCancelled(!settings.hideCancelled);
-    else if (label === 'Landed') setHideLanded(!settings.hideLanded);
-  };
-  
-  return (
-    <button
-      onClick={handleClick}
-      className={cn(
-        "flex items-center gap-1 px-2 py-1 rounded-full text-[10px] transition-all border",
-        isHidden
-          ? "border-white/10 text-white/40 bg-white/[0.02]"
-          : "border-white/20 text-white/80 bg-white/[0.08]"
-      )}
-    >
-      {isHidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-      {label}
-    </button>
-  );
-};
 
 TerminalGroup.displayName = 'TerminalGroup';
 

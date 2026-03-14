@@ -1,4 +1,27 @@
 const IMAGEKIT_BASE = 'https://ik.imagekit.io/jv0j9qvtw/New%20Airline%20Logo%20Variants%20/';
+const ICONS_BASE = `${IMAGEKIT_BASE}Icons/`;
+
+// UI Icon URLs from ImageKit
+export const UI_ICONS = {
+  profile: `${ICONS_BASE}User%20Profile.png`,
+  fontStyle: `${ICONS_BASE}Font%20Style.png`,
+  bgStyle: `${ICONS_BASE}Background%20Style.png`,
+  uiStyle: `${ICONS_BASE}UI%20Style.png`,
+  notifications: `${ICONS_BASE}Notifications.png`,
+  security: `${ICONS_BASE}Security.png`,
+  settings: `${ICONS_BASE}Settings.png`,
+  forceRefresh: `${ICONS_BASE}Force%20Refresh.png`,
+  exportHistory: `${ICONS_BASE}Export%20History.png`,
+  loginLogout: `${ICONS_BASE}Login%20and%20Logout.png`,
+  adminTools: `${ICONS_BASE}Admin%20Tools.png`,
+  t1: `${ICONS_BASE}International%20Terminal%201.png`,
+  t2: `${ICONS_BASE}International%20Terminal%202.png`,
+  dom: `${ICONS_BASE}Domestic%20Terminal.png`,
+  dayTime: `${ICONS_BASE}Day%20Time.png`,
+  nightTime: `${ICONS_BASE}Night%20Time.png`,
+  sunset: `${ICONS_BASE}Sunset.png`,
+  sunrise: `${ICONS_BASE}Sunrise.png`,
+};
 
 export interface CardStyle {
   id: string;
@@ -9,6 +32,13 @@ export interface CardStyle {
     delayed: string;
     cancelled: string;
     landed: string;
+  };
+  // For gradient styles, provide 3-color arrays (top, mid, bottom)
+  gradientColors?: {
+    default: [string, string, string];
+    delayed: [string, string, string];
+    cancelled: [string, string, string];
+    landed: [string, string, string];
   };
   logoPaths: {
     default: string;
@@ -25,7 +55,7 @@ export const CARD_STYLES: Record<string, CardStyle> = {
     id: 'plain-main',
     label: 'Plain Main',
     description: 'Clean white logos',
-    textColors: { default: '#ffffff', delayed: '#c23700', cancelled: '#7d0233', landed: '#05c2a5' },
+    textColors: { default: '#FFFFFF', delayed: '#BA4716', cancelled: '#7C1235', landed: '#175E2A' },
     logoPaths: {
       default: `${IMAGEKIT_BASE}Plain%20Variants/Main/`,
       delayed: `${IMAGEKIT_BASE}Plain%20Variants/Delayed/`,
@@ -39,7 +69,7 @@ export const CARD_STYLES: Record<string, CardStyle> = {
     id: 'glass-main',
     label: 'Glass Main',
     description: 'Glass faceted logos',
-    textColors: { default: '#ffffff', delayed: '#c23700', cancelled: '#7d0233', landed: '#05c2a5' },
+    textColors: { default: '#D8D9DD', delayed: '#9B330F', cancelled: '#690C36', landed: '#0C4521' },
     logoPaths: {
       default: `${IMAGEKIT_BASE}Glass%20Variants/Main/`,
       delayed: `${IMAGEKIT_BASE}Glass%20Variants/Delayed/`,
@@ -53,7 +83,7 @@ export const CARD_STYLES: Record<string, CardStyle> = {
     id: 'plain-default',
     label: 'Plain Default',
     description: 'Subtle default logos',
-    textColors: { default: '#fafafa', delayed: '#c23700', cancelled: '#7d0233', landed: '#05c2a5' },
+    textColors: { default: '#E0E0E0', delayed: '#BA4716', cancelled: '#7C1235', landed: '#175E2A' },
     logoPaths: {
       default: `${IMAGEKIT_BASE}Plain%20Variants/Default/`,
       delayed: `${IMAGEKIT_BASE}Plain%20Variants/Delayed/`,
@@ -67,7 +97,7 @@ export const CARD_STYLES: Record<string, CardStyle> = {
     id: 'glass-default',
     label: 'Glass Default',
     description: 'Glass faceted default',
-    textColors: { default: '#fafafa', delayed: '#c23700', cancelled: '#7d0233', landed: '#05c2a5' },
+    textColors: { default: '#B5B5B5', delayed: '#9B330F', cancelled: '#690C36', landed: '#0C4521' },
     logoPaths: {
       default: `${IMAGEKIT_BASE}Glass%20Variants/Default/`,
       delayed: `${IMAGEKIT_BASE}Glass%20Variants/Delayed/`,
@@ -81,7 +111,13 @@ export const CARD_STYLES: Record<string, CardStyle> = {
     id: 'plain-gradient',
     label: 'Plain Gradient',
     description: 'Gradient colored logos',
-    textColors: { default: '#fafafa', delayed: '#c23700', cancelled: '#7d0233', landed: '#05c2a5' },
+    textColors: { default: '#E0E0E0', delayed: '#BA4716', cancelled: '#7C1235', landed: '#175E2A' },
+    gradientColors: {
+      default: ['#F5F5F5', '#E0E0E0', '#BDBDBD'],
+      delayed: ['#E26A32', '#BA4716', '#8A310C'],
+      cancelled: ['#A8224F', '#7C1235', '#4A071D'],
+      landed: ['#2B9145', '#175E2A', '#0A3615'],
+    },
     logoPaths: {
       default: `${IMAGEKIT_BASE}Gradient%20Variants/Default/`,
       delayed: `${IMAGEKIT_BASE}Gradient%20Variants/Delayed%20/`,
@@ -95,7 +131,13 @@ export const CARD_STYLES: Record<string, CardStyle> = {
     id: 'glass-gradient',
     label: 'Glass Gradient',
     description: 'Glass + gradient logos',
-    textColors: { default: '#fafafa', delayed: '#c23700', cancelled: '#7d0233', landed: '#05c2a5' },
+    textColors: { default: '#B5B5B5', delayed: '#9B330F', cancelled: '#690C36', landed: '#0C4521' },
+    gradientColors: {
+      default: ['#FFFFFF', '#B5B5B5', '#787878'],
+      delayed: ['#F38B62', '#9B330F', '#5C1B05'],
+      cancelled: ['#B82E65', '#690C36', '#3B041C'],
+      landed: ['#2EAB56', '#0C4521', '#04210E'],
+    },
     logoPaths: {
       default: `${IMAGEKIT_BASE}Gradient%20Glass%20Variants/Default/`,
       delayed: `${IMAGEKIT_BASE}Gradient%20Glass%20Variants/Delayed/`,
@@ -138,6 +180,7 @@ export const getLogoBasePath = (cardStyleId: string, status: string): string => 
 };
 
 // Build logo URL patterns for a flight
+// Matches first 2 letters of flightId to IATA code in filename
 export const getLogoUrls = (cardStyleId: string, status: string, flightId: string, airlineCode: string): string[] => {
   const basePath = getLogoBasePath(cardStyleId, status);
   const airlineName = AIRLINE_NAMES[airlineCode] || airlineCode;
@@ -145,8 +188,11 @@ export const getLogoUrls = (cardStyleId: string, status: string, flightId: strin
   const encodedAirlineName = encodeURIComponent(airlineName);
 
   return [
+    // Try exact match: "EK 652 (Emirates).png"
     `${basePath}${encodedFlightId}%20(${encodedAirlineName}).png`,
+    // Try duplicate name format: "EK 652 (Emirates, Emirates).png"
     `${basePath}${encodedFlightId}%20(${encodedAirlineName},%20${encodedAirlineName}).png`,
+    // Fallback
     `${basePath}Unidentified%20Flight.png`,
   ];
 };
@@ -163,9 +209,23 @@ export const getCardTextColor = (cardStyleId: string, status: string): string =>
   }
 };
 
+// Get gradient colors if available
+export const getCardGradientColors = (cardStyleId: string, status: string): [string, string, string] | null => {
+  const style = CARD_STYLES[cardStyleId] || CARD_STYLES['plain-main'];
+  if (!style.gradientColors) return null;
+  const statusUpper = status.toUpperCase();
+  switch (statusUpper) {
+    case 'LANDED': return style.gradientColors.landed;
+    case 'DELAYED': return style.gradientColors.delayed;
+    case 'CANCELLED': return style.gradientColors.cancelled;
+    default: return style.gradientColors.default;
+  }
+};
+
 // Get full theme for a card based on card style and status
 export const getCardTheme = (cardStyleId: string, status: string) => {
   const textColor = getCardTextColor(cardStyleId, status);
+  const gradientColors = getCardGradientColors(cardStyleId, status);
   const statusUpper = status.toUpperCase();
 
   // Derive progress/card colors from text color
@@ -175,12 +235,15 @@ export const getCardTheme = (cardStyleId: string, status: string) => {
 
   return {
     textColor,
+    gradientColors,
     cardTint: textColor,
     progressActive: `rgba(${r}, ${g}, ${b}, 0.7)`,
     progressInactive: `rgba(${r}, ${g}, ${b}, 0.25)`,
     bellColor: textColor,
     bellGlow: `rgba(${r}, ${g}, ${b}, 0.4)`,
     hasStatus: statusUpper === 'LANDED' || statusUpper === 'CANCELLED' || statusUpper === 'DELAYED',
+    isGlass: CARD_STYLES[cardStyleId]?.isGlass ?? false,
+    isGradient: CARD_STYLES[cardStyleId]?.isGradient ?? false,
   };
 };
 

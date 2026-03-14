@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, User, Type, Sparkles, Bell, Shield, Camera, Loader2, Check, FileArchive, Bug, RotateCcw, Palette } from 'lucide-react';
+import { X, Loader2, Check, FileArchive, Bug, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
 import { GLASS_PRESETS } from '@/contexts/SettingsContext';
-import { CARD_STYLES } from '@/lib/cardStyles';
+import { CARD_STYLES, UI_ICONS } from '@/lib/cardStyles';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Slider } from './ui/slider';
@@ -41,6 +41,11 @@ const MiniSlider = ({ label, value, defaultValue, min, max, step, onChange, onRe
     </div>
     <Slider value={[value]} onValueChange={([v]) => onChange(v)} min={min} max={max} step={step} className="w-full" />
   </div>
+);
+
+// ImageKit icon component
+const IKIcon = ({ src, alt, className }: { src: string; alt: string; className?: string }) => (
+  <img src={src} alt={alt} className={cn("object-contain", className || "w-4 h-4")} />
 );
 
 const SettingsModal = ({ isOpen, onClose }: Props) => {
@@ -110,7 +115,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     return () => clearTimeout(timer);
   }, [activeTab, isOpen, settings.fontFamily]);
 
-  // IntersectionObserver for lazy font loading - find ScrollArea viewport
+  // IntersectionObserver for lazy font loading
   useEffect(() => {
     if (activeTab !== 'texts' || !isOpen) return;
     if (fontObserverRef.current) fontObserverRef.current.disconnect();
@@ -166,15 +171,15 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
 
   if (!isOpen) return null;
 
-  const tabs: { id: Tab; label: string; icon: typeof User }[] = [
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'texts', label: 'Texts', icon: Type },
-    { id: 'style', label: 'Style', icon: Sparkles },
-    { id: 'cards', label: 'Cards', icon: Palette },
-    { id: 'notifications', label: 'Alerts', icon: Bell },
-    { id: 'security', label: 'Security', icon: Shield },
-    { id: 'report', label: 'Report', icon: Bug },
-    ...(isAdmin ? [{ id: 'admin' as Tab, label: 'Admin', icon: Shield }] : []),
+  const tabs: { id: Tab; label: string; icon: string }[] = [
+    { id: 'profile', label: 'Profile', icon: UI_ICONS.profile },
+    { id: 'texts', label: 'Texts', icon: UI_ICONS.fontStyle },
+    { id: 'style', label: 'Style', icon: UI_ICONS.bgStyle },
+    { id: 'cards', label: 'Cards', icon: UI_ICONS.uiStyle },
+    { id: 'notifications', label: 'Alerts', icon: UI_ICONS.notifications },
+    { id: 'security', label: 'Security', icon: UI_ICONS.security },
+    { id: 'report', label: 'Report', icon: UI_ICONS.settings },
+    ...(isAdmin ? [{ id: 'admin' as Tab, label: 'Admin', icon: UI_ICONS.adminTools }] : []),
   ];
 
   const handleSaveProfile = async () => {
@@ -207,16 +212,11 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     try {
       let description = reportDescription;
       if (reportType === 'Weather Issue' && weatherIncorrect) {
-        description = JSON.stringify({
-          originalReport: reportDescription,
-          correctedCondition,
-          correctedTemp,
-        });
+        description = JSON.stringify({ originalReport: reportDescription, correctedCondition, correctedTemp });
       }
       const { error } = await supabase.from('admin_reports').insert({
         report_type: reportType === 'Weather Issue' && weatherIncorrect ? 'weather_correction' : reportType.toLowerCase().replace(/ /g, '_'),
-        title: reportTitle,
-        description,
+        title: reportTitle, description,
       });
       if (error) throw error;
       toast.success('Report submitted. Thank you!');
@@ -230,7 +230,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     setIsExporting(true);
     try {
       const zip = new JSZip();
-      zip.file('REMIX_PROMPT.md', `# Arriva.MV Remix Prompt\n\nRecreate a real-time flight arrival tracker PWA for Velana International Airport (MLE), Maldives.\n\n## Core Features\n- Real-time flight scraping from FIDS\n- Weather-reactive animated background (iframe)\n- Live flight tracking via FlightAware AeroAPI\n- Push notifications via OneSignal\n- Multi-terminal grouping (T1, T2, Domestic)\n- Glassmorphism UI with 12 glass presets\n- 200+ Google Font customization\n- CSV export functionality\n- Admin dashboard for reports and fonts\n\n## Tech Stack\n- React 18 + Vite + TypeScript\n- Tailwind CSS + Shadcn/UI\n- Supabase (Database, Auth, Edge Functions)\n- OneSignal (Push notifications)\n- FlightAware AeroAPI (Flight tracking)\n- PWA with Service Worker\n`);
+      zip.file('REMIX_PROMPT.md', `# Arriva.MV Remix Prompt\n\nRecreate a real-time flight arrival tracker PWA for Velana International Airport (MLE), Maldives.\n`);
       zip.file('docs/README.md', 'Full project blueprint - see source files for implementation details.');
       const blob = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(blob);
@@ -266,7 +266,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
           </button>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs with ImageKit icons */}
         <div className="flex border-b border-white/10 overflow-x-auto">
           {tabs.map(tab => (
             <button
@@ -277,8 +277,8 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                 activeTab === tab.id ? "text-foreground border-b-2 border-foreground/50" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <tab.icon className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="hidden sm:inline truncate">{tab.label}</span>
+              <IKIcon src={tab.icon} alt={tab.label} className={cn("w-5 h-5 flex-shrink-0", activeTab !== tab.id && "opacity-50")} />
+              <span className="hidden sm:inline truncate text-[10px]">{tab.label}</span>
             </button>
           ))}
         </div>
@@ -288,11 +288,8 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
           {activeTab === 'profile' && (
             <div className="space-y-4 animate-fade-in">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full glass-orb flex items-center justify-center relative">
-                  <User className="w-8 h-8 text-muted-foreground" />
-                  <button className="absolute bottom-0 right-0 w-6 h-6 rounded-full glass-orb flex items-center justify-center">
-                    <Camera className="w-3 h-3" />
-                  </button>
+                <div className="w-16 h-16 rounded-full glass-orb flex items-center justify-center relative overflow-hidden">
+                  <IKIcon src={UI_ICONS.profile} alt="Profile" className="w-10 h-10" />
                 </div>
                 <div className="flex-1">
                   <p className="text-xs text-muted-foreground">Profile Photo</p>
@@ -372,7 +369,6 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
 
           {activeTab === 'style' && (
             <div className="space-y-5 animate-fade-in">
-              {/* Mini Sliders Grid - 2 per row on wider screens */}
               <div className="grid grid-cols-2 gap-3">
                 <MiniSlider label="Brightness" value={settings.iframeBrightness} defaultValue={100} min={0} max={200} step={5} onChange={setIframeBrightness} onReset={() => resetSetting('iframeBrightness')} suffix="%" />
                 <MiniSlider label="Contrast" value={settings.contrast} defaultValue={100} min={50} max={150} step={5} onChange={setContrast} onReset={() => resetSetting('contrast')} suffix="%" />
@@ -392,7 +388,6 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                 <Slider value={[settings.glassOpacity * 100]} onValueChange={([val]) => setGlassOpacity(val / 100)} min={0} max={50} step={5} className="w-full" />
               </div>
 
-              {/* Dual Glass Toggle */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-xs text-muted-foreground uppercase tracking-wide">Dual Glass Blend</label>
@@ -405,7 +400,6 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                 )}
               </div>
 
-              {/* Glass Presets Grid */}
               <div>
                 <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">
                   {settings.dualGlass ? 'Primary Glass' : 'Glass Presets'}
@@ -427,7 +421,6 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                 </div>
               </div>
 
-              {/* Secondary Glass Grid (only when dual glass is on) */}
               {settings.dualGlass && (
                 <div>
                   <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">Secondary Glass</label>
