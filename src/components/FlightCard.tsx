@@ -54,7 +54,8 @@ const AirlineIcon = ({ flightId, airlineCode, cardStyle, status }: {
 
   useEffect(() => {
     if (!imageError) return;
-    retryIntervalRef.current = setInterval(() => { setImageError(false); setUrlIndex(0); }, 30 * 60 * 1000);
+    // Retry every 60 minutes for newly uploaded logos
+    retryIntervalRef.current = setInterval(() => { setImageError(false); setUrlIndex(0); }, 60 * 60 * 1000);
     return () => { if (retryIntervalRef.current) clearInterval(retryIntervalRef.current); };
   }, [imageError]);
 
