@@ -38,8 +38,8 @@ const formatTime = (time: string, format: '12h' | '24h') => {
 };
 
 // Airline Icon using pre-colored logos from ImageKit
-const AirlineIcon = ({ flightId, airlineCode, cardStyle, status }: { 
-  flightId: string; airlineCode: string; cardStyle: string; status: string; 
+const AirlineIcon = ({ flightId, airlineCode, cardStyle, status, logoFilter }: { 
+  flightId: string; airlineCode: string; cardStyle: string; status: string; logoFilter: string;
 }) => {
   const [urlIndex, setUrlIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
@@ -54,7 +54,6 @@ const AirlineIcon = ({ flightId, airlineCode, cardStyle, status }: {
 
   useEffect(() => {
     if (!imageError) return;
-    // Retry every 60 minutes for newly uploaded logos
     retryIntervalRef.current = setInterval(() => { setImageError(false); setUrlIndex(0); }, 60 * 60 * 1000);
     return () => { if (retryIntervalRef.current) clearInterval(retryIntervalRef.current); };
   }, [imageError]);
@@ -63,7 +62,6 @@ const AirlineIcon = ({ flightId, airlineCode, cardStyle, status }: {
     return () => { if (retryIntervalRef.current) clearInterval(retryIntervalRef.current); };
   }, []);
 
-  // Reset when card style or status changes
   useEffect(() => {
     setUrlIndex(0);
     setImageError(false);
@@ -78,6 +76,7 @@ const AirlineIcon = ({ flightId, airlineCode, cardStyle, status }: {
       src={urls[urlIndex]}
       alt={AIRLINE_NAMES[airlineCode] || airlineCode}
       className="max-w-[42px] max-h-[38px] object-contain adaptive-icon-shadow"
+      style={{ filter: logoFilter }}
       onError={handleError}
     />
   );
@@ -87,7 +86,6 @@ const AirlineIcon = ({ flightId, airlineCode, cardStyle, status }: {
 const subscribeToFlightNotifications = async (userId: string, flightId: string, flightDate: string): Promise<{ success: boolean; pushWorked: boolean }> => {
   let pushWorked = false;
   try {
-    // Try OneSignal - may fail on preview domains
     let playerId: string | null = null;
     try {
       playerId = await subscribeToNotifications();
@@ -101,7 +99,6 @@ const subscribeToFlightNotifications = async (userId: string, flightId: string, 
       console.warn('Push provider unavailable (preview domain?):', pushError);
     }
 
-    // Always save the subscription to the database
     const { error } = await supabase.from('notification_subscriptions').upsert({
       user_id: userId, flight_id: flightId, flight_date: flightDate, notify_push: true,
     }, { onConflict: 'user_id,flight_id,flight_date' });
@@ -127,6 +124,23 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   const isDelayed = flight.status.toUpperCase() === 'DELAYED';
   const hasStatus = isLanded || isCancelled || isDelayed;
   const showBell = !isLanded && !isCancelled;
+
+  // Card visual sliders
+  const logoFilter = `brightness(${settings.cardLogoBrightness / 100}) contrast(${settings.cardLogoContrast / 100}) saturate(${settings.cardLogoSaturation / 100}) hue-rotate(${settings.cardLogoHueShift}deg)`;
+
+  // Gradient text style for gradient card styles
+  const gradientTextStyle = theme.gradientColors ? {
+    background: `linear-gradient(to bottom, ${theme.gradientColors[0]}, ${theme.gradientColors[1]}, ${theme.gradientColors[2]})`,
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+  } as React.CSSProperties : { color: theme.textColor, opacity: 0.9 } as React.CSSProperties;
+
+  // Regular text style (non-gradient)
+  const plainTextStyle = { color: theme.textColor, opacity: 0.9 } as React.CSSProperties;
+
+  // Pick gradient or plain based on card style
+  const textStyle = theme.gradientColors ? gradientTextStyle : plainTextStyle;
 
   // Auto-collapse after 5 seconds or on scroll
   useEffect(() => {
@@ -190,12 +204,18 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   const estimatedTimeFormatted = formatTime(flight.estimatedTime, settings.timeFormat);
   const scheduledTimeFormatted = formatTime(flight.scheduledTime, settings.timeFormat);
 
+  // Increased status color intensity + animation class
+  const statusBgOpacity = hasStatus ? 0.15 : 0.08;
+  const statusAnimClass = hasStatus
+    ? (theme.isGlass && theme.isGradient ? 'status-combined-anim' : theme.isGlass ? 'status-glass-shimmer' : theme.isGradient ? 'status-gradient-sweep' : 'status-pulse-anim')
+    : '';
+
   const cardStyle = {
-    background: `linear-gradient(145deg, rgba(${hexToRgb(theme.cardTint)}, 0.08) 0%, rgba(0, 0, 0, 0.25) 100%)`,
+    background: `linear-gradient(145deg, rgba(${hexToRgb(theme.cardTint)}, ${statusBgOpacity}) 0%, rgba(0, 0, 0, 0.25) 100%)`,
     backdropFilter: 'blur(24px) saturate(1.3) brightness(1.1)',
     WebkitBackdropFilter: 'blur(24px) saturate(1.3) brightness(1.1)',
     border: `1px solid rgba(${hexToRgb(theme.cardTint)}, 0.15)`,
-    boxShadow: `0 0 15px rgba(${hexToRgb(theme.cardTint)}, ${hasStatus ? 0.12 : 0.05}), 0 4px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.15)`,
+    boxShadow: `0 0 15px rgba(${hexToRgb(theme.cardTint)}, ${hasStatus ? 0.15 : 0.05}), 0 4px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.15)`,
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
@@ -212,7 +232,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
 
   return (
     <div
-      className="rounded-2xl overflow-hidden flight-card-animate cursor-pointer glass-neumorphic"
+      className={cn("rounded-2xl overflow-hidden flight-card-animate cursor-pointer glass-neumorphic", statusAnimClass)}
       style={cardStyle}
       onClick={handleCardClick}
     >
@@ -220,10 +240,16 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
         {/* LEFT: Airline Logo */}
         <button onClick={handleLogoClick} className="flex items-center justify-center transition-all duration-300 flex-shrink-0">
           {showAirlineName ? (
-            <div className={cn("backdrop-blur-md rounded px-1.5 py-0.5 transition-opacity duration-300", isFadingOut && "opacity-0")}
-              style={{ backgroundColor: `rgba(${hexToRgb(theme.textColor)}, 0.1)` }}>
-              <span className="text-[7px] font-medium text-center leading-tight block adaptive-shadow"
-                style={{ color: theme.textColor, opacity: 0.9 }}>
+            <div className={cn("flex items-center justify-center w-[42px] h-[38px] transition-opacity duration-300", isFadingOut && "opacity-0")}>
+              <span className="text-[7px] font-medium text-center leading-tight block adaptive-shadow break-words"
+                style={{ 
+                  ...plainTextStyle,
+                  maxWidth: '42px', 
+                  display: '-webkit-box', 
+                  WebkitLineClamp: 2, 
+                  WebkitBoxOrient: 'vertical' as const, 
+                  overflow: 'hidden' 
+                }}>
                 {airlineName}
               </span>
             </div>
@@ -233,18 +259,19 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
               airlineCode={flight.airlineCode}
               cardStyle={settings.cardStyle}
               status={flight.status}
+              logoFilter={logoFilter}
             />
           )}
         </button>
 
-        {/* CENTER: Flight ID + Origin */}
-        <div className="flex flex-col justify-center min-w-0 flex-1">
-          <span className="font-bold text-sm leading-tight truncate adaptive-shadow"
-            style={{ color: theme.textColor, opacity: 0.9 }}>
+        {/* CENTER: Flight ID + Origin (same row, origin bold) */}
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <span className="text-sm leading-tight truncate adaptive-shadow"
+            style={textStyle}>
             {flight.flightId}
           </span>
-          <span className="text-[11px] truncate leading-tight adaptive-shadow"
-            style={{ color: theme.textColor, opacity: 0.9 }}>
+          <span className="font-bold text-sm truncate leading-tight adaptive-shadow"
+            style={textStyle}>
             {flight.origin}
           </span>
         </div>
@@ -263,7 +290,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           {hasStatus && (
             <span
               className="text-[8px] font-semibold uppercase tracking-wide px-2 py-1.5 whitespace-nowrap status-badge-enter adaptive-shadow"
-              style={{ color: theme.textColor }}
+              style={textStyle}
             >
               {getStatusText()}
             </span>
@@ -283,7 +310,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           >
             <span
               className="text-[10px] font-medium px-2 py-1.5 whitespace-nowrap block adaptive-shadow"
-              style={{ color: theme.textColor, opacity: 0.85 }}
+              style={textStyle}
             >
               {estimatedTimeFormatted}
             </span>
@@ -311,8 +338,8 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
       {isExpanded && (
         <div className="flex items-center gap-1.5 px-2.5 pb-2.5 animate-fade-in" style={{ height: '28px' }}>
           <div className="flex flex-col items-start flex-shrink-0">
-            <span className="text-[7px] uppercase tracking-wide adaptive-shadow" style={{ color: theme.textColor, opacity: 0.6 }}>SCH</span>
-            <span className="font-bold text-[9px] whitespace-nowrap adaptive-shadow" style={{ color: theme.textColor, opacity: 0.8 }}>
+            <span className="text-[7px] uppercase tracking-wide adaptive-shadow" style={{ ...plainTextStyle, opacity: 0.6 }}>SCH</span>
+            <span className="font-bold text-[9px] whitespace-nowrap adaptive-shadow" style={{ ...plainTextStyle, opacity: 0.8 }}>
               {scheduledTimeFormatted}
             </span>
           </div>
@@ -335,8 +362,8 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           </div>
 
           <div className="flex flex-col items-end flex-shrink-0">
-            <span className="text-[7px] uppercase tracking-wide adaptive-shadow" style={{ color: theme.textColor, opacity: 0.6 }}>EST</span>
-            <span className="font-bold text-[9px] whitespace-nowrap adaptive-shadow" style={{ color: theme.textColor, opacity: 0.8 }}>
+            <span className="text-[7px] uppercase tracking-wide adaptive-shadow" style={{ ...plainTextStyle, opacity: 0.6 }}>EST</span>
+            <span className="font-bold text-[9px] whitespace-nowrap adaptive-shadow" style={{ ...plainTextStyle, opacity: 0.8 }}>
               {estimatedTimeFormatted}
             </span>
           </div>

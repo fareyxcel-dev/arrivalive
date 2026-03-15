@@ -409,6 +409,11 @@ const Index = () => {
   const t2Flights = filteredFlights.filter(f => f.terminal === 'T2');
   const domFlights = filteredFlights.filter(f => f.terminal === 'DOM');
 
+  // Unfiltered flights per terminal (for "Full" schedule option)
+  const allT1Flights = flights.filter(f => f.terminal === 'T1');
+  const allT2Flights = flights.filter(f => f.terminal === 'T2');
+  const allDomFlights = flights.filter(f => f.terminal === 'DOM');
+
   return (
     <div className="relative min-h-screen">
       {/* Full-screen iframe background */}
@@ -450,6 +455,7 @@ const Index = () => {
               <TerminalGroup
                 terminal="T1"
                 flights={t1Flights}
+                allFlights={allT1Flights}
                 notificationIds={notificationIds}
                 onToggleNotification={handleToggleNotification}
               />
@@ -459,6 +465,7 @@ const Index = () => {
               <TerminalGroup
                 terminal="T2"
                 flights={t2Flights}
+                allFlights={allT2Flights}
                 notificationIds={notificationIds}
                 onToggleNotification={handleToggleNotification}
               />
@@ -468,6 +475,7 @@ const Index = () => {
               <TerminalGroup
                 terminal="DOM"
                 flights={domFlights}
+                allFlights={allDomFlights}
                 notificationIds={notificationIds}
                 onToggleNotification={handleToggleNotification}
               />

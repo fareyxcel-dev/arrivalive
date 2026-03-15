@@ -1,181 +1,183 @@
 
-
-# Comprehensive UI Overhaul: Header, Flight Cards, Filters, Settings, Glass Styles, Gradients
+# Header Fix, Font Visibility, Notification System Repair, Glass UI Enhancement, Loading Animations
 
 ## Overview
-11 distinct changes across header behavior, flight card layout, filter system, settings restructuring, glass variant replacement, status color animations, text adjustment sliders, progress bar theming, and gradient text effects.
+This plan addresses 7 key areas: header weather text alignment, font preview visibility in settings, notification bell subscription flow repair, flight card text color matching, gradient blur UI enhancement, loading/splash animations using uploaded GIFs, and a splash screen with glass blur reveal.
 
 ---
 
-## 1. Header Logo Click → Toggle Menu Pill
+## 1. Header Weather Text Alignment Fix
 
 **File: `src/components/NewHeader.tsx`**
 
-- Change the header logo `<button onClick={onInstallPWA}>` (line 331-343) to `onClick={() => setIsMenuOpen(!isMenuOpen)}`
-- Remove the separate menu pill button's click handler since the logo now controls it
-- Keep the small pill indicator visible below logo but remove its own click toggle (it becomes a passive visual indicator of menu state)
+### Problem
+The weather text on the right side (both default and alternative) is mispositioned -- it overlaps with the center logo area (visible in reference image 1).
 
----
+### Root Cause
+The right column container uses `space-y-0` and text flows without proper right-alignment constraints. The weather condition text and duration text are not properly anchored to the right edge.
 
-## 2. Flight Card: Flight ID + Origin on Same Row, Origin Bold
+### Fix
+- Wrap the entire right column in `justify-self-end` to push content to the far right
+- Add `text-right` to all child elements explicitly
+- Change the left column's day/date toggle from using absolute positioning (which causes displacement) to a single conditional render block -- same fix as weather
+- For the left column sun countdown: replace the `blur-sm opacity-0` + absolute overlay with a simple ternary (show either day/date OR sun countdown, never both)
+- For the right column: already fixed in the latest code using ternary, but ensure `justify-self-end` is on the outer container
 
-**File: `src/components/FlightCard.tsx`**
-
-Change lines 240-250 from stacked layout to inline:
+### Specific Changes
+Left column (lines 307-342): Replace the two overlapping buttons with one conditionally rendered block:
 ```tsx
-<div className="flex items-center gap-1.5 min-w-0 flex-1">
-  <span className="text-sm leading-tight truncate adaptive-shadow"
-    style={{ color: theme.textColor, opacity: 0.9 }}>
-    {flight.flightId}
-  </span>
-  <span className="font-bold text-sm truncate leading-tight adaptive-shadow"
-    style={{ color: theme.textColor, opacity: 0.9 }}>
-    {flight.origin}
-  </span>
-</div>
+<button onClick={handleDayDateClick} className="block text-left ...">
+  <p>{showSunCountdown ? `${sunData.label} in ${sunData.countdown}` : formatDay(currentTime)}</p>
+  <p>{showSunCountdown ? `at ${sunData.time}` : formatDate(currentTime)}</p>
+</button>
 ```
 
----
-
-## 3. Filter: Add "Full" Option for Complete Schedule
-
-**File: `src/components/TerminalGroup.tsx`**
-
-Add a third filter toggle "Full" in the filter pill that, when active, shows all flights including those normally removed by the 60-minute post-landing/cancellation cleanup.
-
-- Add `showFull` local state alongside `hideCancelled`/`hideLanded`
-- Pass `showFull` down or emit it up so `Index.tsx` can include removed flights in the data
-- Actually, since removed flights are already filtered out before reaching TerminalGroup, this requires:
-  - Adding a `fullScheduleFlights` prop to TerminalGroup (the unfiltered list before time-based removal)
-  - When `showFull` is true, use `fullScheduleFlights` instead of `flights`
-- Add "Full" chip in the filter pill next to Cancelled/Landed
-
-**File: `src/pages/Index.tsx`**
-- Keep a separate `allFlights` state that stores every flight from the API without the 60-min removal filter
-- Pass both `flights` (filtered) and `allFlights` (full) to TerminalGroup
+Right column (lines 420-456): Add `justify-self-end` to the outer div to anchor right.
 
 ---
 
-## 4. Airline Logo Click → 2-Row Airline Name Display
-
-**File: `src/components/FlightCard.tsx`**
-
-Change `handleLogoClick` display (lines 222-228): instead of showing airline name in a pill, split the airline name into 2 rows within the same width container (42px):
-```tsx
-{showAirlineName ? (
-  <div className={cn("flex items-center justify-center w-[42px] h-[38px] transition-opacity duration-300", isFadingOut && "opacity-0")}>
-    <span className="text-[7px] font-medium text-center leading-tight block adaptive-shadow break-words"
-      style={{ color: theme.textColor, opacity: 0.9, maxWidth: '42px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-      {airlineName}
-    </span>
-  </div>
-) : ( ... )}
-```
-
----
-
-## 5. Settings Cards Tab: Replace Flight Filters with Visual Sliders
+## 2. Font Style Visibility in Settings
 
 **File: `src/components/SettingsModal.tsx`**
 
-Replace the Flight Filters section (lines 478-497) with card-level visual adjustment sliders:
-- Card Logo Brightness (0-200%, default 100%)
-- Card Logo Contrast (0-200%, default 100%)
-- Card Logo Saturation (0-200%, default 100%)
-- Card Logo Hue Shift (0-360°, default 0°)
-- Card Text Brightness (0-200%, default 100%)
-- Card Text Saturation (0-200%, default 100%)
+### Problem
+Font names in the picker all render in the same default font instead of previewing in their actual typeface (reference image 2 shows how they should look).
 
-**File: `src/contexts/SettingsContext.tsx`**
-Add new settings: `cardLogoBrightness`, `cardLogoContrast`, `cardLogoSaturation`, `cardLogoHueShift`, `cardTextBrightness`, `cardTextSaturation`
+### Root Cause
+The `IntersectionObserver` is set up via `setupFontObserver` callback, but the `ScrollArea` component wraps content in its own viewport div. The observer's `root` is set to the `fontScrollRef` node, but the actual scrolling container is the ScrollArea's viewport child. This means elements never "intersect" because the observer root doesn't match the scroll container.
 
-**File: `src/components/FlightCard.tsx`**
-Apply CSS filter to airline logo `<img>`: `filter: brightness(${}) contrast(${}) saturate(${}) hue-rotate(${})` from settings.
-Apply brightness/saturation adjustments to text colors.
+### Fix
+1. Remove the `ref={fontScrollRef}` from the inner div and instead use `useEffect` to find the ScrollArea's viewport element (which has `data-radix-scroll-area-viewport`)
+2. Set the observer's `root` to the actual viewport element
+3. Always apply `fontFamily` inline style regardless of whether the font has loaded -- the browser will show fallback until the font CSS loads
+4. When an element intersects, inject the Google Fonts `<link>` tag to load that font
+5. Add a small delay (200ms) after tab switch before setting up the observer to ensure DOM is ready
 
----
+### Code Change
+```tsx
+useEffect(() => {
+  if (activeTab !== 'texts' || !isOpen) return;
+  const timer = setTimeout(() => {
+    const viewport = document.querySelector('[data-radix-scroll-area-viewport]');
+    if (!viewport) return;
+    // ... set up IntersectionObserver with root: viewport
+  }, 200);
+  return () => clearTimeout(timer);
+}, [activeTab, isOpen]);
+```
 
-## 6. Replace Glass Variants in Style Settings
-
-**File: `src/contexts/SettingsContext.tsx`**
-
-Replace all current 22 GLASS_PRESETS with exactly 12 new ones:
-1. **Frosted Glass** - blur:20, white frost overlay shimmer
-2. **Liquid Glass** - blur:35, ripple distortion effect
-3. **Faceted Prismatic** - blur:12, rainbow border rotation
-4. **Faceted Glass** - blur:16, multi-face reflections
-5. **Metallic** - blur:8, chrome-like reflection sweep
-6. **Beveled Solid** - blur:4, hard-edge bevel with shadow
-7. **iOS Liquid Glass** - blur:28, high vibrancy bounce
-8. **Windows Aero** - blur:14, blue-tint glass reflection sweep
-9. **Android Material** - blur:18, material elevation ripple
-10. **Opaque** - blur:0, solid frosted background
-11. **Retro Pixelated** - blur:2, pixel-grid overlay effect
-12. **Clear** - blur:0, fully transparent, no effects
-
-Each must have unique `tint`, `animation`, `saturateBoost`, `blur`, and `opacity` values. They should be visually distinct and support Dual Glass blending.
+Each font button always gets `style={{ fontFamily: "'FontName', sans-serif" }}`.
 
 ---
 
-## 7. Status Color Visual Presence on Card Backgrounds + Animations
+## 3. Notification Bell Subscription Flow Repair
+
+**Files: `src/components/FlightCard.tsx`, `src/pages/Index.tsx`, `src/components/TerminalGroup.tsx`**
+
+### Problem
+There are TWO competing subscription paths causing confusion:
+1. `FlightCard.handleBellClick()` calls `subscribeToFlightNotifications()` which uses `flight.flightId` (text like "EK 652") and inserts into `notification_subscriptions`
+2. `Index.handleToggleNotification()` also inserts into `notification_subscriptions` using `flightId` parameter (which is `flight.id` -- a UUID)
+
+Additionally, `loadUserSubscriptions` loads `flight_id` from subscriptions and checks `notificationIds.has(flight.id)`, but the stored `flight_id` could be either UUID or text depending on which path ran.
+
+### Fix -- Unify on a single subscription path
+- **Remove** the duplicate insertion logic from `Index.handleToggleNotification`. Instead, make it only update local state (`notificationIds` and `notificationCount`)
+- **Keep** `FlightCard.handleBellClick` as the sole subscription manager (it handles OneSignal, database insert/delete, and toast)
+- **Standardize** on using `flight.flightId` (text like "EK 652") as the key in `notification_subscriptions.flight_id`
+- **Update** `loadUserSubscriptions` to build the Set using `flight_id` (text), and `TerminalGroup` to check `notificationIds.has(flight.flightId)` instead of `flight.id`
+- **Update** `FlightCard.handleBellClick` to call `onToggleNotification(flight.flightId)` so the parent state stays in sync
+- **Update** `loadUserSubscriptions` to NOT filter by `flight_date = today` (subscriptions for future dates should also show)
+
+### Notification Modal Fix
+- In `NotificationsModal`, when loading subscriptions, also join with flights to get `origin`, `scheduled_time`, `estimated_time`, and `status`
+- Display these real details instead of just flight_id text
+
+---
+
+## 4. Flight Card Text Color Matching Airline Logo
 
 **File: `src/components/FlightCard.tsx`**
 
-Increase the status color intensity in the card background:
-- Change `rgba(${hexToRgb(theme.cardTint)}, 0.08)` to `0.15` for status cards
-- Add a subtle animated glow/pulse for status cards using CSS animation
-- For Glass styles: add a faceted shimmer overlay
-- For Gradient styles: add animated gradient sweep
-- Combined (Glass+Gradient): both effects layered
+### Current State
+Flight card text colors are based on status theme (`theme.textColor`). The airline logos are color-filtered to match. This is already working as designed -- the text and logo share the same color via `getColorFilter`.
 
-Add CSS keyframes in `src/index.css`:
+### Enhancement
+Ensure ALL text within the card (flight ID, origin, time, status badge, SCH/EST labels) uses the same `theme.textColor`. This is already the case in the current code. No changes needed here beyond verification.
+
+---
+
+## 5. Gradient Live Blur for UI Elements
+
+**File: `src/index.css`**
+
+### Enhancement
+Add gradient blur with 3-level brightness tiers for glass elements:
+- Top area: `brightness(1.99)` (near +0.99 above base)
+- Middle area: `brightness(1.66)` 
+- Bottom area: `brightness(1.33)`
+
+### New CSS Classes
 ```css
-@keyframes status-pulse { 0%,100% { opacity:0.12 } 50% { opacity:0.22 } }
-@keyframes glass-shimmer { 0% { background-position:-200% } 100% { background-position:200% } }
-@keyframes gradient-sweep { 0% { background-position:0% 0% } 100% { background-position:100% 100% } }
+.glass-gradient-blur {
+  position: relative;
+}
+.glass-gradient-blur::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.12) 0%,
+    rgba(255,255,255,0.06) 50%,
+    rgba(255,255,255,0.02) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
 ```
 
----
-
-## 8. Text Settings: Replace Color Shift with Sliders
-
-**File: `src/components/SettingsModal.tsx`**
-
-Replace the Color Shift slider (lines 360-366) with:
-- Text Brightness (0-200%, default 100%)
-- Text Contrast (0-200%, default 100%)
-- Text Saturation (0-200%, default 100%)
-- Text Hue Shift (0-360°, default 0°)
-- Text Drop Shadow X, Y, Blur, Opacity
-
-**File: `src/contexts/SettingsContext.tsx`**
-Replace `colorShift` with: `textBrightness`, `textContrast`, `textSaturation`, `textHueShift`, `textShadowX`, `textShadowY`, `textShadowBlur`, `textShadowOpacity`
-
-Apply globally via CSS custom properties on the root element.
+### Apply to:
+- Toggles (LiveBlurToggle)
+- Sliders (track and range)
+- Buttons (glass-interactive)
+- Text inputs
+- Menu pill
+- All interactive UI elements
 
 ---
 
-## 9. Flight Tracker Progress Color Matches Card Theme
+## 6. Loading Animation & Splash Screen
 
-**File: `src/components/FlightCard.tsx`** — Already passes `theme.progressActive` and `theme.progressInactive` to `FlightProgressBar`. These are derived from `textColor` in `getCardTheme()`. This is already working correctly. Verify no changes needed.
+**Files: `src/components/LoadingSpinner.tsx`, `src/pages/Index.tsx`, new `src/components/SplashScreen.tsx`**
+
+### Loading Spinner
+- Copy uploaded GIF #1 (palm tree icon) to `src/assets/loading.gif` (replace existing)
+- `LoadingSpinner` already uses this file -- just needs the new asset
+
+### Splash Screen
+- Copy uploaded GIF #2 (full Arriva.MV logo animation) to `src/assets/splash-logo.gif`
+- Create `SplashScreen.tsx`: full-screen component showing the splash GIF centered on a heavily blurred glass background
+- The glass background uses `backdrop-filter: blur(40px)` over the iframe
+- Once iframe is loaded AND flight data is fetched, animate the blur away (reduce from 40px to 0 over 1.5s) to reveal the home screen
+- Show splash for minimum 2 seconds, then fade out when data is ready
+
+### Implementation in Index.tsx
+- Add `iframeLoaded` state (set via callback from `SkyIframeBackground`)
+- Add `showSplash` state (default true)
+- When `!isLoading && iframeLoaded`, start fade-out animation, then set `showSplash = false`
+- Render `SplashScreen` overlay when `showSplash` is true
 
 ---
 
-## 10. Gradient Text on Gradient Card Styles
+## 7. SkyIframeBackground Load Callback
 
-**File: `src/components/FlightCard.tsx`**
+**File: `src/components/SkyIframeBackground.tsx`**
 
-When `theme.isGradient && theme.gradientColors`, apply CSS gradient text to ALL text elements:
-```tsx
-const gradientTextStyle = theme.gradientColors ? {
-  background: `linear-gradient(to bottom, ${theme.gradientColors[0]}, ${theme.gradientColors[1]}, ${theme.gradientColors[2]})`,
-  WebkitBackgroundClip: 'text',
-  WebkitTextFillColor: 'transparent',
-  backgroundClip: 'text',
-} : { color: theme.textColor };
-```
-
-Apply this style to: flight ID, origin, status badge, time, SCH/EST labels, countdown text.
+- Add `onLoad?: () => void` prop
+- Attach `onLoad` handler to the iframe element
+- Parent (Index.tsx) passes callback to set `iframeLoaded = true`
 
 ---
 
@@ -183,12 +185,14 @@ Apply this style to: flight ID, origin, status badge, time, SCH/EST labels, coun
 
 | File | Changes |
 |------|---------|
-| `src/components/NewHeader.tsx` | Logo click toggles menu pill |
-| `src/components/FlightCard.tsx` | Same-row flight ID + bold origin; 2-row airline name; gradient text; status animations; card visual sliders applied |
-| `src/components/TerminalGroup.tsx` | Add "Full" filter option |
-| `src/pages/Index.tsx` | Pass full unfiltered flights to TerminalGroup |
-| `src/components/SettingsModal.tsx` | Card visual sliders replace filters; text sliders replace color shift; new glass presets grid |
-| `src/contexts/SettingsContext.tsx` | Replace 22 glass presets with 12; add card/text visual adjustment settings; remove colorShift |
-| `src/index.css` | Status pulse/shimmer/sweep keyframes |
-| `src/lib/cardStyles.ts` | No changes needed |
-
+| `src/components/NewHeader.tsx` | Fix weather text alignment, replace absolute positioning with conditional rendering |
+| `src/components/SettingsModal.tsx` | Fix IntersectionObserver root for font preview, find ScrollArea viewport |
+| `src/components/FlightCard.tsx` | Remove competing subscription logic, standardize on flightId text key |
+| `src/pages/Index.tsx` | Simplify handleToggleNotification, fix loadUserSubscriptions, add splash state |
+| `src/components/TerminalGroup.tsx` | Check `notificationIds.has(flight.flightId)` instead of `flight.id` |
+| `src/components/NotificationsModal.tsx` | Show real flight details (origin, times, status) |
+| `src/components/LoadingSpinner.tsx` | Already uses loading.gif -- just need to replace the asset file |
+| `src/components/SplashScreen.tsx` | **New** -- splash overlay with glass blur reveal animation |
+| `src/components/SkyIframeBackground.tsx` | Add onLoad callback prop |
+| `src/index.css` | Add glass-gradient-blur class for 3-tier brightness gradient |
+| Asset copies | Copy uploaded GIFs to src/assets/loading.gif and src/assets/splash-logo.gif |

@@ -53,8 +53,12 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     settings, availableFonts, setFontFamily, setFontSize, setTextCase,
     setBlurLevel, setGlassOpacity, setIframeBrightness,
     setSaturation, setContrast, setShadows, setHighlights, setHueShift,
-    setGlassPreset, setBoldText, setColorShift, setDualGlass, setDualGlassStyle1,
-    setDualGlassStyle2, setCardStyle, setHideCancelled, setHideLanded,
+    setGlassPreset, setBoldText, setDualGlass, setDualGlassStyle1,
+    setDualGlassStyle2, setCardStyle,
+    setCardLogoBrightness, setCardLogoContrast, setCardLogoSaturation, setCardLogoHueShift,
+    setCardTextBrightness, setCardTextSaturation,
+    setTextBrightness, setTextContrast, setTextSaturation, setTextHueShift,
+    setTextShadowX, setTextShadowY, setTextShadowBlur, setTextShadowOpacity,
     setNotification, updateProfile, updatePassword, deleteAccount,
     resetSetting,
   } = useSettings();
@@ -96,7 +100,6 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     return () => { if (titleTimeoutRef.current) clearTimeout(titleTimeoutRef.current); };
   }, [activeTab]);
 
-  // Check admin email
   useEffect(() => {
     const checkAdmin = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -105,7 +108,6 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     if (isOpen) checkAdmin();
   }, [isOpen]);
 
-  // Auto-scroll to selected font
   useEffect(() => {
     if (activeTab !== 'texts' || !isOpen) return;
     const timer = setTimeout(() => {
@@ -115,7 +117,6 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     return () => clearTimeout(timer);
   }, [activeTab, isOpen, settings.fontFamily]);
 
-  // IntersectionObserver for lazy font loading
   useEffect(() => {
     if (activeTab !== 'texts' || !isOpen) return;
     if (fontObserverRef.current) fontObserverRef.current.disconnect();
@@ -156,7 +157,6 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     };
   }, [activeTab, isOpen]);
 
-  // Load user profile
   useEffect(() => {
     const loadProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -357,12 +357,26 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">
-                  Color Shift: {settings.colorShift > 0 ? '+' : ''}{settings.colorShift}
-                </label>
-                <Slider value={[settings.colorShift]} onValueChange={([val]) => setColorShift(val)} min={-100} max={100} step={5} className="w-full" />
-                <p className="text-[10px] text-muted-foreground mt-1">Shifts text brightness darker or lighter</p>
+              {/* Text Visual Adjustments */}
+              <div className="space-y-3 pt-2 border-t border-white/10">
+                <label className="text-xs text-muted-foreground uppercase tracking-wide block">Text Adjustments</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <MiniSlider label="Brightness" value={settings.textBrightness} defaultValue={100} min={0} max={200} step={5} onChange={setTextBrightness} onReset={() => resetSetting('textBrightness')} suffix="%" />
+                  <MiniSlider label="Contrast" value={settings.textContrast} defaultValue={100} min={50} max={200} step={5} onChange={setTextContrast} onReset={() => resetSetting('textContrast')} suffix="%" />
+                  <MiniSlider label="Saturation" value={settings.textSaturation} defaultValue={100} min={0} max={200} step={5} onChange={setTextSaturation} onReset={() => resetSetting('textSaturation')} suffix="%" />
+                  <MiniSlider label="Hue Shift" value={settings.textHueShift} defaultValue={0} min={0} max={360} step={10} onChange={setTextHueShift} onReset={() => resetSetting('textHueShift')} suffix="°" />
+                </div>
+              </div>
+
+              {/* Drop Shadow Sliders */}
+              <div className="space-y-3 pt-2 border-t border-white/10">
+                <label className="text-xs text-muted-foreground uppercase tracking-wide block">Drop Shadow</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <MiniSlider label="Shadow X" value={settings.textShadowX} defaultValue={0} min={-10} max={10} step={1} onChange={setTextShadowX} onReset={() => resetSetting('textShadowX')} suffix="px" />
+                  <MiniSlider label="Shadow Y" value={settings.textShadowY} defaultValue={1} min={-10} max={10} step={1} onChange={setTextShadowY} onReset={() => resetSetting('textShadowY')} suffix="px" />
+                  <MiniSlider label="Shadow Blur" value={settings.textShadowBlur} defaultValue={3} min={0} max={20} step={1} onChange={setTextShadowBlur} onReset={() => resetSetting('textShadowBlur')} suffix="px" />
+                  <MiniSlider label="Shadow Opacity" value={settings.textShadowOpacity} defaultValue={50} min={0} max={100} step={5} onChange={setTextShadowOpacity} onReset={() => resetSetting('textShadowOpacity')} suffix="%" />
+                </div>
               </div>
             </div>
           )}
@@ -475,25 +489,23 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                 ))}
               </div>
 
-              {/* Flight Filters */}
+              {/* Card Visual Adjustments */}
               <div className="space-y-3 pt-2 border-t border-white/10">
-                <label className="text-xs text-muted-foreground uppercase tracking-wide block">Flight Filters</label>
-                <button
-                  onClick={() => setHideCancelled(!settings.hideCancelled)}
-                  className={cn("w-full flex items-center justify-between p-3 rounded-lg transition-colors",
-                    !settings.hideCancelled ? "active-selection" : "glass hover:bg-white/10")}
-                >
-                  <span className="text-sm">Show Cancelled Flights</span>
-                  <LiveBlurToggle checked={!settings.hideCancelled} onChange={() => setHideCancelled(!settings.hideCancelled)} />
-                </button>
-                <button
-                  onClick={() => setHideLanded(!settings.hideLanded)}
-                  className={cn("w-full flex items-center justify-between p-3 rounded-lg transition-colors",
-                    !settings.hideLanded ? "active-selection" : "glass hover:bg-white/10")}
-                >
-                  <span className="text-sm">Show Landed Flights</span>
-                  <LiveBlurToggle checked={!settings.hideLanded} onChange={() => setHideLanded(!settings.hideLanded)} />
-                </button>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide block">Logo Adjustments</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <MiniSlider label="Brightness" value={settings.cardLogoBrightness} defaultValue={100} min={0} max={200} step={5} onChange={setCardLogoBrightness} onReset={() => resetSetting('cardLogoBrightness')} suffix="%" />
+                  <MiniSlider label="Contrast" value={settings.cardLogoContrast} defaultValue={100} min={50} max={200} step={5} onChange={setCardLogoContrast} onReset={() => resetSetting('cardLogoContrast')} suffix="%" />
+                  <MiniSlider label="Saturation" value={settings.cardLogoSaturation} defaultValue={100} min={0} max={200} step={5} onChange={setCardLogoSaturation} onReset={() => resetSetting('cardLogoSaturation')} suffix="%" />
+                  <MiniSlider label="Hue Shift" value={settings.cardLogoHueShift} defaultValue={0} min={0} max={360} step={10} onChange={setCardLogoHueShift} onReset={() => resetSetting('cardLogoHueShift')} suffix="°" />
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-2 border-t border-white/10">
+                <label className="text-xs text-muted-foreground uppercase tracking-wide block">Card Text Adjustments</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <MiniSlider label="Brightness" value={settings.cardTextBrightness} defaultValue={100} min={0} max={200} step={5} onChange={setCardTextBrightness} onReset={() => resetSetting('cardTextBrightness')} suffix="%" />
+                  <MiniSlider label="Saturation" value={settings.cardTextSaturation} defaultValue={100} min={0} max={200} step={5} onChange={setCardTextSaturation} onReset={() => resetSetting('cardTextSaturation')} suffix="%" />
+                </div>
               </div>
             </div>
           )}

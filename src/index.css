@@ -549,9 +549,43 @@
     100% { transform: scale(1); opacity: 1; }
   }
 
-  /* Adaptive drop shadows for text */
+  /* Adaptive drop shadows for text - uses custom properties from settings */
   .adaptive-shadow {
-    text-shadow: 0 1px 3px rgba(0, 0, 0, var(--shadow-opacity, 0.5)), 0 2px 6px rgba(0, 0, 0, calc(var(--shadow-opacity, 0.5) * 0.6));
+    text-shadow: var(--text-shadow-x, 0px) var(--text-shadow-y, 1px) var(--text-shadow-blur, 3px) rgba(0, 0, 0, var(--text-shadow-opacity, 0.5));
+    filter: brightness(var(--text-brightness, 100%)) contrast(var(--text-contrast, 100%)) saturate(var(--text-saturation, 100%)) hue-rotate(var(--text-hue-shift, 0deg));
+  }
+
+  /* Status color animations on flight cards */
+  .status-pulse-anim {
+    animation: status-pulse 3s ease-in-out infinite;
+  }
+  @keyframes status-pulse {
+    0%, 100% { box-shadow: inherit; }
+    50% { filter: brightness(1.08); }
+  }
+
+  .status-glass-shimmer {
+    background-size: 200% 100%;
+    animation: status-glass-shimmer 4s ease-in-out infinite;
+  }
+  @keyframes status-glass-shimmer {
+    0%, 100% { background-position: -200% 0; }
+    50% { background-position: 200% 0; }
+  }
+
+  .status-gradient-sweep {
+    background-size: 200% 200%;
+    animation: status-gradient-sweep 5s ease-in-out infinite;
+  }
+  @keyframes status-gradient-sweep {
+    0% { background-position: 0% 0%; }
+    50% { background-position: 100% 100%; }
+    100% { background-position: 0% 0%; }
+  }
+
+  .status-combined-anim {
+    background-size: 200% 200%;
+    animation: status-glass-shimmer 4s ease-in-out infinite, status-pulse 3s ease-in-out infinite;
   }
 
   /* Adaptive drop shadow for icons */
@@ -560,7 +594,7 @@
   }
   }
 
-  /* ======= GLASS PRESET UNIQUE ANIMATIONS ======= */
+  /* ======= GLASS PRESET UNIQUE ANIMATIONS (12 presets) ======= */
   @keyframes glass-frosted-shimmer {
     0%, 100% { background-position: -200% 0; }
     50% { background-position: 200% 0; }
@@ -585,137 +619,69 @@
   }
   .glass-prismatic-rotate { animation: glass-prismatic-rotate 8s linear infinite; }
 
-  @keyframes glass-stained-pulse {
-    0%, 100% { box-shadow: inset 0 0 30px rgba(255,180,50,0.05); }
-    50% { box-shadow: inset 0 0 60px rgba(255,180,50,0.12); }
+  /* Faceted Glass - multi-face reflections */
+  @keyframes glass-faceted-reflect {
+    0%, 100% { box-shadow: inset 0 0 20px rgba(150,200,255,0.05), inset 5px -5px 15px rgba(255,255,255,0.03); }
+    33% { box-shadow: inset -5px 5px 20px rgba(200,150,255,0.08), inset 0 0 10px rgba(255,255,255,0.04); }
+    66% { box-shadow: inset 5px 5px 20px rgba(150,255,200,0.06), inset -5px -5px 15px rgba(255,255,255,0.03); }
   }
-  .glass-stained-pulse { animation: glass-stained-pulse 5s ease-in-out infinite; }
+  .glass-faceted-reflect { animation: glass-faceted-reflect 5s ease-in-out infinite; }
 
-  @keyframes glass-polarized-glitch {
-    0%, 95%, 100% { opacity: 1; }
-    96% { opacity: 0.7; transform: translateX(1px); }
-    97% { opacity: 1; transform: translateX(-1px); }
-    98% { opacity: 0.8; }
+  /* Metallic - chrome sweep */
+  @keyframes glass-metallic-sweep {
+    0%, 100% { background-position: -200% 0; }
+    50% { background-position: 200% 0; }
   }
-  .glass-polarized-glitch { animation: glass-polarized-glitch 8s ease infinite; filter: contrast(1.2); }
+  .glass-metallic-sweep {
+    background-image: linear-gradient(90deg, transparent 40%, rgba(255,255,255,0.1) 45%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.1) 55%, transparent 60%);
+    background-size: 200% 100%;
+    animation: glass-metallic-sweep 4s ease-in-out infinite;
+    filter: contrast(1.1) brightness(1.05);
+  }
 
+  /* Beveled Solid - hard edge press */
+  @keyframes glass-beveled-press {
+    0% { box-shadow: inset 2px 2px 4px rgba(255,255,255,0.15), inset -2px -2px 4px rgba(0,0,0,0.3); }
+    100% { box-shadow: inset 3px 3px 6px rgba(255,255,255,0.12), inset -3px -3px 6px rgba(0,0,0,0.35); }
+  }
+  .glass-beveled-press {
+    animation: glass-beveled-press 0.3s ease-out forwards;
+    box-shadow: inset 3px 3px 6px rgba(255,255,255,0.12), inset -3px -3px 6px rgba(0,0,0,0.35);
+  }
+
+  /* iOS Liquid Glass */
   @keyframes glass-ios-vibrancy {
     0% { transform: scale(0.98); opacity: 0.8; }
     100% { transform: scale(1); opacity: 1; }
   }
   .glass-ios-vibrancy { animation: glass-ios-vibrancy 0.4s ease-out forwards; filter: saturate(1.8); }
 
+  /* Windows Aero */
   .glass-aero-sweep { position: relative; overflow: hidden; }
   .glass-aero-sweep::after {
     content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-    background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.04) 50%, transparent 60%);
+    background: linear-gradient(45deg, transparent 40%, rgba(100,180,255,0.06) 50%, transparent 60%);
     animation: glass-shine 6s ease-in-out infinite; pointer-events: none;
   }
 
-  @keyframes glass-vista-wobble {
-    0%, 100% { transform: perspective(500px) rotateY(0deg); }
-    50% { transform: perspective(500px) rotateY(0.3deg); }
+  /* Android Material - elevation ripple */
+  @keyframes glass-material-ripple {
+    0%, 100% { box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    50% { box-shadow: 0 4px 16px rgba(0,0,0,0.25), 0 0 20px rgba(100,150,255,0.05); }
   }
-  .glass-vista-wobble { animation: glass-vista-wobble 7s ease-in-out infinite; filter: brightness(1.1); }
+  .glass-material-ripple { animation: glass-material-ripple 3s ease-in-out infinite; }
 
-  .glass-windows-noise { position: relative; }
-  .glass-windows-noise::before {
-    content: ''; position: absolute; inset: 0; opacity: 0.03;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-    pointer-events: none; border-radius: inherit;
-  }
-
-  @keyframes glass-linux-blink {
-    0%, 49% { border-color: rgba(0,255,0,0.15); }
-    50%, 100% { border-color: rgba(0,255,0,0.03); }
-  }
-  .glass-linux-blink { animation: glass-linux-blink 1.2s step-end infinite; }
-
-  @keyframes glass-mac-fadein {
-    0% { opacity: 0.5; filter: saturate(0.5); }
-    100% { opacity: 1; filter: saturate(1.3); }
-  }
-  .glass-mac-fadein { animation: glass-mac-fadein 0.6s ease-out forwards; }
-
-  @keyframes glass-ubuntu-glow {
-    0%, 100% { box-shadow: 0 0 8px rgba(233,84,32,0.1); }
-    50% { box-shadow: 0 0 20px rgba(233,84,32,0.2); }
-  }
-  .glass-ubuntu-glow { animation: glass-ubuntu-glow 4s ease-in-out infinite; }
-
-  @keyframes glass-nintendo-bounce {
-    0%, 100% { transform: translateY(0); }
-    30% { transform: translateY(-2px); }
-    60% { transform: translateY(1px); }
-  }
-  .glass-nintendo-bounce { animation: glass-nintendo-bounce 3s ease-in-out infinite; }
-
-  @keyframes glass-ps-pulse {
-    0%, 100% { box-shadow: inset 0 0 20px rgba(0,55,145,0.05); }
-    50% { box-shadow: inset 0 0 40px rgba(0,55,145,0.15); }
-  }
-  .glass-ps-pulse { animation: glass-ps-pulse 5s ease-in-out infinite; }
-
-  @keyframes glass-xbox-matrix {
-    0% { background-position: 0 0; }
-    100% { background-position: 0 -100px; }
-  }
-  .glass-xbox-matrix {
-    background-image: linear-gradient(0deg, transparent 0%, rgba(16,124,16,0.03) 50%, transparent 100%);
-    background-size: 100% 50px;
-    animation: glass-xbox-matrix 3s linear infinite;
-  }
-
-  @keyframes glass-rog-slash {
-    0%, 100% { background-position: -200% 0; }
-    50% { background-position: 200% 0; }
-  }
-  .glass-rog-slash {
-    background-image: linear-gradient(135deg, transparent 45%, rgba(255,0,0,0.06) 50%, transparent 55%);
-    background-size: 200% 100%;
-    animation: glass-rog-slash 4s ease-in-out infinite;
-  }
-
-  @keyframes glass-nokia-pixel {
+  /* Retro Pixelated - pixel grid overlay */
+  @keyframes glass-retro-pixel {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.92; }
   }
-  .glass-nokia-pixel { animation: glass-nokia-pixel 2s step-end infinite; }
-
-  @keyframes glass-samsung-gradient {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-  .glass-samsung-gradient {
-    background: linear-gradient(135deg, rgba(0,100,200,0.04), rgba(100,0,200,0.04), rgba(0,100,200,0.04));
-    background-size: 200% 200%;
-    animation: glass-samsung-gradient 8s ease infinite;
-  }
-
-  @keyframes glass-iphone-island {
-    0% { border-radius: 1rem; }
-    50% { border-radius: 1.5rem; }
-    100% { border-radius: 1rem; }
-  }
-  .glass-iphone-island { animation: glass-iphone-island 4s ease-in-out infinite; filter: saturate(1.8); }
-
-  .glass-bb-matte { filter: contrast(1.05) brightness(0.95); }
-
-  @keyframes glass-rpi-circuit {
-    0%, 100% { box-shadow: inset 0 0 15px rgba(196,17,73,0.05); }
-    50% { box-shadow: inset 0 0 30px rgba(196,17,73,0.12); }
-  }
-  .glass-rpi-circuit { animation: glass-rpi-circuit 5s ease-in-out infinite; }
-
-  @keyframes glass-steam-vapor {
-    0% { background-position: 0 0; }
-    100% { background-position: 100px 50px; }
-  }
-  .glass-steam-vapor {
-    background-image: linear-gradient(135deg, rgba(30,30,30,0.05) 25%, transparent 25%, transparent 50%, rgba(30,30,30,0.05) 50%, rgba(30,30,30,0.05) 75%, transparent 75%);
-    background-size: 40px 40px;
-    animation: glass-steam-vapor 10s linear infinite;
+  .glass-retro-pixel {
+    animation: glass-retro-pixel 2s step-end infinite;
+    background-image: 
+      linear-gradient(0deg, transparent 0%, transparent 49%, rgba(0,255,0,0.02) 50%, transparent 51%, transparent 100%),
+      linear-gradient(90deg, transparent 0%, transparent 49%, rgba(0,255,0,0.02) 50%, transparent 51%, transparent 100%);
+    background-size: 4px 4px;
   }
 
   /* ======= GRADIENT LIVE BLUR ======= */

@@ -329,7 +329,7 @@ const NewHeader = ({
             isScrolled ? "scale-[0.7] -my-2" : ""
           )}>
             <button
-              onClick={onInstallPWA}
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="transition-transform hover:scale-105 active:scale-95"
             >
               <img 

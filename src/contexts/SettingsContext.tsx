@@ -45,34 +45,24 @@ const AVAILABLE_FONTS = [
   'Noto Sans KR', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans Arabic',
 ];
 
-// Glass Presets - OS/design-inspired with unique tint/animation/saturate
+// Glass Presets - 12 visually unique styles
 export interface GlassPreset {
   blur: number; opacity: number; label: string; description: string;
   tint: string; animation: string; saturateBoost: number;
 }
 export const GLASS_PRESETS: Record<string, GlassPreset> = {
-  'frosted':    { blur: 20, opacity: 0.08, label: 'Frosted',    description: 'Shimmer frost',        tint: 'white',      animation: 'glass-frosted-shimmer',    saturateBoost: 1.1 },
-  'liquid':     { blur: 35, opacity: 0.05, label: 'Liquid',     description: 'Ripple distortion',     tint: 'none',       animation: 'glass-liquid-ripple',      saturateBoost: 1.4 },
-  'prismatic':  { blur: 12, opacity: 0.06, label: 'Prismatic',  description: 'Rainbow border',        tint: 'rainbow',    animation: 'glass-prismatic-rotate',   saturateBoost: 1.0 },
-  'stained':    { blur: 18, opacity: 0.15, label: 'Stained',    description: 'Warm amber pulse',      tint: 'amber',      animation: 'glass-stained-pulse',      saturateBoost: 1.0 },
-  'polarized':  { blur: 25, opacity: 0.10, label: 'Polarized',  description: 'Glitch flash',          tint: 'cold-blue',  animation: 'glass-polarized-glitch',   saturateBoost: 1.2 },
-  'ios':        { blur: 25, opacity: 0.08, label: 'iOS',        description: 'Vibrancy bounce',       tint: 'none',       animation: 'glass-ios-vibrancy',       saturateBoost: 1.8 },
-  'aero':       { blur: 14, opacity: 0.20, label: 'Aero',       description: 'Glass reflection',      tint: 'blue-tint',  animation: 'glass-aero-sweep',         saturateBoost: 1.0 },
-  'vista':      { blur: 8,  opacity: 0.25, label: 'Vista',      description: 'Thick glass wobble',    tint: 'green-tint', animation: 'glass-vista-wobble',       saturateBoost: 1.1 },
-  'windows':    { blur: 18, opacity: 0.12, label: 'Windows',    description: 'Acrylic noise',         tint: 'noise',      animation: 'glass-windows-noise',      saturateBoost: 1.0 },
-  'linux':      { blur: 4,  opacity: 0.04, label: 'Linux',      description: 'Terminal blink',        tint: 'none',       animation: 'glass-linux-blink',        saturateBoost: 1.0 },
-  'mac':        { blur: 22, opacity: 0.07, label: 'Mac',        description: 'Warm vibrancy',         tint: 'warm',       animation: 'glass-mac-fadein',         saturateBoost: 1.3 },
-  'ubuntu':     { blur: 10, opacity: 0.18, label: 'Ubuntu',     description: 'Orange glow pulse',     tint: 'orange',     animation: 'glass-ubuntu-glow',        saturateBoost: 1.0 },
-  'nintendo':   { blur: 16, opacity: 0.10, label: 'Nintendo',   description: 'Playful bounce',        tint: 'red',        animation: 'glass-nintendo-bounce',    saturateBoost: 1.2 },
-  'playstation':{ blur: 20, opacity: 0.09, label: 'PlayStation',description: 'Blue pulse wave',       tint: 'deep-blue',  animation: 'glass-ps-pulse',           saturateBoost: 1.3 },
-  'xbox':       { blur: 15, opacity: 0.11, label: 'Xbox',       description: 'Green matrix rain',     tint: 'green',      animation: 'glass-xbox-matrix',        saturateBoost: 1.2 },
-  'rog':        { blur: 22, opacity: 0.07, label: 'ROG',        description: 'Red slash sweep',       tint: 'red-dark',   animation: 'glass-rog-slash',          saturateBoost: 1.4 },
-  'nokia':      { blur: 6,  opacity: 0.20, label: 'Nokia',      description: 'Retro pixel fade',      tint: 'blue-retro', animation: 'glass-nokia-pixel',        saturateBoost: 1.0 },
-  'samsung':    { blur: 24, opacity: 0.06, label: 'Samsung',    description: 'One UI gradient',       tint: 'blue-light', animation: 'glass-samsung-gradient',   saturateBoost: 1.5 },
-  'iphone':     { blur: 28, opacity: 0.07, label: 'iPhone',     description: 'Dynamic Island pop',    tint: 'none',       animation: 'glass-iphone-island',      saturateBoost: 1.8 },
-  'blackberry': { blur: 10, opacity: 0.22, label: 'BlackBerry', description: 'Corporate matte',       tint: 'dark',       animation: 'glass-bb-matte',           saturateBoost: 1.0 },
-  'raspberry':  { blur: 12, opacity: 0.14, label: 'Raspberry',  description: 'Pi circuit glow',       tint: 'raspberry',  animation: 'glass-rpi-circuit',        saturateBoost: 1.1 },
-  'steam':      { blur: 18, opacity: 0.10, label: 'Steam',      description: 'Dark vapor drift',      tint: 'steam-dark', animation: 'glass-steam-vapor',        saturateBoost: 1.2 },
+  'frosted':      { blur: 20, opacity: 0.08, label: 'Frosted Glass',       description: 'White frost shimmer',       tint: 'white',      animation: 'glass-frosted-shimmer',    saturateBoost: 1.1 },
+  'liquid':       { blur: 35, opacity: 0.05, label: 'Liquid Glass',        description: 'Ripple distortion',         tint: 'none',       animation: 'glass-liquid-ripple',      saturateBoost: 1.4 },
+  'prismatic':    { blur: 12, opacity: 0.06, label: 'Faceted Prismatic',   description: 'Rainbow border rotation',   tint: 'rainbow',    animation: 'glass-prismatic-rotate',   saturateBoost: 1.0 },
+  'faceted':      { blur: 16, opacity: 0.10, label: 'Faceted Glass',       description: 'Multi-face reflections',    tint: 'cold-blue',  animation: 'glass-faceted-reflect',    saturateBoost: 1.2 },
+  'metallic':     { blur: 8,  opacity: 0.14, label: 'Metallic',            description: 'Chrome reflection sweep',   tint: 'silver',     animation: 'glass-metallic-sweep',     saturateBoost: 0.8 },
+  'beveled':      { blur: 4,  opacity: 0.22, label: 'Beveled Solid',       description: 'Hard-edge bevel shadow',    tint: 'dark',       animation: 'glass-beveled-press',      saturateBoost: 1.0 },
+  'ios-liquid':   { blur: 28, opacity: 0.07, label: 'iOS Liquid Glass',    description: 'High vibrancy bounce',      tint: 'none',       animation: 'glass-ios-vibrancy',       saturateBoost: 1.8 },
+  'aero':         { blur: 14, opacity: 0.20, label: 'Windows Aero',        description: 'Blue-tint glass sweep',     tint: 'blue-tint',  animation: 'glass-aero-sweep',         saturateBoost: 1.0 },
+  'material':     { blur: 18, opacity: 0.09, label: 'Android Material',    description: 'Material elevation ripple', tint: 'none',       animation: 'glass-material-ripple',    saturateBoost: 1.3 },
+  'opaque':       { blur: 0,  opacity: 0.35, label: 'Opaque',              description: 'Solid frosted background',  tint: 'dark',       animation: '',                         saturateBoost: 1.0 },
+  'retro':        { blur: 2,  opacity: 0.18, label: 'Retro Pixelated',     description: 'Pixel-grid overlay',        tint: 'green-retro',animation: 'glass-retro-pixel',        saturateBoost: 1.0 },
+  'clear':        { blur: 0,  opacity: 0.0,  label: 'Clear',               description: 'Fully transparent',         tint: 'none',       animation: '',                         saturateBoost: 1.0 },
 };
 
 interface SettingsState {
@@ -91,13 +81,28 @@ interface SettingsState {
   hueShift: number;
   glassPreset: string;
   boldText: boolean;
-  colorShift: number;
   dualGlass: boolean;
   dualGlassStyle1: string;
   dualGlassStyle2: string;
   cardStyle: string;
   hideCancelled: boolean;
   hideLanded: boolean;
+  // Card visual adjustments
+  cardLogoBrightness: number;
+  cardLogoContrast: number;
+  cardLogoSaturation: number;
+  cardLogoHueShift: number;
+  cardTextBrightness: number;
+  cardTextSaturation: number;
+  // Text visual adjustments
+  textBrightness: number;
+  textContrast: number;
+  textSaturation: number;
+  textHueShift: number;
+  textShadowX: number;
+  textShadowY: number;
+  textShadowBlur: number;
+  textShadowOpacity: number;
   notifications: {
     sms: boolean;
     email: boolean;
@@ -122,13 +127,26 @@ interface SettingsContextType {
   setHueShift: (value: number) => void;
   setGlassPreset: (preset: string) => void;
   setBoldText: (enabled: boolean) => void;
-  setColorShift: (value: number) => void;
   setDualGlass: (enabled: boolean) => void;
   setDualGlassStyle1: (preset: string) => void;
   setDualGlassStyle2: (preset: string) => void;
   setCardStyle: (style: string) => void;
   setHideCancelled: (hide: boolean) => void;
   setHideLanded: (hide: boolean) => void;
+  setCardLogoBrightness: (v: number) => void;
+  setCardLogoContrast: (v: number) => void;
+  setCardLogoSaturation: (v: number) => void;
+  setCardLogoHueShift: (v: number) => void;
+  setCardTextBrightness: (v: number) => void;
+  setCardTextSaturation: (v: number) => void;
+  setTextBrightness: (v: number) => void;
+  setTextContrast: (v: number) => void;
+  setTextSaturation: (v: number) => void;
+  setTextHueShift: (v: number) => void;
+  setTextShadowX: (v: number) => void;
+  setTextShadowY: (v: number) => void;
+  setTextShadowBlur: (v: number) => void;
+  setTextShadowOpacity: (v: number) => void;
   toggleTimeFormat: () => void;
   toggleTemperatureUnit: () => void;
   setNotification: (key: keyof SettingsState['notifications'], value: boolean) => void;
@@ -154,13 +172,26 @@ const defaultSettings: SettingsState = {
   hueShift: 0,
   glassPreset: 'frosted',
   boldText: false,
-  colorShift: 0,
   dualGlass: false,
   dualGlassStyle1: 'frosted',
-  dualGlassStyle2: 'ios',
+  dualGlassStyle2: 'ios-liquid',
   cardStyle: 'plain-main',
   hideCancelled: false,
   hideLanded: false,
+  cardLogoBrightness: 100,
+  cardLogoContrast: 100,
+  cardLogoSaturation: 100,
+  cardLogoHueShift: 0,
+  cardTextBrightness: 100,
+  cardTextSaturation: 100,
+  textBrightness: 100,
+  textContrast: 100,
+  textSaturation: 100,
+  textHueShift: 0,
+  textShadowX: 0,
+  textShadowY: 1,
+  textShadowBlur: 3,
+  textShadowOpacity: 50,
   notifications: {
     sms: false,
     email: false,
@@ -172,27 +203,31 @@ const defaultSettings: SettingsState = {
 // Migrate old settings
 const migrateSettings = (saved: any): SettingsState => {
   const migrated = { ...defaultSettings, ...saved };
-  // Migrate monochrome → saturation
   if ('monochrome' in saved && !('saturation' in saved)) {
     if (saved.monochrome && saved.monochromeIntensity !== undefined) {
       migrated.saturation = Math.max(0, 100 - saved.monochromeIntensity);
     }
   }
-  if ('monoContrast' in saved && !('contrast' in saved)) {
-    migrated.contrast = saved.monoContrast;
-  }
-  if ('monoShadows' in saved && !('shadows' in saved)) {
-    migrated.shadows = saved.monoShadows;
-  }
-  if ('monoHighlights' in saved && !('highlights' in saved)) {
-    migrated.highlights = saved.monoHighlights;
-  }
-  // Remove old keys
+  if ('monoContrast' in saved && !('contrast' in saved)) migrated.contrast = saved.monoContrast;
+  if ('monoShadows' in saved && !('shadows' in saved)) migrated.shadows = saved.monoShadows;
+  if ('monoHighlights' in saved && !('highlights' in saved)) migrated.highlights = saved.monoHighlights;
+  // Migrate colorShift removal
+  delete migrated.colorShift;
   delete migrated.monochrome;
   delete migrated.monochromeIntensity;
   delete migrated.monoContrast;
   delete migrated.monoShadows;
   delete migrated.monoHighlights;
+  // Migrate old glass preset keys to new ones
+  if (migrated.glassPreset && !GLASS_PRESETS[migrated.glassPreset]) {
+    migrated.glassPreset = 'frosted';
+  }
+  if (migrated.dualGlassStyle1 && !GLASS_PRESETS[migrated.dualGlassStyle1]) {
+    migrated.dualGlassStyle1 = 'frosted';
+  }
+  if (migrated.dualGlassStyle2 && !GLASS_PRESETS[migrated.dualGlassStyle2]) {
+    migrated.dualGlassStyle2 = 'ios-liquid';
+  }
   return migrated;
 };
 
@@ -200,9 +235,7 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 export const useSettings = () => {
   const context = useContext(SettingsContext);
-  if (!context) {
-    throw new Error('useSettings must be used within a SettingsProvider');
-  }
+  if (!context) throw new Error('useSettings must be used within a SettingsProvider');
   return context;
 };
 
@@ -215,7 +248,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     localStorage.setItem('arriva-settings', JSON.stringify(settings));
     
-    // Compute effective blur/opacity (dual glass blending)
     let effectiveBlur = settings.blurLevel;
     let effectiveOpacity = settings.glassOpacity;
 
@@ -230,7 +262,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
     const currentPreset = GLASS_PRESETS[settings.glassPreset];
 
-    // Apply font globally
     const fontFamily = `'${settings.fontFamily}', sans-serif`;
     
     document.documentElement.style.setProperty('--font-body', fontFamily);
@@ -238,7 +269,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     document.documentElement.style.fontFamily = fontFamily;
     document.body.style.fontFamily = fontFamily;
     
-    // Apply text case
     let textTransform: string;
     switch (settings.textCase) {
       case 'uppercase': textTransform = 'uppercase'; break;
@@ -248,18 +278,24 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     document.documentElement.style.setProperty('--text-case', textTransform);
     document.body.style.textTransform = textTransform;
     
-    // Apply blur and glass settings
     document.documentElement.style.setProperty('--glass-blur', `${effectiveBlur}px`);
     document.documentElement.style.setProperty('--glass-opacity', `${effectiveOpacity}`);
     document.documentElement.style.setProperty('--iframe-brightness', `${settings.iframeBrightness}%`);
     document.documentElement.style.setProperty('--font-weight', settings.boldText ? '700' : '400');
-    document.documentElement.style.setProperty('--color-shift', `${settings.colorShift}`);
     
-    // Compute adaptive shadow opacity from brightness
     const shadowOpacity = Math.max(0.2, Math.min(0.8, settings.iframeBrightness / 150));
     document.documentElement.style.setProperty('--shadow-opacity', `${shadowOpacity.toFixed(2)}`);
+
+    // Text visual adjustments as CSS custom properties
+    document.documentElement.style.setProperty('--text-brightness', `${settings.textBrightness}%`);
+    document.documentElement.style.setProperty('--text-contrast', `${settings.textContrast}%`);
+    document.documentElement.style.setProperty('--text-saturation', `${settings.textSaturation}%`);
+    document.documentElement.style.setProperty('--text-hue-shift', `${settings.textHueShift}deg`);
+    document.documentElement.style.setProperty('--text-shadow-x', `${settings.textShadowX}px`);
+    document.documentElement.style.setProperty('--text-shadow-y', `${settings.textShadowY}px`);
+    document.documentElement.style.setProperty('--text-shadow-blur', `${settings.textShadowBlur}px`);
+    document.documentElement.style.setProperty('--text-shadow-opacity', `${(settings.textShadowOpacity / 100).toFixed(2)}`);
     
-    // Inject comprehensive global styles
     let globalStyle = document.getElementById('global-font-style');
     if (!globalStyle) {
       globalStyle = document.createElement('style');
@@ -321,18 +357,13 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         ${currentPreset.animation === 'glass-frosted-shimmer' ? 'background-image: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 75%, transparent 100%); background-size: 200% 100%; animation: glass-frosted-shimmer 6s ease-in-out infinite;' : ''}
         ${currentPreset.animation === 'glass-liquid-ripple' ? 'animation: glass-liquid-ripple 4s ease-in-out infinite;' : ''}
         ${currentPreset.animation === 'glass-prismatic-rotate' ? 'animation: glass-prismatic-rotate 8s linear infinite;' : ''}
-        ${currentPreset.animation === 'glass-stained-pulse' ? 'animation: glass-stained-pulse 5s ease-in-out infinite;' : ''}
-        ${currentPreset.animation === 'glass-polarized-glitch' ? 'animation: glass-polarized-glitch 8s ease infinite; filter: contrast(1.2);' : ''}
+        ${currentPreset.animation === 'glass-faceted-reflect' ? 'animation: glass-faceted-reflect 5s ease-in-out infinite;' : ''}
+        ${currentPreset.animation === 'glass-metallic-sweep' ? 'background-image: linear-gradient(90deg, transparent 40%, rgba(255,255,255,0.08) 50%, transparent 60%); background-size: 200% 100%; animation: glass-metallic-sweep 4s ease-in-out infinite;' : ''}
+        ${currentPreset.animation === 'glass-beveled-press' ? 'animation: glass-beveled-press 0.3s ease-out forwards;' : ''}
         ${currentPreset.animation === 'glass-ios-vibrancy' ? 'animation: glass-ios-vibrancy 0.4s ease-out forwards; filter: saturate(1.8);' : ''}
-        ${currentPreset.animation === 'glass-vista-wobble' ? 'animation: glass-vista-wobble 7s ease-in-out infinite; filter: brightness(1.1);' : ''}
-        ${currentPreset.animation === 'glass-linux-blink' ? 'animation: glass-linux-blink 1.2s step-end infinite;' : ''}
-        ${currentPreset.animation === 'glass-mac-fadein' ? 'animation: glass-mac-fadein 0.6s ease-out forwards;' : ''}
-        ${currentPreset.animation === 'glass-ubuntu-glow' ? 'animation: glass-ubuntu-glow 4s ease-in-out infinite;' : ''}
-        ${currentPreset.animation === 'glass-nintendo-bounce' ? 'animation: glass-nintendo-bounce 3s ease-in-out infinite;' : ''}
-        ${currentPreset.animation === 'glass-ps-pulse' ? 'animation: glass-ps-pulse 5s ease-in-out infinite;' : ''}
-        ${currentPreset.animation === 'glass-iphone-island' ? 'animation: glass-iphone-island 4s ease-in-out infinite; filter: saturate(1.8);' : ''}
-        ${currentPreset.animation === 'glass-rpi-circuit' ? 'animation: glass-rpi-circuit 5s ease-in-out infinite;' : ''}
-        ${currentPreset.animation === 'glass-steam-vapor' ? 'background-image: linear-gradient(135deg, rgba(30,30,30,0.05) 25%, transparent 25%, transparent 50%, rgba(30,30,30,0.05) 50%, rgba(30,30,30,0.05) 75%, transparent 75%); background-size: 40px 40px; animation: glass-steam-vapor 10s linear infinite;' : ''}
+        ${currentPreset.animation === 'glass-aero-sweep' ? 'position: relative; overflow: hidden;' : ''}
+        ${currentPreset.animation === 'glass-material-ripple' ? 'animation: glass-material-ripple 3s ease-in-out infinite;' : ''}
+        ${currentPreset.animation === 'glass-retro-pixel' ? 'animation: glass-retro-pixel 2s step-end infinite;' : ''}
       }
       ` : ''}
       
@@ -343,10 +374,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       ` : ''}
     `;
     
-    // Apply font size
     document.documentElement.style.fontSize = `${settings.fontSize}px`;
     
-    // Load Google Font dynamically
     const fontLink = document.getElementById('dynamic-font') as HTMLLinkElement;
     const fontUrl = `https://fonts.googleapis.com/css2?family=${settings.fontFamily.replace(/ /g, '+')}:wght@300;400;500;600;700;800&display=swap`;
     
@@ -373,13 +402,26 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const setHighlights = (value: number) => setSettings(prev => ({ ...prev, highlights: value }));
   const setHueShift = (value: number) => setSettings(prev => ({ ...prev, hueShift: value }));
   const setBoldText = (enabled: boolean) => setSettings(prev => ({ ...prev, boldText: enabled }));
-  const setColorShift = (value: number) => setSettings(prev => ({ ...prev, colorShift: value }));
   const setDualGlass = (enabled: boolean) => setSettings(prev => ({ ...prev, dualGlass: enabled }));
   const setDualGlassStyle1 = (preset: string) => setSettings(prev => ({ ...prev, dualGlassStyle1: preset }));
   const setDualGlassStyle2 = (preset: string) => setSettings(prev => ({ ...prev, dualGlassStyle2: preset }));
   const setCardStyle = (style: string) => setSettings(prev => ({ ...prev, cardStyle: style }));
   const setHideCancelled = (hide: boolean) => setSettings(prev => ({ ...prev, hideCancelled: hide }));
   const setHideLanded = (hide: boolean) => setSettings(prev => ({ ...prev, hideLanded: hide }));
+  const setCardLogoBrightness = (v: number) => setSettings(prev => ({ ...prev, cardLogoBrightness: v }));
+  const setCardLogoContrast = (v: number) => setSettings(prev => ({ ...prev, cardLogoContrast: v }));
+  const setCardLogoSaturation = (v: number) => setSettings(prev => ({ ...prev, cardLogoSaturation: v }));
+  const setCardLogoHueShift = (v: number) => setSettings(prev => ({ ...prev, cardLogoHueShift: v }));
+  const setCardTextBrightness = (v: number) => setSettings(prev => ({ ...prev, cardTextBrightness: v }));
+  const setCardTextSaturation = (v: number) => setSettings(prev => ({ ...prev, cardTextSaturation: v }));
+  const setTextBrightness = (v: number) => setSettings(prev => ({ ...prev, textBrightness: v }));
+  const setTextContrast = (v: number) => setSettings(prev => ({ ...prev, textContrast: v }));
+  const setTextSaturation = (v: number) => setSettings(prev => ({ ...prev, textSaturation: v }));
+  const setTextHueShift = (v: number) => setSettings(prev => ({ ...prev, textHueShift: v }));
+  const setTextShadowX = (v: number) => setSettings(prev => ({ ...prev, textShadowX: v }));
+  const setTextShadowY = (v: number) => setSettings(prev => ({ ...prev, textShadowY: v }));
+  const setTextShadowBlur = (v: number) => setSettings(prev => ({ ...prev, textShadowBlur: v }));
+  const setTextShadowOpacity = (v: number) => setSettings(prev => ({ ...prev, textShadowOpacity: v }));
 
   const setGlassPreset = (preset: string) => {
     const presetValues = GLASS_PRESETS[preset];
@@ -433,9 +475,13 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         setFontFamily, setFontSize, setTextCase,
         setBlurLevel, setGlassOpacity, setIframeBrightness,
         setSaturation, setContrast, setShadows, setHighlights, setHueShift,
-        setGlassPreset, setBoldText, setColorShift,
+        setGlassPreset, setBoldText,
         setDualGlass, setDualGlassStyle1, setDualGlassStyle2,
         setCardStyle, setHideCancelled, setHideLanded,
+        setCardLogoBrightness, setCardLogoContrast, setCardLogoSaturation, setCardLogoHueShift,
+        setCardTextBrightness, setCardTextSaturation,
+        setTextBrightness, setTextContrast, setTextSaturation, setTextHueShift,
+        setTextShadowX, setTextShadowY, setTextShadowBlur, setTextShadowOpacity,
         toggleTimeFormat, toggleTemperatureUnit,
         setNotification, updateProfile, updatePassword, deleteAccount,
         resetSetting,
