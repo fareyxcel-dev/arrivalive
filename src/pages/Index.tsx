@@ -409,6 +409,11 @@ const Index = () => {
   const t2Flights = filteredFlights.filter(f => f.terminal === 'T2');
   const domFlights = filteredFlights.filter(f => f.terminal === 'DOM');
 
+  // Unfiltered flights per terminal (for "Full" schedule option)
+  const allT1Flights = flights.filter(f => f.terminal === 'T1');
+  const allT2Flights = flights.filter(f => f.terminal === 'T2');
+  const allDomFlights = flights.filter(f => f.terminal === 'DOM');
+
   return (
     <div className="relative min-h-screen">
       {/* Full-screen iframe background */}
