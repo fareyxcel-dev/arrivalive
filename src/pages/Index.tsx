@@ -455,6 +455,7 @@ const Index = () => {
               <TerminalGroup
                 terminal="T1"
                 flights={t1Flights}
+                allFlights={allT1Flights}
                 notificationIds={notificationIds}
                 onToggleNotification={handleToggleNotification}
               />
@@ -464,6 +465,7 @@ const Index = () => {
               <TerminalGroup
                 terminal="T2"
                 flights={t2Flights}
+                allFlights={allT2Flights}
                 notificationIds={notificationIds}
                 onToggleNotification={handleToggleNotification}
               />
@@ -473,6 +475,7 @@ const Index = () => {
               <TerminalGroup
                 terminal="DOM"
                 flights={domFlights}
+                allFlights={allDomFlights}
                 notificationIds={notificationIds}
                 onToggleNotification={handleToggleNotification}
               />

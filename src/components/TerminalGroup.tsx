@@ -7,6 +7,7 @@ import FlightCard, { Flight } from './FlightCard';
 interface Props {
   terminal: string;
   flights: Flight[];
+  allFlights?: Flight[];
   notificationIds: Set<string>;
   onToggleNotification: (flightId: string) => void;
 }
@@ -39,7 +40,7 @@ const formatDateDisplay = (dateStr: string) => {
   return `${day} ${month}, ${weekday}`;
 };
 
-const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, notificationIds, onToggleNotification }, ref) => {
+const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, allFlights, notificationIds, onToggleNotification }, ref) => {
   const { settings } = useSettings();
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
@@ -47,17 +48,21 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, no
   // Per-terminal local filter state
   const [hideCancelled, setHideCancelled] = useState(false);
   const [hideLanded, setHideLanded] = useState(false);
+  const [showFull, setShowFull] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  // Use allFlights when showFull is active, otherwise use filtered flights
+  const sourceFlights = showFull && allFlights ? allFlights : flights;
 
   // Apply per-terminal filters
   const visibleFlights = useMemo(() => {
-    return flights.filter(f => {
+    return sourceFlights.filter(f => {
       const statusUpper = f.status.toUpperCase();
       if (hideCancelled && statusUpper === 'CANCELLED') return false;
       if (hideLanded && statusUpper === 'LANDED') return false;
       return true;
     });
-  }, [flights, hideCancelled, hideLanded]);
+  }, [sourceFlights, hideCancelled, hideLanded]);
 
   const groupedFlights = useMemo(() => groupFlightsByDate(visibleFlights), [visibleFlights]);
   const dates = Object.keys(groupedFlights).sort();
@@ -74,10 +79,10 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, no
 
   // Count total hidden flights across all dates in this terminal
   const totalHiddenCount = useMemo(() => {
-    return flights.length - visibleFlights.length;
-  }, [flights.length, visibleFlights.length]);
+    return sourceFlights.length - visibleFlights.length;
+  }, [sourceFlights.length, visibleFlights.length]);
 
-  const hasActiveFilters = hideCancelled || hideLanded;
+  const hasActiveFilters = hideCancelled || hideLanded || showFull;
 
   const toggleDate = (date: string) => {
     const newExpandedDates = new Set(expandedDates);
@@ -159,6 +164,17 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, no
                     )}
                   >
                     Landed
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowFull(!showFull); }}
+                    className={cn(
+                      "text-[8px] px-1.5 py-0.5 rounded-full transition-all whitespace-nowrap",
+                      showFull
+                        ? "bg-white/20 text-white/90 font-semibold"
+                        : "bg-white/[0.03] text-white/50"
+                    )}
+                  >
+                    Full
                   </button>
                 </>
               )}

@@ -549,9 +549,43 @@
     100% { transform: scale(1); opacity: 1; }
   }
 
-  /* Adaptive drop shadows for text */
+  /* Adaptive drop shadows for text - uses custom properties from settings */
   .adaptive-shadow {
-    text-shadow: 0 1px 3px rgba(0, 0, 0, var(--shadow-opacity, 0.5)), 0 2px 6px rgba(0, 0, 0, calc(var(--shadow-opacity, 0.5) * 0.6));
+    text-shadow: var(--text-shadow-x, 0px) var(--text-shadow-y, 1px) var(--text-shadow-blur, 3px) rgba(0, 0, 0, var(--text-shadow-opacity, 0.5));
+    filter: brightness(var(--text-brightness, 100%)) contrast(var(--text-contrast, 100%)) saturate(var(--text-saturation, 100%)) hue-rotate(var(--text-hue-shift, 0deg));
+  }
+
+  /* Status color animations on flight cards */
+  .status-pulse-anim {
+    animation: status-pulse 3s ease-in-out infinite;
+  }
+  @keyframes status-pulse {
+    0%, 100% { box-shadow: inherit; }
+    50% { filter: brightness(1.08); }
+  }
+
+  .status-glass-shimmer {
+    background-size: 200% 100%;
+    animation: status-glass-shimmer 4s ease-in-out infinite;
+  }
+  @keyframes status-glass-shimmer {
+    0%, 100% { background-position: -200% 0; }
+    50% { background-position: 200% 0; }
+  }
+
+  .status-gradient-sweep {
+    background-size: 200% 200%;
+    animation: status-gradient-sweep 5s ease-in-out infinite;
+  }
+  @keyframes status-gradient-sweep {
+    0% { background-position: 0% 0%; }
+    50% { background-position: 100% 100%; }
+    100% { background-position: 0% 0%; }
+  }
+
+  .status-combined-anim {
+    background-size: 200% 200%;
+    animation: status-glass-shimmer 4s ease-in-out infinite, status-pulse 3s ease-in-out infinite;
   }
 
   /* Adaptive drop shadow for icons */
