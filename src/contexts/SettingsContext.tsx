@@ -417,6 +417,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const setCardLogoHueShift = (v: number) => setSettings(prev => ({ ...prev, cardLogoHueShift: v }));
   const setCardTextBrightness = (v: number) => setSettings(prev => ({ ...prev, cardTextBrightness: v }));
   const setCardTextSaturation = (v: number) => setSettings(prev => ({ ...prev, cardTextSaturation: v }));
+  const setCardUnifiedAdjust = (v: boolean) => setSettings(prev => ({ ...prev, cardUnifiedAdjust: v }));
   const setTextBrightness = (v: number) => setSettings(prev => ({ ...prev, textBrightness: v }));
   const setTextContrast = (v: number) => setSettings(prev => ({ ...prev, textContrast: v }));
   const setTextSaturation = (v: number) => setSettings(prev => ({ ...prev, textSaturation: v }));
