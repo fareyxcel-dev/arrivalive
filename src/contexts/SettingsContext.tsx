@@ -140,6 +140,7 @@ interface SettingsContextType {
   setCardLogoHueShift: (v: number) => void;
   setCardTextBrightness: (v: number) => void;
   setCardTextSaturation: (v: number) => void;
+  setCardUnifiedAdjust: (v: boolean) => void;
   setTextBrightness: (v: number) => void;
   setTextContrast: (v: number) => void;
   setTextSaturation: (v: number) => void;
