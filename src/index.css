@@ -592,6 +592,53 @@
   .adaptive-icon-shadow {
     filter: drop-shadow(0 1px 3px rgba(0, 0, 0, var(--shadow-opacity, 0.5)));
   }
+
+  /* Diamond glass card style */
+  .diamond-facet-overlay {
+    position: relative;
+    overflow: hidden;
+  }
+  .diamond-facet-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, 
+      rgba(255,255,255,0.08) 0%, transparent 25%,
+      rgba(255,255,255,0.04) 50%, transparent 75%,
+      rgba(255,255,255,0.06) 100%);
+    clip-path: polygon(50% 0%, 85% 15%, 100% 50%, 85% 85%, 50% 100%, 15% 85%, 0% 50%, 15% 15%);
+    animation: diamond-facet-anim 8s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 1;
+  }
+  @keyframes diamond-facet-anim {
+    0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.6; }
+    25% { transform: rotate(5deg) scale(1.02); opacity: 0.8; }
+    50% { transform: rotate(0deg) scale(1.04); opacity: 1; }
+    75% { transform: rotate(-5deg) scale(1.02); opacity: 0.8; }
+  }
+
+  /* Opaque card backgrounds when glass opacity = 0 */
+  .card-opaque-default {
+    background: linear-gradient(145deg, #1A1A1E 0%, #0F0F12 100%) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .card-opaque-landed {
+    background: linear-gradient(145deg, #0A2E15 0%, #061A0C 100%) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .card-opaque-delayed {
+    background: linear-gradient(145deg, #3D1A05 0%, #241002 100%) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .card-opaque-cancelled {
+    background: linear-gradient(145deg, #2E0A1A 0%, #1A0410 100%) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
   }
 
   /* ======= GLASS PRESET UNIQUE ANIMATIONS (12 presets) ======= */

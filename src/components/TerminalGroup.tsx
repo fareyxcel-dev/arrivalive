@@ -234,7 +234,7 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, al
                           {remainingCount} Remaining
                         </span>
                       </div>
-                      <ChevronDown className={cn("w-4 h-4 text-white/50 transition-transform duration-300", isDateExpanded && "rotate-180")} />
+                      <ChevronDown className={cn("w-4 h-4 text-white/80 transition-transform duration-300", isDateExpanded && "rotate-180")} />
                     </div>
                   </button>
 
