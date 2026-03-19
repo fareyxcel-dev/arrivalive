@@ -229,8 +229,8 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, al
                     <span className="font-medium text-white/90 text-sm">{formatDateDisplay(date)}</span>
                     <div className="flex items-center gap-2">
                       <div className="text-right flex flex-col">
-                        <span className="text-[10px] text-white/70">{totalCount} flights</span>
-                        <span className="text-[9px] text-white/50">
+                        <span className="text-[10px] text-white/80">{totalCount} flights</span>
+                        <span className="text-[9px] text-white/80">
                           {remainingCount} Remaining
                         </span>
                       </div>
