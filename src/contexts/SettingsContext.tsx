@@ -186,6 +186,7 @@ const defaultSettings: SettingsState = {
   cardLogoHueShift: 0,
   cardTextBrightness: 100,
   cardTextSaturation: 100,
+  cardUnifiedAdjust: true,
   textBrightness: 100,
   textContrast: 100,
   textSaturation: 100,
