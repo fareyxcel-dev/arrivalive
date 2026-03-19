@@ -3,6 +3,7 @@ import { ChevronDown, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
 import FlightCard, { Flight } from './FlightCard';
+import { UI_ICONS } from '@/lib/cardStyles';
 
 interface Props {
   terminal: string;
