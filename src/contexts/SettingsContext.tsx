@@ -94,6 +94,7 @@ interface SettingsState {
   cardLogoHueShift: number;
   cardTextBrightness: number;
   cardTextSaturation: number;
+  cardUnifiedAdjust: boolean;
   // Text visual adjustments
   textBrightness: number;
   textContrast: number;
