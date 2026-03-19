@@ -94,6 +94,7 @@ interface SettingsState {
   cardLogoHueShift: number;
   cardTextBrightness: number;
   cardTextSaturation: number;
+  cardUnifiedAdjust: boolean;
   // Text visual adjustments
   textBrightness: number;
   textContrast: number;
@@ -139,6 +140,7 @@ interface SettingsContextType {
   setCardLogoHueShift: (v: number) => void;
   setCardTextBrightness: (v: number) => void;
   setCardTextSaturation: (v: number) => void;
+  setCardUnifiedAdjust: (v: boolean) => void;
   setTextBrightness: (v: number) => void;
   setTextContrast: (v: number) => void;
   setTextSaturation: (v: number) => void;
@@ -184,6 +186,7 @@ const defaultSettings: SettingsState = {
   cardLogoHueShift: 0,
   cardTextBrightness: 100,
   cardTextSaturation: 100,
+  cardUnifiedAdjust: true,
   textBrightness: 100,
   textContrast: 100,
   textSaturation: 100,
@@ -414,6 +417,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const setCardLogoHueShift = (v: number) => setSettings(prev => ({ ...prev, cardLogoHueShift: v }));
   const setCardTextBrightness = (v: number) => setSettings(prev => ({ ...prev, cardTextBrightness: v }));
   const setCardTextSaturation = (v: number) => setSettings(prev => ({ ...prev, cardTextSaturation: v }));
+  const setCardUnifiedAdjust = (v: boolean) => setSettings(prev => ({ ...prev, cardUnifiedAdjust: v }));
   const setTextBrightness = (v: number) => setSettings(prev => ({ ...prev, textBrightness: v }));
   const setTextContrast = (v: number) => setSettings(prev => ({ ...prev, textContrast: v }));
   const setTextSaturation = (v: number) => setSettings(prev => ({ ...prev, textSaturation: v }));
@@ -479,7 +483,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         setDualGlass, setDualGlassStyle1, setDualGlassStyle2,
         setCardStyle, setHideCancelled, setHideLanded,
         setCardLogoBrightness, setCardLogoContrast, setCardLogoSaturation, setCardLogoHueShift,
-        setCardTextBrightness, setCardTextSaturation,
+        setCardTextBrightness, setCardTextSaturation, setCardUnifiedAdjust,
         setTextBrightness, setTextContrast, setTextSaturation, setTextHueShift,
         setTextShadowX, setTextShadowY, setTextShadowBlur, setTextShadowOpacity,
         toggleTimeFormat, toggleTemperatureUnit,

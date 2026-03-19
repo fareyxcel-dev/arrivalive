@@ -56,7 +56,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     setGlassPreset, setBoldText, setDualGlass, setDualGlassStyle1,
     setDualGlassStyle2, setCardStyle,
     setCardLogoBrightness, setCardLogoContrast, setCardLogoSaturation, setCardLogoHueShift,
-    setCardTextBrightness, setCardTextSaturation,
+    setCardTextBrightness, setCardTextSaturation, setCardUnifiedAdjust,
     setTextBrightness, setTextContrast, setTextSaturation, setTextHueShift,
     setTextShadowX, setTextShadowY, setTextShadowBlur, setTextShadowOpacity,
     setNotification, updateProfile, updatePassword, deleteAccount,
@@ -489,9 +489,20 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                 ))}
               </div>
 
+              {/* Unified Adjustment Toggle */}
+              <div className="space-y-3 pt-2 border-t border-white/10">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-muted-foreground uppercase tracking-wide">Unified Logo + Text Adjust</label>
+                  <LiveBlurToggle checked={settings.cardUnifiedAdjust} onChange={setCardUnifiedAdjust} />
+                </div>
+                <p className="text-[9px] text-muted-foreground">When on, sliders adjust both logo and text together.</p>
+              </div>
+
               {/* Card Visual Adjustments */}
               <div className="space-y-3 pt-2 border-t border-white/10">
-                <label className="text-xs text-muted-foreground uppercase tracking-wide block">Logo Adjustments</label>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide block">
+                  {settings.cardUnifiedAdjust ? 'Card Adjustments (Logo + Text)' : 'Logo Adjustments'}
+                </label>
                 <div className="grid grid-cols-2 gap-3">
                   <MiniSlider label="Brightness" value={settings.cardLogoBrightness} defaultValue={100} min={0} max={200} step={5} onChange={setCardLogoBrightness} onReset={() => resetSetting('cardLogoBrightness')} suffix="%" />
                   <MiniSlider label="Contrast" value={settings.cardLogoContrast} defaultValue={100} min={50} max={200} step={5} onChange={setCardLogoContrast} onReset={() => resetSetting('cardLogoContrast')} suffix="%" />
@@ -500,13 +511,15 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
                 </div>
               </div>
 
-              <div className="space-y-3 pt-2 border-t border-white/10">
-                <label className="text-xs text-muted-foreground uppercase tracking-wide block">Card Text Adjustments</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <MiniSlider label="Brightness" value={settings.cardTextBrightness} defaultValue={100} min={0} max={200} step={5} onChange={setCardTextBrightness} onReset={() => resetSetting('cardTextBrightness')} suffix="%" />
-                  <MiniSlider label="Saturation" value={settings.cardTextSaturation} defaultValue={100} min={0} max={200} step={5} onChange={setCardTextSaturation} onReset={() => resetSetting('cardTextSaturation')} suffix="%" />
+              {!settings.cardUnifiedAdjust && (
+                <div className="space-y-3 pt-2 border-t border-white/10">
+                  <label className="text-xs text-muted-foreground uppercase tracking-wide block">Card Text Adjustments</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <MiniSlider label="Brightness" value={settings.cardTextBrightness} defaultValue={100} min={0} max={200} step={5} onChange={setCardTextBrightness} onReset={() => resetSetting('cardTextBrightness')} suffix="%" />
+                    <MiniSlider label="Saturation" value={settings.cardTextSaturation} defaultValue={100} min={0} max={200} step={5} onChange={setCardTextSaturation} onReset={() => resetSetting('cardTextSaturation')} suffix="%" />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 

@@ -6,7 +6,7 @@ import FlightProgressBar from './FlightProgressBar';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { subscribeToNotifications, addFlightTag, removeFlightTag, setExternalUserId } from '@/lib/onesignal';
-import { AIRLINE_NAMES, getLogoUrls, getCardTheme, hexToRgb } from '@/lib/cardStyles';
+import { AIRLINE_NAMES, CARD_STYLES, getLogoUrls, getCardTheme, hexToRgb } from '@/lib/cardStyles';
 
 export interface Flight {
   id: string;
@@ -82,7 +82,7 @@ const AirlineIcon = ({ flightId, airlineCode, cardStyle, status, logoFilter }: {
   );
 };
 
-// Subscribe to push notifications via OneSignal (gracefully handles failures on preview domains)
+// Subscribe to push notifications via OneSignal
 const subscribeToFlightNotifications = async (userId: string, flightId: string, flightDate: string): Promise<{ success: boolean; pushWorked: boolean }> => {
   let pushWorked = false;
   try {
@@ -124,9 +124,15 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   const isDelayed = flight.status.toUpperCase() === 'DELAYED';
   const hasStatus = isLanded || isCancelled || isDelayed;
   const showBell = !isLanded && !isCancelled;
+  const isDiamond = settings.cardStyle === 'diamond';
+  const isOpaqueMode = settings.glassOpacity <= 0;
 
-  // Card visual sliders
-  const logoFilter = `brightness(${settings.cardLogoBrightness / 100}) contrast(${settings.cardLogoContrast / 100}) saturate(${settings.cardLogoSaturation / 100}) hue-rotate(${settings.cardLogoHueShift}deg)`;
+  // Unified or separate card visual sliders
+  const effectiveLogo = settings.cardUnifiedAdjust
+    ? { brightness: settings.cardLogoBrightness, contrast: settings.cardLogoContrast, saturation: settings.cardLogoSaturation, hue: settings.cardLogoHueShift }
+    : { brightness: settings.cardLogoBrightness, contrast: settings.cardLogoContrast, saturation: settings.cardLogoSaturation, hue: settings.cardLogoHueShift };
+
+  const logoFilter = `brightness(${effectiveLogo.brightness / 100}) contrast(${effectiveLogo.contrast / 100}) saturate(${effectiveLogo.saturation / 100}) hue-rotate(${effectiveLogo.hue}deg)`;
 
   // Gradient text style for gradient card styles
   const gradientTextStyle = theme.gradientColors ? {
@@ -141,6 +147,11 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
 
   // Pick gradient or plain based on card style
   const textStyle = theme.gradientColors ? gradientTextStyle : plainTextStyle;
+
+  // Status badge glow
+  const statusGlow = hasStatus ? {
+    textShadow: `0 0 8px ${theme.textColor}, 0 0 16px ${theme.textColor}40`,
+  } : {};
 
   // Auto-collapse after 5 seconds or on scroll
   useEffect(() => {
@@ -210,7 +221,12 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
     ? (theme.isGlass && theme.isGradient ? 'status-combined-anim' : theme.isGlass ? 'status-glass-shimmer' : theme.isGradient ? 'status-gradient-sweep' : 'status-pulse-anim')
     : '';
 
-  const cardStyle = {
+  // Opaque mode class when glass opacity is 0
+  const opaqueClass = isOpaqueMode
+    ? (isLanded ? 'card-opaque-landed' : isCancelled ? 'card-opaque-cancelled' : isDelayed ? 'card-opaque-delayed' : 'card-opaque-default')
+    : '';
+
+  const cardBgStyle = isOpaqueMode ? {} : {
     background: `linear-gradient(145deg, rgba(${hexToRgb(theme.cardTint)}, ${statusBgOpacity}) 0%, rgba(0, 0, 0, 0.25) 100%)`,
     backdropFilter: 'blur(24px) saturate(1.3) brightness(1.1)',
     WebkitBackdropFilter: 'blur(24px) saturate(1.3) brightness(1.1)',
@@ -232,11 +248,16 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
 
   return (
     <div
-      className={cn("rounded-2xl overflow-hidden flight-card-animate cursor-pointer glass-neumorphic", statusAnimClass)}
-      style={cardStyle}
+      className={cn(
+        "rounded-2xl overflow-hidden flight-card-animate cursor-pointer glass-neumorphic",
+        statusAnimClass,
+        opaqueClass,
+        isDiamond && "diamond-facet-overlay"
+      )}
+      style={cardBgStyle}
       onClick={handleCardClick}
     >
-      <div className="flex items-center gap-2 p-2.5">
+      <div className="flex items-center gap-2 p-2.5 relative z-10">
         {/* LEFT: Airline Logo */}
         <button onClick={handleLogoClick} className="flex items-center justify-center transition-all duration-300 flex-shrink-0">
           {showAirlineName ? (
@@ -290,7 +311,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           {hasStatus && (
             <span
               className="text-[8px] font-semibold uppercase tracking-wide px-2 py-1.5 whitespace-nowrap status-badge-enter adaptive-shadow"
-              style={textStyle}
+              style={{ ...textStyle, ...statusGlow }}
             >
               {getStatusText()}
             </span>
@@ -336,10 +357,10 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
 
       {/* Expanded bottom: SCH time | tracker | EST time */}
       {isExpanded && (
-        <div className="flex items-center gap-1.5 px-2.5 pb-2.5 animate-fade-in" style={{ height: '28px' }}>
+        <div className="flex items-center gap-1.5 px-2.5 pb-2.5 animate-fade-in relative z-10" style={{ height: '28px' }}>
           <div className="flex flex-col items-start flex-shrink-0">
-            <span className="text-[7px] uppercase tracking-wide adaptive-shadow" style={{ ...plainTextStyle, opacity: 0.6 }}>SCH</span>
-            <span className="font-bold text-[9px] whitespace-nowrap adaptive-shadow" style={{ ...plainTextStyle, opacity: 0.8 }}>
+            <span className="text-[7px] uppercase tracking-wide adaptive-shadow" style={{ ...textStyle, opacity: 0.6 }}>SCH</span>
+            <span className="font-bold text-[9px] whitespace-nowrap adaptive-shadow" style={{ ...textStyle, opacity: 0.8 }}>
               {scheduledTimeFormatted}
             </span>
           </div>
@@ -362,8 +383,8 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           </div>
 
           <div className="flex flex-col items-end flex-shrink-0">
-            <span className="text-[7px] uppercase tracking-wide adaptive-shadow" style={{ ...plainTextStyle, opacity: 0.6 }}>EST</span>
-            <span className="font-bold text-[9px] whitespace-nowrap adaptive-shadow" style={{ ...plainTextStyle, opacity: 0.8 }}>
+            <span className="text-[7px] uppercase tracking-wide adaptive-shadow" style={{ ...textStyle, opacity: 0.6 }}>EST</span>
+            <span className="font-bold text-[9px] whitespace-nowrap adaptive-shadow" style={{ ...textStyle, opacity: 0.8 }}>
               {estimatedTimeFormatted}
             </span>
           </div>
@@ -373,18 +394,16 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   );
 };
 
-// Bell button component
+// Bell button component - no glass-orb circle, inline appearance
 const BellButton = ({ isActive, isSubscribing, bellColor, bellGlow, onClick }: {
   isActive: boolean; isSubscribing: boolean; bellColor: string; bellGlow: string; onClick: () => void;
 }) => (
   <button
     onClick={(e) => { e.stopPropagation(); onClick(); }}
     disabled={isSubscribing}
-    className={cn("p-0.5 rounded-full flex-shrink-0 transition-all duration-300 bell-button glass-orb", isSubscribing && "opacity-50")}
+    className={cn("p-0.5 flex-shrink-0 transition-all duration-300 bell-button", isSubscribing && "opacity-50")}
     style={{
-      boxShadow: isActive ? `0 0 12px ${bellGlow}, 0 0 20px ${bellGlow}` : 'none',
       opacity: isActive ? 1 : 0.5,
-      background: isActive ? `rgba(${hexToRgb(bellColor)}, 0.15)` : 'transparent',
     }}
   >
     {isActive ? (

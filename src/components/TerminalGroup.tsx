@@ -3,6 +3,7 @@ import { ChevronDown, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
 import FlightCard, { Flight } from './FlightCard';
+import { UI_ICONS } from '@/lib/cardStyles';
 
 interface Props {
   terminal: string;
@@ -91,14 +92,25 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, al
     setExpandedDates(newExpandedDates);
   };
 
-  const getTerminalName = (t: string) => {
+  const getTerminalLabel = (t: string) => {
     switch (t) {
-      case 'T1': return 'International Terminal 1';
-      case 'T2': return 'International Terminal 2';
+      case 'T1': return 'International Terminal (T1)';
+      case 'T2': return 'Domestic Terminal (T2)';
       case 'DOM': return 'Domestic Terminal';
       default: return t;
     }
   };
+
+  const getTerminalIcon = (t: string) => {
+    switch (t) {
+      case 'T1': return UI_ICONS.t1;
+      case 'T2': return UI_ICONS.t2;
+      case 'DOM': return UI_ICONS.dom;
+      default: return null;
+    }
+  };
+
+  const terminalIcon = getTerminalIcon(terminal);
 
   return (
     <div
@@ -111,11 +123,16 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, al
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
       >
-        <div className="text-left flex-1 min-w-0">
-          <h2 className="text-lg font-bold text-white">{getTerminalName(terminal)}</h2>
-          <p className="text-xs text-white/60 uppercase tracking-wider">
-            {terminalStats.total} FLIGHTS · {terminalStats.remaining} REMAINING · {terminalStats.landed} LANDED
-          </p>
+        <div className="text-left flex-1 min-w-0 flex items-center gap-2">
+          {terminalIcon && (
+            <img src={terminalIcon} alt={getTerminalLabel(terminal)} className="w-6 h-6 object-contain flex-shrink-0" />
+          )}
+          <div>
+            <h2 className="text-lg font-bold text-white">{getTerminalLabel(terminal)}</h2>
+            <p className="text-xs text-white/80 uppercase tracking-wider">
+              {terminalStats.total} FLIGHTS · {terminalStats.remaining} REMAINING · {terminalStats.landed} LANDED
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -135,9 +152,9 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, al
                 onClick={(e) => { e.stopPropagation(); setIsFilterOpen(!isFilterOpen); }}
                 className="flex items-center gap-1 flex-shrink-0"
               >
-                <Filter className={cn("w-3 h-3", hasActiveFilters ? "text-white/80" : "text-white/40")} />
+                <Filter className={cn("w-3 h-3", hasActiveFilters ? "text-white/90" : "text-white/80")} />
                 {totalHiddenCount > 0 && !isFilterOpen && (
-                  <span className="text-[8px] text-white/60 font-medium">{totalHiddenCount}</span>
+                  <span className="text-[8px] text-white/80 font-medium">{totalHiddenCount}</span>
                 )}
               </button>
 
@@ -189,7 +206,7 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, al
       {isExpanded && (
         <div className="px-4 pb-4 space-y-2">
           {dates.length === 0 ? (
-            <p className="text-center text-white/50 py-8">No flights to show</p>
+            <p className="text-center text-white/80 py-8">No flights to show</p>
           ) : (
             dates.map(date => {
               const dateFlights = groupedFlights[date];
@@ -212,12 +229,12 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, al
                     <span className="font-medium text-white/90 text-sm">{formatDateDisplay(date)}</span>
                     <div className="flex items-center gap-2">
                       <div className="text-right flex flex-col">
-                        <span className="text-[10px] text-white/70">{totalCount} flights</span>
-                        <span className="text-[9px] text-white/50">
+                        <span className="text-[10px] text-white/80">{totalCount} flights</span>
+                        <span className="text-[9px] text-white/80">
                           {remainingCount} Remaining
                         </span>
                       </div>
-                      <ChevronDown className={cn("w-4 h-4 text-white/50 transition-transform duration-300", isDateExpanded && "rotate-180")} />
+                      <ChevronDown className={cn("w-4 h-4 text-white/80 transition-transform duration-300", isDateExpanded && "rotate-180")} />
                     </div>
                   </button>
 
