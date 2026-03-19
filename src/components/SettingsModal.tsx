@@ -56,7 +56,7 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
     setGlassPreset, setBoldText, setDualGlass, setDualGlassStyle1,
     setDualGlassStyle2, setCardStyle,
     setCardLogoBrightness, setCardLogoContrast, setCardLogoSaturation, setCardLogoHueShift,
-    setCardTextBrightness, setCardTextSaturation,
+    setCardTextBrightness, setCardTextSaturation, setCardUnifiedAdjust,
     setTextBrightness, setTextContrast, setTextSaturation, setTextHueShift,
     setTextShadowX, setTextShadowY, setTextShadowBlur, setTextShadowOpacity,
     setNotification, updateProfile, updatePassword, deleteAccount,
