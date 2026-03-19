@@ -206,7 +206,7 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, al
       {isExpanded && (
         <div className="px-4 pb-4 space-y-2">
           {dates.length === 0 ? (
-            <p className="text-center text-white/50 py-8">No flights to show</p>
+            <p className="text-center text-white/80 py-8">No flights to show</p>
           ) : (
             dates.map(date => {
               const dateFlights = groupedFlights[date];
