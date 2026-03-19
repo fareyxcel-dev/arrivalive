@@ -483,7 +483,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         setDualGlass, setDualGlassStyle1, setDualGlassStyle2,
         setCardStyle, setHideCancelled, setHideLanded,
         setCardLogoBrightness, setCardLogoContrast, setCardLogoSaturation, setCardLogoHueShift,
-        setCardTextBrightness, setCardTextSaturation,
+        setCardTextBrightness, setCardTextSaturation, setCardUnifiedAdjust,
         setTextBrightness, setTextContrast, setTextSaturation, setTextHueShift,
         setTextShadowX, setTextShadowY, setTextShadowBlur, setTextShadowOpacity,
         toggleTimeFormat, toggleTemperatureUnit,
