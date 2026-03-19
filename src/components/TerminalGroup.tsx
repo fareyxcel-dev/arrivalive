@@ -152,9 +152,9 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, al
                 onClick={(e) => { e.stopPropagation(); setIsFilterOpen(!isFilterOpen); }}
                 className="flex items-center gap-1 flex-shrink-0"
               >
-                <Filter className={cn("w-3 h-3", hasActiveFilters ? "text-white/80" : "text-white/40")} />
+                <Filter className={cn("w-3 h-3", hasActiveFilters ? "text-white/90" : "text-white/80")} />
                 {totalHiddenCount > 0 && !isFilterOpen && (
-                  <span className="text-[8px] text-white/60 font-medium">{totalHiddenCount}</span>
+                  <span className="text-[8px] text-white/80 font-medium">{totalHiddenCount}</span>
                 )}
               </button>
 
