@@ -27,23 +27,23 @@
 
     /* Core theme - NEUTRAL (no orange) */
     --background: 0 0% 8%;
-    --foreground: 150 6% 87%;
+    --foreground: 0 0% 100%;
 
     --card: 0 0% 10%;
-    --card-foreground: 150 6% 87%;
+    --card-foreground: 0 0% 100%;
 
     --popover: 0 0% 12%;
-    --popover-foreground: 150 6% 87%;
+    --popover-foreground: 0 0% 100%;
 
     /* Primary changed to neutral gray */
     --primary: 0 0% 70%;
     --primary-foreground: 0 0% 10%;
 
     --secondary: 0 0% 15%;
-    --secondary-foreground: 150 6% 87%;
+    --secondary-foreground: 0 0% 100%;
 
     --muted: 0 0% 18%;
-    --muted-foreground: 0 0% 55%;
+    --muted-foreground: 0 0% 80%;
 
     --accent: 175 97% 57%;
     --accent-foreground: 0 0% 8%;
