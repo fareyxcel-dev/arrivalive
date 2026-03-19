@@ -92,14 +92,25 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, al
     setExpandedDates(newExpandedDates);
   };
 
-  const getTerminalName = (t: string) => {
+  const getTerminalLabel = (t: string) => {
     switch (t) {
-      case 'T1': return 'International Terminal 1';
-      case 'T2': return 'International Terminal 2';
+      case 'T1': return 'International Terminal (T1)';
+      case 'T2': return 'Domestic Terminal (T2)';
       case 'DOM': return 'Domestic Terminal';
       default: return t;
     }
   };
+
+  const getTerminalIcon = (t: string) => {
+    switch (t) {
+      case 'T1': return UI_ICONS.t1;
+      case 'T2': return UI_ICONS.t2;
+      case 'DOM': return UI_ICONS.dom;
+      default: return null;
+    }
+  };
+
+  const terminalIcon = getTerminalIcon(terminal);
 
   return (
     <div
@@ -112,11 +123,16 @@ const TerminalGroup = forwardRef<HTMLDivElement, Props>(({ terminal, flights, al
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
       >
-        <div className="text-left flex-1 min-w-0">
-          <h2 className="text-lg font-bold text-white">{getTerminalName(terminal)}</h2>
-          <p className="text-xs text-white/60 uppercase tracking-wider">
-            {terminalStats.total} FLIGHTS · {terminalStats.remaining} REMAINING · {terminalStats.landed} LANDED
-          </p>
+        <div className="text-left flex-1 min-w-0 flex items-center gap-2">
+          {terminalIcon && (
+            <img src={terminalIcon} alt={getTerminalLabel(terminal)} className="w-6 h-6 object-contain flex-shrink-0" />
+          )}
+          <div>
+            <h2 className="text-lg font-bold text-white">{getTerminalLabel(terminal)}</h2>
+            <p className="text-xs text-white/80 uppercase tracking-wider">
+              {terminalStats.total} FLIGHTS · {terminalStats.remaining} REMAINING · {terminalStats.landed} LANDED
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
