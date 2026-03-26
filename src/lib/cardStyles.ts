@@ -1,5 +1,6 @@
 const IMAGEKIT_BASE = 'https://ik.imagekit.io/jv0j9qvtw/New%20Airline%20Logo%20Variants%20/';
 const ICONS_BASE = `${IMAGEKIT_BASE}Icons/`;
+const TEXTURES_BASE = `${IMAGEKIT_BASE}Textures/`;
 
 // UI Icon URLs from ImageKit
 export const UI_ICONS = {
@@ -23,6 +24,33 @@ export const UI_ICONS = {
   sunrise: `${ICONS_BASE}Sunrise.png`,
 };
 
+// Texture URLs from ImageKit for card backgrounds
+export const TEXTURE_URLS: Record<string, string> = {
+  // Solid gradient textures (for opaque mode)
+  landedGradient: `${TEXTURES_BASE}Landed%20Gradient.jpg`,
+  delayedGradient: `${TEXTURES_BASE}Delayed%20Gradient.jpg`,
+  cancelledGradient: `${TEXTURES_BASE}Cancelled%20Gradient.jpg`,
+  // Glass textures
+  landedGlass: `${TEXTURES_BASE}Landed%20Glass.jpg`,
+  delayedGlass: `${TEXTURES_BASE}Delayed%20Glass.jpg`,
+  cancelledGlass: `${TEXTURES_BASE}Cancelled%20Glass.jpg`,
+  defaultGlass: `${TEXTURES_BASE}Default%20Glass%20Parallax.png`,
+  // Glass gradient textures
+  landedGlassGradient: `${TEXTURES_BASE}Landed%20Glass%20Gradient.jpg`,
+  delayedGlassGradient: `${TEXTURES_BASE}Delayed%20Glass%20Gradient.jpg`,
+  cancelledGlassGradient: `${TEXTURES_BASE}Cancelled%20Glass%20Gradient.jpg`,
+  defaultGlassGradient: `${TEXTURES_BASE}Default%20Glass%20Gradient%20Parallax.png`,
+  // Parallax textures (for semi-opaque mode with scroll)
+  landedGlassParallax: `${TEXTURES_BASE}Landed%20Glass%20Parallax.png`,
+  delayedGlassParallax: `${TEXTURES_BASE}Delayed%20Glass%20Parallax.png`,
+  cancelledGlassParallax: `${TEXTURES_BASE}Cancelled%20Glass%20Parallax.png`,
+  defaultGlassParallax: `${TEXTURES_BASE}Default%20Glass%20Parallax.png`,
+  landedGlassGradientParallax: `${TEXTURES_BASE}Landed%20Glass%20Gradient%20Parallax.png`,
+  delayedGlassGradientParallax: `${TEXTURES_BASE}Delayed%20Glass%20Gradient%20Parallax.png`,
+  cancelledGlassGradientParallax: `${TEXTURES_BASE}Cancelled%20Glass%20Gradient%20Parallax.png`,
+  defaultGlassGradientParallax: `${TEXTURES_BASE}Default%20Glass%20Gradient%20Parallax.png`,
+};
+
 export interface CardStyle {
   id: string;
   label: string;
@@ -33,7 +61,6 @@ export interface CardStyle {
     cancelled: string;
     landed: string;
   };
-  // For gradient styles, provide 3-color arrays (top, mid, bottom)
   gradientColors?: {
     default: [string, string, string];
     delayed: [string, string, string];
@@ -170,7 +197,6 @@ export const CARD_STYLES: Record<string, CardStyle> = {
 };
 
 // Airline name mapping for logo filename matching
-// Keys are 2-char IATA codes, values must match exact filenames in ImageKit
 export const AIRLINE_NAMES: Record<string, string> = {
   '3U': 'Sichuan Airlines', '4Y': 'Discover Airlines', '6E': 'IndiGo', '8D': 'FitsAir',
   'AF': 'Air France', 'AI': 'Air India', 'AK': 'Air Asia', 'AZ': 'ITA Airways',
@@ -183,6 +209,7 @@ export const AIRLINE_NAMES: Record<string, string> = {
   'MH': 'Malaysia Airlines', 'MU': 'China Eastern Airlines', 'NO': 'Neos', 'NR': 'MantaAir',
   'OD': 'Batik Air Malaysia', 'OQ': 'Chongqing Airlines', 'OS': 'Austrian Airlines',
   'PG': 'Bangkok Airways', 'Q2': 'Maldivian', 'QR': 'Qatar Airways',
+  'SG': 'SpiceJet',
   'SH': 'FlyMe', 'SQ': 'Singapore Airlines', 'SU': 'Aeroflot', 'SV': 'Saudia',
   'TK': 'Turkish Airlines', 'UL': 'SriLankan Airlines', 'VP': 'FlyMe', 'VS': 'Virgin Atlantic',
   'W6': 'Wizz Air', 'WK': 'Edelweiss Air', 'WY': 'Oman Air', 'XY': 'Flynas', 'ZF': 'Azur Air',
@@ -206,7 +233,6 @@ export const getLogoBasePath = (cardStyleId: string, status: string): string => 
 };
 
 // Build logo URL patterns for a flight
-// Uses ONLY the 2-char IATA code extracted from flightId, NOT the full flight ID
 export const getLogoUrls = (cardStyleId: string, status: string, flightId: string, airlineCode: string): string[] => {
   const basePath = getLogoBasePath(cardStyleId, status);
   const iataCode = flightId.substring(0, 2).toUpperCase();
@@ -253,7 +279,6 @@ export const getCardTheme = (cardStyleId: string, status: string) => {
   const gradientColors = getCardGradientColors(cardStyleId, status);
   const statusUpper = status.toUpperCase();
 
-  // Derive progress/card colors from text color
   const r = parseInt(textColor.slice(1, 3), 16);
   const g = parseInt(textColor.slice(3, 5), 16);
   const b = parseInt(textColor.slice(5, 7), 16);

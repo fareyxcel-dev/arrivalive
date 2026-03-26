@@ -5,8 +5,8 @@ import { useSettings } from '@/contexts/SettingsContext';
 import FlightProgressBar from './FlightProgressBar';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { subscribeToNotifications, addFlightTag, removeFlightTag, setExternalUserId } from '@/lib/onesignal';
-import { AIRLINE_NAMES, CARD_STYLES, getLogoUrls, getCardTheme, hexToRgb } from '@/lib/cardStyles';
+import { subscribeToNotifications, addFlightTag, removeFlightTag, setExternalUserId } from '@/lib/pushalert';
+import { AIRLINE_NAMES, CARD_STYLES, getLogoUrls, getCardTheme, hexToRgb, TEXTURE_URLS } from '@/lib/cardStyles';
 
 export interface Flight {
   id: string;
@@ -82,18 +82,18 @@ const AirlineIcon = ({ flightId, airlineCode, cardStyle, status, logoFilter }: {
   );
 };
 
-// Subscribe to push notifications via OneSignal
+// Subscribe to push notifications via PushAlert
 const subscribeToFlightNotifications = async (userId: string, flightId: string, flightDate: string): Promise<{ success: boolean; pushWorked: boolean }> => {
   let pushWorked = false;
   try {
-    let playerId: string | null = null;
+    let subscriberId: string | null = null;
     try {
-      playerId = await subscribeToNotifications();
-      if (playerId) {
+      subscriberId = await subscribeToNotifications();
+      if (subscriberId) {
         pushWorked = true;
         await setExternalUserId(userId);
         await addFlightTag(flightId, flightDate);
-        await supabase.from('profiles').upsert({ user_id: userId, onesignal_player_id: playerId }, { onConflict: 'user_id' });
+        await supabase.from('profiles').upsert({ user_id: userId, onesignal_player_id: subscriberId }, { onConflict: 'user_id' });
       }
     } catch (pushError) {
       console.warn('Push provider unavailable (preview domain?):', pushError);
@@ -107,6 +107,59 @@ const subscribeToFlightNotifications = async (userId: string, flightId: string, 
   } catch (error) { console.error('Subscription error:', error); return { success: false, pushWorked }; }
 };
 
+// Get texture URL for card based on status and card style
+const getCardTexture = (status: string, cardStyle: string, glassOpacity: number): string | null => {
+  const statusUpper = status.toUpperCase();
+  const isGlass = CARD_STYLES[cardStyle]?.isGlass ?? false;
+  const isGradient = CARD_STYLES[cardStyle]?.isGradient ?? false;
+
+  // For very low opacity (opaque mode), use solid gradient textures
+  if (glassOpacity <= 0) {
+    if (isGradient || isGlass) {
+      const key = statusUpper === 'LANDED' ? 'landedGlassGradient' :
+                  statusUpper === 'DELAYED' ? 'delayedGlassGradient' :
+                  statusUpper === 'CANCELLED' ? 'cancelledGlassGradient' :
+                  'defaultGlassGradient';
+      return TEXTURE_URLS[key] || null;
+    }
+    const key = statusUpper === 'LANDED' ? 'landedGradient' :
+                statusUpper === 'DELAYED' ? 'delayedGradient' :
+                statusUpper === 'CANCELLED' ? 'cancelledGradient' :
+                null;
+    return key ? TEXTURE_URLS[key] : null;
+  }
+
+  // For semi-opacity, use glass parallax textures
+  if (glassOpacity <= 0.25) {
+    if (isGlass) {
+      const key = statusUpper === 'LANDED' ? 'landedGlassParallax' :
+                  statusUpper === 'DELAYED' ? 'delayedGlassParallax' :
+                  statusUpper === 'CANCELLED' ? 'cancelledGlassParallax' :
+                  'defaultGlassParallax';
+      return TEXTURE_URLS[key] || null;
+    }
+    if (isGradient) {
+      const key = statusUpper === 'LANDED' ? 'landedGlassGradientParallax' :
+                  statusUpper === 'DELAYED' ? 'delayedGlassGradientParallax' :
+                  statusUpper === 'CANCELLED' ? 'cancelledGlassGradientParallax' :
+                  'defaultGlassGradientParallax';
+      return TEXTURE_URLS[key] || null;
+    }
+  }
+
+  return null;
+};
+
+// Opaque background hex colors per status
+const getOpaqueBackground = (status: string): string => {
+  switch (status.toUpperCase()) {
+    case 'LANDED': return 'linear-gradient(135deg, #0A2E15 0%, #0F3D1D 50%, #0A2E15 100%)';
+    case 'DELAYED': return 'linear-gradient(135deg, #3D1A05 0%, #4D2208 50%, #3D1A05 100%)';
+    case 'CANCELLED': return 'linear-gradient(135deg, #2E0A1A 0%, #3D0E22 50%, #2E0A1A 100%)';
+    default: return 'linear-gradient(135deg, #1A1A1E 0%, #222228 50%, #1A1A1E 100%)';
+  }
+};
+
 const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Props) => {
   const { settings } = useSettings();
   const [showAirlineName, setShowAirlineName] = useState(false);
@@ -114,6 +167,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   const [countdown, setCountdown] = useState('');
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoCollapseRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -126,6 +180,15 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   const showBell = !isLanded && !isCancelled;
   const isDiamond = settings.cardStyle === 'diamond';
   const isOpaqueMode = settings.glassOpacity <= 0;
+  const isSemiOpaque = settings.glassOpacity > 0 && settings.glassOpacity <= 0.25;
+
+  // Track scroll for parallax textures
+  useEffect(() => {
+    if (!isSemiOpaque && !isOpaqueMode) return;
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isSemiOpaque, isOpaqueMode]);
 
   // Unified or separate card visual sliders
   const effectiveLogo = settings.cardUnifiedAdjust
@@ -221,17 +284,45 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
     ? (theme.isGlass && theme.isGradient ? 'status-combined-anim' : theme.isGlass ? 'status-glass-shimmer' : theme.isGradient ? 'status-gradient-sweep' : 'status-pulse-anim')
     : '';
 
-  // Opaque mode class when glass opacity is 0
-  const opaqueClass = isOpaqueMode
-    ? (isLanded ? 'card-opaque-landed' : isCancelled ? 'card-opaque-cancelled' : isDelayed ? 'card-opaque-delayed' : 'card-opaque-default')
-    : '';
+  // Texture for card background
+  const textureUrl = getCardTexture(flight.status, settings.cardStyle, settings.glassOpacity);
 
-  const cardBgStyle = isOpaqueMode ? {} : {
-    background: `linear-gradient(145deg, rgba(${hexToRgb(theme.cardTint)}, ${statusBgOpacity}) 0%, rgba(0, 0, 0, 0.25) 100%)`,
-    backdropFilter: 'blur(24px) saturate(1.3) brightness(1.1)',
-    WebkitBackdropFilter: 'blur(24px) saturate(1.3) brightness(1.1)',
-    border: `1px solid rgba(${hexToRgb(theme.cardTint)}, 0.15)`,
-    boxShadow: `0 0 15px rgba(${hexToRgb(theme.cardTint)}, ${hasStatus ? 0.15 : 0.05}), 0 4px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.15)`,
+  // Build card background style
+  const getCardBgStyle = (): React.CSSProperties => {
+    if (isOpaqueMode) {
+      return {
+        background: getOpaqueBackground(flight.status),
+        border: `1px solid rgba(${hexToRgb(theme.cardTint)}, 0.3)`,
+        boxShadow: `0 0 20px rgba(${hexToRgb(theme.cardTint)}, 0.2), 0 4px 20px rgba(0, 0, 0, 0.3)`,
+        ...(textureUrl ? {
+          backgroundImage: `url(${textureUrl}), ${getOpaqueBackground(flight.status)}`,
+          backgroundSize: 'cover',
+          backgroundPosition: `center ${scrollY * 0.05}px`,
+        } : {}),
+      };
+    }
+
+    if (isSemiOpaque && textureUrl) {
+      return {
+        background: `linear-gradient(145deg, rgba(${hexToRgb(theme.cardTint)}, ${statusBgOpacity + 0.1}) 0%, rgba(0, 0, 0, 0.35) 100%)`,
+        backgroundImage: `url(${textureUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: `center ${scrollY * 0.03}px`,
+        backgroundBlendMode: 'overlay',
+        backdropFilter: `blur(24px) saturate(1.3) brightness(1.1)`,
+        WebkitBackdropFilter: `blur(24px) saturate(1.3) brightness(1.1)`,
+        border: `1px solid rgba(${hexToRgb(theme.cardTint)}, 0.2)`,
+        boxShadow: `0 0 15px rgba(${hexToRgb(theme.cardTint)}, ${hasStatus ? 0.15 : 0.05}), 0 4px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)`,
+      };
+    }
+
+    return {
+      background: `linear-gradient(145deg, rgba(${hexToRgb(theme.cardTint)}, ${statusBgOpacity}) 0%, rgba(0, 0, 0, 0.25) 100%)`,
+      backdropFilter: 'blur(24px) saturate(1.3) brightness(1.1)',
+      WebkitBackdropFilter: 'blur(24px) saturate(1.3) brightness(1.1)',
+      border: `1px solid rgba(${hexToRgb(theme.cardTint)}, 0.15)`,
+      boxShadow: `0 0 15px rgba(${hexToRgb(theme.cardTint)}, ${hasStatus ? 0.15 : 0.05}), 0 4px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.15)`,
+    };
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
@@ -249,12 +340,11 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   return (
     <div
       className={cn(
-        "rounded-2xl overflow-hidden flight-card-animate cursor-pointer glass-neumorphic",
+        "rounded-2xl overflow-hidden flight-card-animate cursor-pointer glass-neumorphic transition-all duration-500",
         statusAnimClass,
-        opaqueClass,
         isDiamond && "diamond-facet-overlay"
       )}
-      style={cardBgStyle}
+      style={getCardBgStyle()}
       onClick={handleCardClick}
     >
       <div className="flex items-center gap-2 p-2.5 relative z-10">
@@ -297,20 +387,25 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           </span>
         </div>
 
-        {/* RIGHT: Multi-layered pill container */}
+        {/* RIGHT: Multi-layered pill container - vibrant animated */}
         <div
-          className="flex items-center gap-0 flex-shrink-0 rounded-full overflow-hidden transition-all duration-500 ease-out glass-pill"
+          className={cn(
+            "flex items-center gap-0 flex-shrink-0 rounded-full overflow-hidden transition-all duration-500 ease-out",
+            hasStatus && "pill-vibrant-glow"
+          )}
           style={{
-            background: `rgba(${hexToRgb(theme.cardTint)}, ${hasStatus ? 0.12 : 0.06})`,
-            border: `1px solid rgba(${hexToRgb(theme.cardTint)}, ${hasStatus ? 0.2 : 0.1})`,
+            background: `rgba(${hexToRgb(theme.cardTint)}, ${hasStatus ? 0.18 : 0.08})`,
+            border: `1px solid rgba(${hexToRgb(theme.cardTint)}, ${hasStatus ? 0.35 : 0.12})`,
             boxShadow: hasStatus
-              ? `0 0 12px rgba(${hexToRgb(theme.cardTint)}, 0.2), inset 0 1px 2px rgba(255,255,255,0.08), inset 0 -1px 3px rgba(0,0,0,0.2)`
+              ? `0 0 16px rgba(${hexToRgb(theme.cardTint)}, 0.35), 0 0 4px rgba(${hexToRgb(theme.cardTint)}, 0.2), inset 0 1px 2px rgba(255,255,255,0.12), inset 0 -1px 3px rgba(0,0,0,0.2)`
               : `inset 0 1px 2px rgba(255,255,255,0.06), inset 0 -1px 3px rgba(0,0,0,0.15)`,
+            backdropFilter: 'blur(12px) saturate(1.4)',
+            WebkitBackdropFilter: 'blur(12px) saturate(1.4)',
           }}
         >
           {hasStatus && (
             <span
-              className="text-[8px] font-semibold uppercase tracking-wide px-2 py-1.5 whitespace-nowrap status-badge-enter adaptive-shadow"
+              className="text-[8px] font-semibold uppercase tracking-wide px-2 py-1.5 whitespace-nowrap status-badge-enter adaptive-shadow animate-pulse-soft"
               style={{ ...textStyle, ...statusGlow }}
             >
               {getStatusText()}
@@ -318,7 +413,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           )}
 
           {hasStatus && !isExpanded && (
-            <div className="w-px h-3 flex-shrink-0" style={{ background: `rgba(${hexToRgb(theme.textColor)}, 0.2)` }} />
+            <div className="w-px h-3 flex-shrink-0" style={{ background: `rgba(${hexToRgb(theme.textColor)}, 0.25)` }} />
           )}
 
           <div
@@ -338,7 +433,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           </div>
 
           {showBell && (hasStatus || !isExpanded) && (
-            <div className="w-px h-3 flex-shrink-0" style={{ background: `rgba(${hexToRgb(theme.textColor)}, 0.2)` }} />
+            <div className="w-px h-3 flex-shrink-0" style={{ background: `rgba(${hexToRgb(theme.textColor)}, 0.25)` }} />
           )}
 
           {showBell && (
