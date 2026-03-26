@@ -850,4 +850,99 @@
     0% { transform: translateX(0); }
     100% { transform: translateX(-50%); }
   }
+
+  /* ======= STATUS CARD ANIMATIONS ======= */
+
+  .status-pulse-anim {
+    animation: status-pulse 3s ease-in-out infinite;
+  }
+  @keyframes status-pulse {
+    0%, 100% { box-shadow: inherit; }
+    50% { box-shadow: 0 0 25px currentColor; }
+  }
+
+  .status-glass-shimmer {
+    animation: status-glass-shimmer 6s ease-in-out infinite;
+    background-size: 200% 100%;
+  }
+  @keyframes status-glass-shimmer {
+    0%, 100% { background-position: 100% 0; }
+    50% { background-position: 0 0; }
+  }
+
+  .status-gradient-sweep {
+    animation: status-gradient-sweep 4s ease-in-out infinite;
+  }
+  @keyframes status-gradient-sweep {
+    0%, 100% { filter: brightness(1) saturate(1); }
+    50% { filter: brightness(1.15) saturate(1.2); }
+  }
+
+  .status-combined-anim {
+    animation: status-combined 5s ease-in-out infinite;
+    background-size: 200% 100%;
+  }
+  @keyframes status-combined {
+    0%, 100% { background-position: 100% 0; filter: brightness(1); }
+    25% { filter: brightness(1.1) saturate(1.15); }
+    50% { background-position: 0 0; filter: brightness(1.15) saturate(1.2); }
+    75% { filter: brightness(1.1) saturate(1.15); }
+  }
+
+  /* ======= DIAMOND GLASS FACET OVERLAY ======= */
+
+  .diamond-facet-overlay {
+    position: relative;
+  }
+  .diamond-facet-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0.12;
+    clip-path: polygon(50% 0%, 85% 15%, 100% 50%, 85% 85%, 50% 100%, 15% 85%, 0% 50%, 15% 15%);
+    background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0.15) 60%, rgba(255,255,255,0) 100%);
+    animation: diamond-facet-anim 8s ease-in-out infinite;
+    border-radius: inherit;
+  }
+  @keyframes diamond-facet-anim {
+    0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.12; }
+    25% { transform: rotate(3deg) scale(1.02); opacity: 0.18; }
+    50% { transform: rotate(0deg) scale(1.04); opacity: 0.22; }
+    75% { transform: rotate(-3deg) scale(1.02); opacity: 0.18; }
+  }
+
+  /* ======= VIBRANT PILL GLOW ======= */
+
+  .pill-vibrant-glow {
+    animation: pill-glow-pulse 2.5s ease-in-out infinite;
+  }
+  @keyframes pill-glow-pulse {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.2) saturate(1.3); }
+  }
+
+  /* Status badge enter animation */
+  .status-badge-enter {
+    animation: badge-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  @keyframes badge-enter {
+    0% { transform: scale(0.7); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Opaque card backgrounds */
+  .card-opaque-landed {
+    background: linear-gradient(135deg, #0A2E15 0%, #0F3D1D 50%, #0A2E15 100%) !important;
+  }
+  .card-opaque-delayed {
+    background: linear-gradient(135deg, #3D1A05 0%, #4D2208 50%, #3D1A05 100%) !important;
+  }
+  .card-opaque-cancelled {
+    background: linear-gradient(135deg, #2E0A1A 0%, #3D0E22 50%, #2E0A1A 100%) !important;
+  }
+  .card-opaque-default {
+    background: linear-gradient(135deg, #1A1A1E 0%, #222228 50%, #1A1A1E 100%) !important;
+  }
 }
