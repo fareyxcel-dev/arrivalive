@@ -143,10 +143,48 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Send Push Notification - Try OneSignal first, then Firebase
+    // Send Push Notification - Try PushAlert first, then OneSignal, then Firebase
     if (subscription.notify_push) {
-      // Try OneSignal first
+      // Try PushAlert first
       if (subscription.profiles?.onesignal_player_id) {
+        try {
+          // PushAlert API key (website integration key)
+          const pushAlertApiKey = "0b59464902eedaad9877c595ad33f2fa";
+          
+          const pushAlertPayload = {
+            title: `Flight ${flight.flight_id} Update`,
+            message: message,
+            url: "/",
+            subscriber: subscription.profiles.onesignal_player_id,
+          };
+
+          console.log(`Sending PushAlert push to subscriber: ${subscription.profiles.onesignal_player_id}`);
+
+          const pushResponse = await fetch("https://api.pushalert.co/rest/v1/send/id", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `api_key=${pushAlertApiKey}`,
+            },
+            body: JSON.stringify(pushAlertPayload),
+          });
+
+          if (pushResponse.ok) {
+            results.push.sent = true;
+            console.log("PushAlert push sent successfully");
+          } else {
+            const pushResult = await pushResponse.text();
+            console.error("PushAlert push failed:", pushResult);
+            // Fall through to OneSignal
+          }
+        } catch (error: unknown) {
+          console.error("PushAlert push error:", error);
+          // Fall through to OneSignal
+        }
+      }
+
+      // Fallback to OneSignal if PushAlert didn't work
+      if (!results.push.sent && subscription.profiles?.onesignal_player_id) {
         try {
           const oneSignalAppId = Deno.env.get("ONESIGNAL_APP_ID");
           const oneSignalRestApiKey = Deno.env.get("ONESIGNAL_REST_API_KEY");
@@ -163,14 +201,9 @@ Deno.serve(async (req) => {
                 status: newStatus,
                 url: "/",
               },
-              ios_badgeType: "Increase",
-              ios_badgeCount: 1,
-              android_channel_id: "flight-notifications",
               priority: 10,
               ttl: 86400,
             };
-
-            console.log(`Sending OneSignal push to player: ${subscription.profiles.onesignal_player_id}`);
 
             const pushResponse = await fetch("https://onesignal.com/api/v1/notifications", {
               method: "POST",
@@ -190,8 +223,6 @@ Deno.serve(async (req) => {
               console.error("OneSignal push failed:", pushResult);
               results.push.error = JSON.stringify(pushResult);
             }
-          } else {
-            results.push.error = "OneSignal credentials not configured";
           }
         } catch (error: unknown) {
           results.push.error = error instanceof Error ? error.message : String(error);
