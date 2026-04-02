@@ -89,6 +89,29 @@ const NewHeader = ({
     checkAdmin();
   }, [isLoggedIn]);
 
+  // Request notification permission on login
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const requestNotifPermission = async () => {
+      try {
+        const subscriberId = await subscribeToNotifications();
+        if (subscriberId) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await setExternalUserId(user.id);
+            await supabase.from('profiles').upsert(
+              { user_id: user.id, onesignal_player_id: subscriberId },
+              { onConflict: 'user_id' }
+            );
+          }
+        }
+      } catch (e) {
+        console.warn('Notification permission request failed:', e);
+      }
+    };
+    requestNotifPermission();
+  }, [isLoggedIn]);
+
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
