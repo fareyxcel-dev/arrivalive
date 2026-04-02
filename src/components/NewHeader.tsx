@@ -4,6 +4,8 @@ import { cn } from '@/lib/utils';
 import headerLogo from '@/assets/header-logo.png';
 import { supabase } from '@/integrations/supabase/client';
 import { useSettings } from '@/contexts/SettingsContext';
+import { UI_ICONS } from '@/lib/cardStyles';
+import { subscribeToNotifications, setExternalUserId } from '@/lib/pushalert';
 
 interface WeatherData {
   temp: number;
