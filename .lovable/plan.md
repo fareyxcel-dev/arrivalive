@@ -1,183 +1,150 @@
 
-# Header Fix, Font Visibility, Notification System Repair, Glass UI Enhancement, Loading Animations
 
-## Overview
-This plan addresses 7 key areas: header weather text alignment, font preview visibility in settings, notification bell subscription flow repair, flight card text color matching, gradient blur UI enhancement, loading/splash animations using uploaded GIFs, and a splash screen with glass blur reveal.
+# Multi-Feature Update: PushAlert SW, Glass Styles, Glass Orb UI, Header, Fonts, Parallax Removal
+
+## Summary
+8 changes: replace SW with PushAlert import, add PushAlert script to index.html, remove parallax textures, add 3 glass presets (Vista/Aero/Polarized), use glass orb images for sliders/toggles, update header with menu icon, request notification on login, add 3 custom fonts.
 
 ---
 
-## 1. Header Weather Text Alignment Fix
+## 1. Replace Service Worker with PushAlert SW
 
-**File: `src/components/NewHeader.tsx`**
+**File: `public/sw.js`**
+Replace the entire current service worker with:
+```js
+importScripts("https://cdn.pushalert.co/sw-88425.js");
+```
+This is the uploaded `sw.js` — PushAlert requires its own service worker.
 
-### Problem
-The weather text on the right side (both default and alternative) is mispositioned -- it overlaps with the center logo area (visible in reference image 1).
+**Note:** The current SW has caching, background sync, push handling. All push handling will now be managed by PushAlert's imported SW. The existing caching/sync logic will be removed since PushAlert's SW handles notifications.
 
-### Root Cause
-The right column container uses `space-y-0` and text flows without proper right-alignment constraints. The weather condition text and duration text are not properly anchored to the right edge.
+## 2. Add PushAlert Script to index.html
 
-### Fix
-- Wrap the entire right column in `justify-self-end` to push content to the far right
-- Add `text-right` to all child elements explicitly
-- Change the left column's day/date toggle from using absolute positioning (which causes displacement) to a single conditional render block -- same fix as weather
-- For the left column sun countdown: replace the `blur-sm opacity-0` + absolute overlay with a simple ternary (show either day/date OR sun countdown, never both)
-- For the right column: already fixed in the latest code using ternary, but ensure `justify-self-end` is on the outer container
-
-### Specific Changes
-Left column (lines 307-342): Replace the two overlapping buttons with one conditionally rendered block:
-```tsx
-<button onClick={handleDayDateClick} className="block text-left ...">
-  <p>{showSunCountdown ? `${sunData.label} in ${sunData.countdown}` : formatDay(currentTime)}</p>
-  <p>{showSunCountdown ? `at ${sunData.time}` : formatDate(currentTime)}</p>
-</button>
+**File: `index.html`**
+- Remove the OneSignal SDK script and init block (lines 51-65)
+- Add before `</head>`:
+```html
+<script type="text/javascript">
+  (function(d, t) {
+    var g = d.createElement(t), s = d.getElementsByTagName(t)[0];
+    g.src = "https://cdn.pushalert.co/integrate_770494a54b29b2cc5b086ceecc33b7a3.js";
+    s.parentNode.insertBefore(g, s);
+  }(document, "script"));
+</script>
 ```
 
-Right column (lines 420-456): Add `justify-self-end` to the outer div to anchor right.
+**File: `src/lib/pushalert.ts`**
+- Update the API key constant to use the Website ID: `770494a54b29b2cc5b086ceecc33b7a3`
 
----
-
-## 2. Font Style Visibility in Settings
-
-**File: `src/components/SettingsModal.tsx`**
-
-### Problem
-Font names in the picker all render in the same default font instead of previewing in their actual typeface (reference image 2 shows how they should look).
-
-### Root Cause
-The `IntersectionObserver` is set up via `setupFontObserver` callback, but the `ScrollArea` component wraps content in its own viewport div. The observer's `root` is set to the `fontScrollRef` node, but the actual scrolling container is the ScrollArea's viewport child. This means elements never "intersect" because the observer root doesn't match the scroll container.
-
-### Fix
-1. Remove the `ref={fontScrollRef}` from the inner div and instead use `useEffect` to find the ScrollArea's viewport element (which has `data-radix-scroll-area-viewport`)
-2. Set the observer's `root` to the actual viewport element
-3. Always apply `fontFamily` inline style regardless of whether the font has loaded -- the browser will show fallback until the font CSS loads
-4. When an element intersects, inject the Google Fonts `<link>` tag to load that font
-5. Add a small delay (200ms) after tab switch before setting up the observer to ensure DOM is ready
-
-### Code Change
-```tsx
-useEffect(() => {
-  if (activeTab !== 'texts' || !isOpen) return;
-  const timer = setTimeout(() => {
-    const viewport = document.querySelector('[data-radix-scroll-area-viewport]');
-    if (!viewport) return;
-    // ... set up IntersectionObserver with root: viewport
-  }, 200);
-  return () => clearTimeout(timer);
-}, [activeTab, isOpen]);
-```
-
-Each font button always gets `style={{ fontFamily: "'FontName', sans-serif" }}`.
-
----
-
-## 3. Notification Bell Subscription Flow Repair
-
-**Files: `src/components/FlightCard.tsx`, `src/pages/Index.tsx`, `src/components/TerminalGroup.tsx`**
-
-### Problem
-There are TWO competing subscription paths causing confusion:
-1. `FlightCard.handleBellClick()` calls `subscribeToFlightNotifications()` which uses `flight.flightId` (text like "EK 652") and inserts into `notification_subscriptions`
-2. `Index.handleToggleNotification()` also inserts into `notification_subscriptions` using `flightId` parameter (which is `flight.id` -- a UUID)
-
-Additionally, `loadUserSubscriptions` loads `flight_id` from subscriptions and checks `notificationIds.has(flight.id)`, but the stored `flight_id` could be either UUID or text depending on which path ran.
-
-### Fix -- Unify on a single subscription path
-- **Remove** the duplicate insertion logic from `Index.handleToggleNotification`. Instead, make it only update local state (`notificationIds` and `notificationCount`)
-- **Keep** `FlightCard.handleBellClick` as the sole subscription manager (it handles OneSignal, database insert/delete, and toast)
-- **Standardize** on using `flight.flightId` (text like "EK 652") as the key in `notification_subscriptions.flight_id`
-- **Update** `loadUserSubscriptions` to build the Set using `flight_id` (text), and `TerminalGroup` to check `notificationIds.has(flight.flightId)` instead of `flight.id`
-- **Update** `FlightCard.handleBellClick` to call `onToggleNotification(flight.flightId)` so the parent state stays in sync
-- **Update** `loadUserSubscriptions` to NOT filter by `flight_date = today` (subscriptions for future dates should also show)
-
-### Notification Modal Fix
-- In `NotificationsModal`, when loading subscriptions, also join with flights to get `origin`, `scheduled_time`, `estimated_time`, and `status`
-- Display these real details instead of just flight_id text
-
----
-
-## 4. Flight Card Text Color Matching Airline Logo
+## 3. Remove Parallax Textures
 
 **File: `src/components/FlightCard.tsx`**
+- Remove `scrollY` state and the scroll listener (lines 186-191)
+- Remove `getCardTexture()` function call and all parallax-related `backgroundPosition` calculations
+- Remove `isSemiOpaque` logic that applies parallax textures
+- Keep opaque mode (glassOpacity=0) with solid gradient hex backgrounds, but remove `backgroundPosition: center ${scrollY * 0.05}px` and texture image overlays
+- Simplify `getCardBgStyle()`: opaque mode uses solid gradient only, semi-opaque uses glass blur without texture images
 
-### Current State
-Flight card text colors are based on status theme (`theme.textColor`). The airline logos are color-filtered to match. This is already working as designed -- the text and logo share the same color via `getColorFilter`.
+**File: `src/lib/cardStyles.ts`**
+- Remove all parallax texture URLs from `TEXTURE_URLS` (landedGlassParallax, etc.)
+- Keep only the base gradient textures if needed for opaque mode, or remove entirely if not using texture images
 
-### Enhancement
-Ensure ALL text within the card (flight ID, origin, time, status badge, SCH/EST labels) uses the same `theme.textColor`. This is already the case in the current code. No changes needed here beyond verification.
+## 4. Add 3 Glass Styles: Vista, Aero, Polarized
 
----
-
-## 5. Gradient Live Blur for UI Elements
-
-**File: `src/index.css`**
-
-### Enhancement
-Add gradient blur with 3-level brightness tiers for glass elements:
-- Top area: `brightness(1.99)` (near +0.99 above base)
-- Middle area: `brightness(1.66)` 
-- Bottom area: `brightness(1.33)`
-
-### New CSS Classes
-```css
-.glass-gradient-blur {
-  position: relative;
-}
-.glass-gradient-blur::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    to bottom,
-    rgba(255,255,255,0.12) 0%,
-    rgba(255,255,255,0.06) 50%,
-    rgba(255,255,255,0.02) 100%
-  );
-  pointer-events: none;
-  z-index: 0;
-}
+**File: `src/contexts/SettingsContext.tsx`**
+Add to `GLASS_PRESETS`:
+```typescript
+'vista':      { blur: 16, opacity: 0.12, label: 'Vista',      description: 'Vista glass with glow',     tint: 'warm-white',  animation: 'glass-vista-glow',      saturateBoost: 1.2 },
+'aero-win':   { blur: 14, opacity: 0.18, label: 'Aero',       description: 'Windows Aero style',        tint: 'blue-tint',   animation: 'glass-aero-sweep',      saturateBoost: 1.1 },
+'polarized':  { blur: 10, opacity: 0.25, label: 'Polarized',  description: 'Dark, high contrast',       tint: 'dark',        animation: 'glass-polarized-shift', saturateBoost: 0.9 },
 ```
 
-### Apply to:
-- Toggles (LiveBlurToggle)
-- Sliders (track and range)
-- Buttons (glass-interactive)
-- Text inputs
-- Menu pill
-- All interactive UI elements
+The existing `'aero'` entry labeled "Windows Aero" should be renamed or kept alongside. Looking at the reference screenshots, Vista and Aero are distinct. The current `'aero'` can stay as-is; add `'vista'` and `'polarized'` as new entries.
 
----
+**File: `src/index.css`**
+Add keyframes for `glass-vista-glow` and `glass-polarized-shift`.
 
-## 6. Loading Animation & Splash Screen
+## 5. Glass Orb Slider/Toggle Thumbs
 
-**Files: `src/components/LoadingSpinner.tsx`, `src/pages/Index.tsx`, new `src/components/SplashScreen.tsx`**
+The user wants sliders and toggles to use glass orb images from the provided ImageKit URL for a more glass-styled UI.
 
-### Loading Spinner
-- Copy uploaded GIF #1 (palm tree icon) to `src/assets/loading.gif` (replace existing)
-- `LoadingSpinner` already uses this file -- just needs the new asset
+**File: `src/components/ui/slider.tsx`**
+Replace the `SliderPrimitive.Thumb` with a custom styled thumb that uses the glass orb texture as background:
+```tsx
+<SliderPrimitive.Thumb 
+  className="block h-6 w-6 rounded-full ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+  style={{
+    backgroundImage: `url(https://ik.imagekit.io/jv0j9qvtw/...)`,
+    backgroundSize: 'cover',
+    border: '1px solid rgba(255,255,255,0.2)',
+    boxShadow: '0 0 8px rgba(255,255,255,0.15)',
+  }}
+/>
+```
 
-### Splash Screen
-- Copy uploaded GIF #2 (full Arriva.MV logo animation) to `src/assets/splash-logo.gif`
-- Create `SplashScreen.tsx`: full-screen component showing the splash GIF centered on a heavily blurred glass background
-- The glass background uses `backdrop-filter: blur(40px)` over the iframe
-- Once iframe is loaded AND flight data is fetched, animate the blur away (reduce from 40px to 0 over 1.5s) to reveal the home screen
-- Show splash for minimum 2 seconds, then fade out when data is ready
+**File: `src/components/SettingsModal.tsx`** (LiveBlurToggle)
+Replace the toggle knob `div` with a glass orb image background, similar approach.
 
-### Implementation in Index.tsx
-- Add `iframeLoaded` state (set via callback from `SkyIframeBackground`)
-- Add `showSplash` state (default true)
-- When `!isLoading && iframeLoaded`, start fade-out animation, then set `showSplash = false`
-- Render `SplashScreen` overlay when `showSplash` is true
+## 6. Update Header with Menu Icon
 
----
+**File: `src/components/NewHeader.tsx`**
+Based on the reference image, replace the right-side weather area or add a menu icon button using the ImageKit Menu.png icon:
+`https://ik.imagekit.io/jv0j9qvtw/New%20Airline%20Logo%20Variants%20/Icons/Menu.png`
 
-## 7. SkyIframeBackground Load Callback
+Add to `cardStyles.ts` UI_ICONS:
+```typescript
+menu: `${ICONS_BASE}Menu.png`,
+```
 
-**File: `src/components/SkyIframeBackground.tsx`**
+In the header, replace the collapsed menu pill indicator with the Menu.png icon. When tapped, it toggles the menu open. The reference image shows a settings/equalizer icon on the right side of the header.
 
-- Add `onLoad?: () => void` prop
-- Attach `onLoad` handler to the iframe element
-- Parent (Index.tsx) passes callback to set `iframeLoaded = true`
+Update the header right area: add the menu icon as a visible button (instead of the tiny 4px pill under the logo). The logo click still toggles menu, but the Menu icon on the right provides an alternative trigger.
+
+## 7. Request Notification Permission on Login
+
+**File: `src/pages/Index.tsx`** or **`src/components/NewHeader.tsx`**
+Add a `useEffect` that triggers when a user successfully logs in (auth state changes to signed-in):
+```typescript
+useEffect(() => {
+  if (isLoggedIn) {
+    // Request notification permission on new device login
+    subscribeToNotifications().catch(() => {});
+  }
+}, [isLoggedIn]);
+```
+
+Import `subscribeToNotifications` from `@/lib/pushalert`.
+
+## 8. Add 3 Custom Fonts + Similar Options
+
+The user uploaded 3 font files:
+- `modulus-pro-semi-bold.otf`
+- `VisbyRoundCF-Bold.otf`
+- `Arkitype-Modulus-Pro-Bold.otf`
+
+**Action:**
+- Copy uploaded fonts to `public/fonts/`
+- Add `@font-face` declarations in `src/index.css`
+- Add font names to `AVAILABLE_FONTS` in `src/contexts/SettingsContext.tsx`
+- Also add similar Google Fonts options: `'Exo'`, `'Michroma'`, `'Aldrich'`, `'Khand'`, `'Saira Stencil One'`, `'Bruno Ace SC'`
+
+```css
+@font-face {
+  font-family: 'Modulus Pro SemiBold';
+  src: url('/fonts/modulus-pro-semi-bold.otf') format('opentype');
+  font-weight: 600;
+}
+@font-face {
+  font-family: 'Visby Round CF';
+  src: url('/fonts/VisbyRoundCF-Bold.otf') format('opentype');
+  font-weight: 700;
+}
+@font-face {
+  font-family: 'Arkitype Modulus Pro';
+  src: url('/fonts/Arkitype-Modulus-Pro-Bold.otf') format('opentype');
+  font-weight: 700;
+}
+```
 
 ---
 
@@ -185,14 +152,15 @@ Add gradient blur with 3-level brightness tiers for glass elements:
 
 | File | Changes |
 |------|---------|
-| `src/components/NewHeader.tsx` | Fix weather text alignment, replace absolute positioning with conditional rendering |
-| `src/components/SettingsModal.tsx` | Fix IntersectionObserver root for font preview, find ScrollArea viewport |
-| `src/components/FlightCard.tsx` | Remove competing subscription logic, standardize on flightId text key |
-| `src/pages/Index.tsx` | Simplify handleToggleNotification, fix loadUserSubscriptions, add splash state |
-| `src/components/TerminalGroup.tsx` | Check `notificationIds.has(flight.flightId)` instead of `flight.id` |
-| `src/components/NotificationsModal.tsx` | Show real flight details (origin, times, status) |
-| `src/components/LoadingSpinner.tsx` | Already uses loading.gif -- just need to replace the asset file |
-| `src/components/SplashScreen.tsx` | **New** -- splash overlay with glass blur reveal animation |
-| `src/components/SkyIframeBackground.tsx` | Add onLoad callback prop |
-| `src/index.css` | Add glass-gradient-blur class for 3-tier brightness gradient |
-| Asset copies | Copy uploaded GIFs to src/assets/loading.gif and src/assets/splash-logo.gif |
+| `public/sw.js` | Replace with PushAlert importScripts |
+| `index.html` | Remove OneSignal, add PushAlert integration script |
+| `src/lib/pushalert.ts` | Update API key to Website ID |
+| `src/components/FlightCard.tsx` | Remove parallax scroll tracking and texture overlays |
+| `src/lib/cardStyles.ts` | Remove parallax texture URLs, add menu icon |
+| `src/contexts/SettingsContext.tsx` | Add Vista/Aero/Polarized glass presets, add custom fonts |
+| `src/components/ui/slider.tsx` | Glass orb thumb styling |
+| `src/components/SettingsModal.tsx` | Glass orb toggle knob |
+| `src/components/NewHeader.tsx` | Add menu icon, notification on login |
+| `src/index.css` | Glass preset keyframes, @font-face declarations |
+| `public/fonts/` | 3 custom font files |
+
