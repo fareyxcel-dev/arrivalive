@@ -6,7 +6,7 @@ import FlightProgressBar from './FlightProgressBar';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { subscribeToNotifications, addFlightTag, removeFlightTag, setExternalUserId } from '@/lib/pushalert';
-import { AIRLINE_NAMES, CARD_STYLES, getLogoUrls, getCardTheme, hexToRgb, TEXTURE_URLS } from '@/lib/cardStyles';
+import { AIRLINE_NAMES, CARD_STYLES, getLogoUrls, getCardTheme, hexToRgb } from '@/lib/cardStyles';
 
 export interface Flight {
   id: string;
