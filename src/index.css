@@ -1,4 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Exo:wght@400;500;600;700&family=Michroma&family=Aldrich&family=Khand:wght@400;500;600;700&family=Saira+Stencil+One&family=Bruno+Ace+SC&display=swap');
+
+/* Custom font faces */
+@font-face {
+  font-family: 'Modulus Pro SemiBold';
+  src: url('/fonts/modulus-pro-semi-bold.otf') format('opentype');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Visby Round CF';
+  src: url('/fonts/VisbyRoundCF-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Arkitype Modulus Pro';
+  src: url('/fonts/Arkitype-Modulus-Pro-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-display: swap;
+}
 
 @tailwind base;
 @tailwind components;
