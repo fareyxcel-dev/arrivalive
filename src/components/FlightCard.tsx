@@ -124,7 +124,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   const [countdown, setCountdown] = useState('');
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
+  const [scrollY, setScrollY] = useState(0); // kept for compatibility
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoCollapseRef = useRef<NodeJS.Timeout | null>(null);
 
