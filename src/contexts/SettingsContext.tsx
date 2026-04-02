@@ -372,6 +372,9 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         ${currentPreset.animation === 'glass-aero-sweep' ? 'position: relative; overflow: hidden;' : ''}
         ${currentPreset.animation === 'glass-material-ripple' ? 'animation: glass-material-ripple 3s ease-in-out infinite;' : ''}
         ${currentPreset.animation === 'glass-retro-pixel' ? 'animation: glass-retro-pixel 2s step-end infinite;' : ''}
+        ${currentPreset.animation === 'glass-vista-glow' ? 'animation: glass-vista-glow 4s ease-in-out infinite; filter: brightness(1.05) saturate(1.2);' : ''}
+        ${currentPreset.animation === 'glass-aero-win-sweep' ? 'position: relative; overflow: hidden;' : ''}
+        ${currentPreset.animation === 'glass-polarized-shift' ? 'animation: glass-polarized-shift 5s ease-in-out infinite;' : ''}
       }
       ` : ''}
       
