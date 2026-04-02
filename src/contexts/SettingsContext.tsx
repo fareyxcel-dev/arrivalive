@@ -65,6 +65,9 @@ export const GLASS_PRESETS: Record<string, GlassPreset> = {
   'opaque':       { blur: 0,  opacity: 0.35, label: 'Opaque',              description: 'Solid frosted background',  tint: 'dark',       animation: '',                         saturateBoost: 1.0 },
   'retro':        { blur: 2,  opacity: 0.18, label: 'Retro Pixelated',     description: 'Pixel-grid overlay',        tint: 'green-retro',animation: 'glass-retro-pixel',        saturateBoost: 1.0 },
   'clear':        { blur: 0,  opacity: 0.0,  label: 'Clear',               description: 'Fully transparent',         tint: 'none',       animation: '',                         saturateBoost: 1.0 },
+  'vista':        { blur: 16, opacity: 0.12, label: 'Vista',               description: 'Vista glass with glow',     tint: 'warm-white', animation: 'glass-vista-glow',         saturateBoost: 1.2 },
+  'aero-win':     { blur: 14, opacity: 0.18, label: 'Aero',               description: 'Windows Aero style',        tint: 'blue-tint',  animation: 'glass-aero-win-sweep',     saturateBoost: 1.1 },
+  'polarized':    { blur: 10, opacity: 0.25, label: 'Polarized',           description: 'Dark, high contrast',       tint: 'dark',       animation: 'glass-polarized-shift',    saturateBoost: 0.9 },
 };
 
 interface SettingsState {

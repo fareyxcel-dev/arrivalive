@@ -233,9 +233,6 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
     ? (theme.isGlass && theme.isGradient ? 'status-combined-anim' : theme.isGlass ? 'status-glass-shimmer' : theme.isGradient ? 'status-gradient-sweep' : 'status-pulse-anim')
     : '';
 
-  // Texture for card background
-  const textureUrl = getCardTexture(flight.status, settings.cardStyle, settings.glassOpacity);
-
   // Build card background style
   const getCardBgStyle = (): React.CSSProperties => {
     if (isOpaqueMode) {
@@ -243,21 +240,12 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
         background: getOpaqueBackground(flight.status),
         border: `1px solid rgba(${hexToRgb(theme.cardTint)}, 0.3)`,
         boxShadow: `0 0 20px rgba(${hexToRgb(theme.cardTint)}, 0.2), 0 4px 20px rgba(0, 0, 0, 0.3)`,
-        ...(textureUrl ? {
-          backgroundImage: `url(${textureUrl}), ${getOpaqueBackground(flight.status)}`,
-          backgroundSize: 'cover',
-          backgroundPosition: `center ${scrollY * 0.05}px`,
-        } : {}),
       };
     }
 
-    if (isSemiOpaque && textureUrl) {
+    if (isSemiOpaque) {
       return {
         background: `linear-gradient(145deg, rgba(${hexToRgb(theme.cardTint)}, ${statusBgOpacity + 0.1}) 0%, rgba(0, 0, 0, 0.35) 100%)`,
-        backgroundImage: `url(${textureUrl})`,
-        backgroundSize: 'cover',
-        backgroundPosition: `center ${scrollY * 0.03}px`,
-        backgroundBlendMode: 'overlay',
         backdropFilter: `blur(24px) saturate(1.3) brightness(1.1)`,
         WebkitBackdropFilter: `blur(24px) saturate(1.3) brightness(1.1)`,
         border: `1px solid rgba(${hexToRgb(theme.cardTint)}, 0.2)`,
