@@ -139,14 +139,6 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   const isOpaqueMode = settings.glassOpacity <= 0;
   const isSemiOpaque = settings.glassOpacity > 0 && settings.glassOpacity <= 0.25;
 
-  // Track scroll for parallax textures
-  useEffect(() => {
-    if (!isSemiOpaque && !isOpaqueMode) return;
-    const handleScroll = () => setScrollY(window.scrollY);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [isSemiOpaque, isOpaqueMode]);
-
   // Unified or separate card visual sliders
   const effectiveLogo = settings.cardUnifiedAdjust
     ? { brightness: settings.cardLogoBrightness, contrast: settings.cardLogoContrast, saturation: settings.cardLogoSaturation, hue: settings.cardLogoHueShift }
