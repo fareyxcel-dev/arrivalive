@@ -25,31 +25,17 @@ export const UI_ICONS = {
   menu: `${ICONS_BASE}Menu.png`,
 };
 
-// Texture URLs from ImageKit for card backgrounds
+// Texture URLs from ImageKit for card backgrounds (parallax removed)
 export const TEXTURE_URLS: Record<string, string> = {
   // Solid gradient textures (for opaque mode)
   landedGradient: `${TEXTURES_BASE}Landed%20Gradient.jpg`,
   delayedGradient: `${TEXTURES_BASE}Delayed%20Gradient.jpg`,
   cancelledGradient: `${TEXTURES_BASE}Cancelled%20Gradient.jpg`,
-  // Glass textures
-  landedGlass: `${TEXTURES_BASE}Landed%20Glass.jpg`,
-  delayedGlass: `${TEXTURES_BASE}Delayed%20Glass.jpg`,
-  cancelledGlass: `${TEXTURES_BASE}Cancelled%20Glass.jpg`,
-  defaultGlass: `${TEXTURES_BASE}Default%20Glass%20Parallax.png`,
   // Glass gradient textures
   landedGlassGradient: `${TEXTURES_BASE}Landed%20Glass%20Gradient.jpg`,
   delayedGlassGradient: `${TEXTURES_BASE}Delayed%20Glass%20Gradient.jpg`,
   cancelledGlassGradient: `${TEXTURES_BASE}Cancelled%20Glass%20Gradient.jpg`,
   defaultGlassGradient: `${TEXTURES_BASE}Default%20Glass%20Gradient%20Parallax.png`,
-  // Parallax textures (for semi-opaque mode with scroll)
-  landedGlassParallax: `${TEXTURES_BASE}Landed%20Glass%20Parallax.png`,
-  delayedGlassParallax: `${TEXTURES_BASE}Delayed%20Glass%20Parallax.png`,
-  cancelledGlassParallax: `${TEXTURES_BASE}Cancelled%20Glass%20Parallax.png`,
-  defaultGlassParallax: `${TEXTURES_BASE}Default%20Glass%20Parallax.png`,
-  landedGlassGradientParallax: `${TEXTURES_BASE}Landed%20Glass%20Gradient%20Parallax.png`,
-  delayedGlassGradientParallax: `${TEXTURES_BASE}Delayed%20Glass%20Gradient%20Parallax.png`,
-  cancelledGlassGradientParallax: `${TEXTURES_BASE}Cancelled%20Glass%20Gradient%20Parallax.png`,
-  defaultGlassGradientParallax: `${TEXTURES_BASE}Default%20Glass%20Gradient%20Parallax.png`,
 };
 
 export interface CardStyle {
