@@ -4,6 +4,8 @@ import { cn } from '@/lib/utils';
 import headerLogo from '@/assets/header-logo.png';
 import { supabase } from '@/integrations/supabase/client';
 import { useSettings } from '@/contexts/SettingsContext';
+import { UI_ICONS } from '@/lib/cardStyles';
+import { subscribeToNotifications, setExternalUserId } from '@/lib/pushalert';
 
 interface WeatherData {
   temp: number;
@@ -85,6 +87,29 @@ const NewHeader = ({
       }
     };
     checkAdmin();
+  }, [isLoggedIn]);
+
+  // Request notification permission on login
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const requestNotifPermission = async () => {
+      try {
+        const subscriberId = await subscribeToNotifications();
+        if (subscriberId) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await setExternalUserId(user.id);
+            await supabase.from('profiles').upsert(
+              { user_id: user.id, onesignal_player_id: subscriberId },
+              { onConflict: 'user_id' }
+            );
+          }
+        }
+      } catch (e) {
+        console.warn('Notification permission request failed:', e);
+      }
+    };
+    requestNotifPermission();
   }, [isLoggedIn]);
 
   useEffect(() => {
@@ -396,6 +421,17 @@ const NewHeader = ({
                 </div>
               )}
             </div>
+
+            {/* Menu icon button (right side alternative trigger) */}
+            {!isMenuOpen && (
+              <button
+                onClick={() => setIsMenuOpen(true)}
+                className="mt-1 p-1 rounded-full hover:bg-white/10 transition-colors"
+                title="Open menu"
+              >
+                <img src={UI_ICONS.menu} alt="Menu" className="w-4 h-4 opacity-70" />
+              </button>
+            )}
           </div>
 
           {/* Right: Weather - constrained to not invade center */}

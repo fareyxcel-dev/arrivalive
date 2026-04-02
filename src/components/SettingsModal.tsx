@@ -654,6 +654,8 @@ const SettingsModal = ({ isOpen, onClose }: Props) => {
 };
 
 // Live blur toggle
+const GLASS_ORB_URL = "https://ik.imagekit.io/jv0j9qvtw/New%20Airline%20Logo%20Variants%20/Icons/Glass%20Orb.png";
+
 const LiveBlurToggle = ({ checked, onChange }: { checked: boolean; onChange: (val: boolean) => void }) => (
   <button
     onClick={(e) => { e.stopPropagation(); onChange(!checked); }}
@@ -670,9 +672,9 @@ const LiveBlurToggle = ({ checked, onChange }: { checked: boolean; onChange: (va
         checked ? "translate-x-[18px]" : "translate-x-[2px]")}
       style={{
         width: '20px', height: '20px',
-        background: 'rgba(255, 255, 255, 0.45)',
-        backdropFilter: 'blur(8px) brightness(1.5)',
-        WebkitBackdropFilter: 'blur(8px) brightness(1.5)',
+        backgroundImage: `url(${GLASS_ORB_URL})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
         boxShadow: '0 0 6px rgba(255,255,255,0.08), inset 0 1px 1px rgba(255,255,255,0.15), 0 1px 4px rgba(0,0,0,0.3)',
       }}
     />

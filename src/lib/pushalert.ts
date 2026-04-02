@@ -1,7 +1,7 @@
 // PushAlert Web Push SDK integration
 // Public website integration key - safe for client-side use
 
-const PUSHALERT_API_KEY = '0b59464902eedaad9877c595ad33f2fa';
+const PUSHALERT_API_KEY = '770494a54b29b2cc5b086ceecc33b7a3';
 
 declare global {
   interface Window {

@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Extended fonts list
 const AVAILABLE_FONTS = [
+  'Modulus Pro SemiBold', 'Visby Round CF', 'Arkitype Modulus Pro',
+  'Exo', 'Michroma', 'Aldrich', 'Khand', 'Saira Stencil One', 'Bruno Ace SC',
   'Poppins', 'Teko', 'Sulphur Point', 'Stick No Bills', 'Space Mono', 'Notable',
   'Archive', 'Bebas Neue', 'Oswald', 'Anton', 'Permanent Marker', 'Russo One',
   'Black Ops One', 'Bangers', 'Bungee', 'Audiowide', 'Orbitron', 'Electrolize',
@@ -16,7 +18,7 @@ const AVAILABLE_FONTS = [
   'Josefin Sans', 'Signika', 'Prompt', 'Sarabun', 'Mulish', 'Cairo',
   'Rajdhani', 'Chakra Petch', 'Kanit', 'Quantico', 'Play', 'Geo',
   'Iceland', 'Iceberg', 'Revalia', 'Odibee Sans', 'Big Shoulders Stencil',
-  'Agdasima', 'Anta', 'Michroma', 'Oxanium', 'Saira', 'Sarpanch',
+  'Agdasima', 'Anta', 'Oxanium', 'Saira', 'Sarpanch',
   'Share Tech', 'Share Tech Mono', 'Syncopate', 'Tomorrow', 'Turret Road',
   'PT Sans Narrow', 'Sofia Sans Extra Condensed', 'Yanone Kaffeesatz',
   'Bai Jamjuree', 'Smooch Sans', 'Tulpen One', 'Big Shoulders Display',
@@ -63,6 +65,9 @@ export const GLASS_PRESETS: Record<string, GlassPreset> = {
   'opaque':       { blur: 0,  opacity: 0.35, label: 'Opaque',              description: 'Solid frosted background',  tint: 'dark',       animation: '',                         saturateBoost: 1.0 },
   'retro':        { blur: 2,  opacity: 0.18, label: 'Retro Pixelated',     description: 'Pixel-grid overlay',        tint: 'green-retro',animation: 'glass-retro-pixel',        saturateBoost: 1.0 },
   'clear':        { blur: 0,  opacity: 0.0,  label: 'Clear',               description: 'Fully transparent',         tint: 'none',       animation: '',                         saturateBoost: 1.0 },
+  'vista':        { blur: 16, opacity: 0.12, label: 'Vista',               description: 'Vista glass with glow',     tint: 'warm-white', animation: 'glass-vista-glow',         saturateBoost: 1.2 },
+  'aero-win':     { blur: 14, opacity: 0.18, label: 'Aero',               description: 'Windows Aero style',        tint: 'blue-tint',  animation: 'glass-aero-win-sweep',     saturateBoost: 1.1 },
+  'polarized':    { blur: 10, opacity: 0.25, label: 'Polarized',           description: 'Dark, high contrast',       tint: 'dark',       animation: 'glass-polarized-shift',    saturateBoost: 0.9 },
 };
 
 interface SettingsState {
@@ -367,6 +372,9 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         ${currentPreset.animation === 'glass-aero-sweep' ? 'position: relative; overflow: hidden;' : ''}
         ${currentPreset.animation === 'glass-material-ripple' ? 'animation: glass-material-ripple 3s ease-in-out infinite;' : ''}
         ${currentPreset.animation === 'glass-retro-pixel' ? 'animation: glass-retro-pixel 2s step-end infinite;' : ''}
+        ${currentPreset.animation === 'glass-vista-glow' ? 'animation: glass-vista-glow 4s ease-in-out infinite; filter: brightness(1.05) saturate(1.2);' : ''}
+        ${currentPreset.animation === 'glass-aero-win-sweep' ? 'position: relative; overflow: hidden;' : ''}
+        ${currentPreset.animation === 'glass-polarized-shift' ? 'animation: glass-polarized-shift 5s ease-in-out infinite;' : ''}
       }
       ` : ''}
       

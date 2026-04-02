@@ -6,7 +6,7 @@ import FlightProgressBar from './FlightProgressBar';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { subscribeToNotifications, addFlightTag, removeFlightTag, setExternalUserId } from '@/lib/pushalert';
-import { AIRLINE_NAMES, CARD_STYLES, getLogoUrls, getCardTheme, hexToRgb, TEXTURE_URLS } from '@/lib/cardStyles';
+import { AIRLINE_NAMES, CARD_STYLES, getLogoUrls, getCardTheme, hexToRgb } from '@/lib/cardStyles';
 
 export interface Flight {
   id: string;
@@ -107,49 +107,6 @@ const subscribeToFlightNotifications = async (userId: string, flightId: string, 
   } catch (error) { console.error('Subscription error:', error); return { success: false, pushWorked }; }
 };
 
-// Get texture URL for card based on status and card style
-const getCardTexture = (status: string, cardStyle: string, glassOpacity: number): string | null => {
-  const statusUpper = status.toUpperCase();
-  const isGlass = CARD_STYLES[cardStyle]?.isGlass ?? false;
-  const isGradient = CARD_STYLES[cardStyle]?.isGradient ?? false;
-
-  // For very low opacity (opaque mode), use solid gradient textures
-  if (glassOpacity <= 0) {
-    if (isGradient || isGlass) {
-      const key = statusUpper === 'LANDED' ? 'landedGlassGradient' :
-                  statusUpper === 'DELAYED' ? 'delayedGlassGradient' :
-                  statusUpper === 'CANCELLED' ? 'cancelledGlassGradient' :
-                  'defaultGlassGradient';
-      return TEXTURE_URLS[key] || null;
-    }
-    const key = statusUpper === 'LANDED' ? 'landedGradient' :
-                statusUpper === 'DELAYED' ? 'delayedGradient' :
-                statusUpper === 'CANCELLED' ? 'cancelledGradient' :
-                null;
-    return key ? TEXTURE_URLS[key] : null;
-  }
-
-  // For semi-opacity, use glass parallax textures
-  if (glassOpacity <= 0.25) {
-    if (isGlass) {
-      const key = statusUpper === 'LANDED' ? 'landedGlassParallax' :
-                  statusUpper === 'DELAYED' ? 'delayedGlassParallax' :
-                  statusUpper === 'CANCELLED' ? 'cancelledGlassParallax' :
-                  'defaultGlassParallax';
-      return TEXTURE_URLS[key] || null;
-    }
-    if (isGradient) {
-      const key = statusUpper === 'LANDED' ? 'landedGlassGradientParallax' :
-                  statusUpper === 'DELAYED' ? 'delayedGlassGradientParallax' :
-                  statusUpper === 'CANCELLED' ? 'cancelledGlassGradientParallax' :
-                  'defaultGlassGradientParallax';
-      return TEXTURE_URLS[key] || null;
-    }
-  }
-
-  return null;
-};
-
 // Opaque background hex colors per status
 const getOpaqueBackground = (status: string): string => {
   switch (status.toUpperCase()) {
@@ -167,7 +124,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   const [countdown, setCountdown] = useState('');
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
+  const [scrollY, setScrollY] = useState(0); // kept for compatibility
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoCollapseRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -181,14 +138,6 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   const isDiamond = settings.cardStyle === 'diamond';
   const isOpaqueMode = settings.glassOpacity <= 0;
   const isSemiOpaque = settings.glassOpacity > 0 && settings.glassOpacity <= 0.25;
-
-  // Track scroll for parallax textures
-  useEffect(() => {
-    if (!isSemiOpaque && !isOpaqueMode) return;
-    const handleScroll = () => setScrollY(window.scrollY);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [isSemiOpaque, isOpaqueMode]);
 
   // Unified or separate card visual sliders
   const effectiveLogo = settings.cardUnifiedAdjust
@@ -284,9 +233,6 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
     ? (theme.isGlass && theme.isGradient ? 'status-combined-anim' : theme.isGlass ? 'status-glass-shimmer' : theme.isGradient ? 'status-gradient-sweep' : 'status-pulse-anim')
     : '';
 
-  // Texture for card background
-  const textureUrl = getCardTexture(flight.status, settings.cardStyle, settings.glassOpacity);
-
   // Build card background style
   const getCardBgStyle = (): React.CSSProperties => {
     if (isOpaqueMode) {
@@ -294,21 +240,12 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
         background: getOpaqueBackground(flight.status),
         border: `1px solid rgba(${hexToRgb(theme.cardTint)}, 0.3)`,
         boxShadow: `0 0 20px rgba(${hexToRgb(theme.cardTint)}, 0.2), 0 4px 20px rgba(0, 0, 0, 0.3)`,
-        ...(textureUrl ? {
-          backgroundImage: `url(${textureUrl}), ${getOpaqueBackground(flight.status)}`,
-          backgroundSize: 'cover',
-          backgroundPosition: `center ${scrollY * 0.05}px`,
-        } : {}),
       };
     }
 
-    if (isSemiOpaque && textureUrl) {
+    if (isSemiOpaque) {
       return {
         background: `linear-gradient(145deg, rgba(${hexToRgb(theme.cardTint)}, ${statusBgOpacity + 0.1}) 0%, rgba(0, 0, 0, 0.35) 100%)`,
-        backgroundImage: `url(${textureUrl})`,
-        backgroundSize: 'cover',
-        backgroundPosition: `center ${scrollY * 0.03}px`,
-        backgroundBlendMode: 'overlay',
         backdropFilter: `blur(24px) saturate(1.3) brightness(1.1)`,
         WebkitBackdropFilter: `blur(24px) saturate(1.3) brightness(1.1)`,
         border: `1px solid rgba(${hexToRgb(theme.cardTint)}, 0.2)`,
