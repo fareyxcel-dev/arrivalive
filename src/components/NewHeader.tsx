@@ -421,6 +421,17 @@ const NewHeader = ({
                 </div>
               )}
             </div>
+
+            {/* Menu icon button (right side alternative trigger) */}
+            {!isMenuOpen && (
+              <button
+                onClick={() => setIsMenuOpen(true)}
+                className="mt-1 p-1 rounded-full hover:bg-white/10 transition-colors"
+                title="Open menu"
+              >
+                <img src={UI_ICONS.menu} alt="Menu" className="w-4 h-4 opacity-70" />
+              </button>
+            )}
           </div>
 
           {/* Right: Weather - constrained to not invade center */}
