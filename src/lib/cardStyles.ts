@@ -22,6 +22,7 @@ export const UI_ICONS = {
   nightTime: `${ICONS_BASE}Night%20Time.png`,
   sunset: `${ICONS_BASE}Sunset.png`,
   sunrise: `${ICONS_BASE}Sunrise.png`,
+  menu: `${ICONS_BASE}Menu.png`,
 };
 
 // Texture URLs from ImageKit for card backgrounds
