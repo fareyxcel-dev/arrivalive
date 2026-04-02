@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Extended fonts list
 const AVAILABLE_FONTS = [
+  'Modulus Pro SemiBold', 'Visby Round CF', 'Arkitype Modulus Pro',
+  'Exo', 'Michroma', 'Aldrich', 'Khand', 'Saira Stencil One', 'Bruno Ace SC',
   'Poppins', 'Teko', 'Sulphur Point', 'Stick No Bills', 'Space Mono', 'Notable',
   'Archive', 'Bebas Neue', 'Oswald', 'Anton', 'Permanent Marker', 'Russo One',
   'Black Ops One', 'Bangers', 'Bungee', 'Audiowide', 'Orbitron', 'Electrolize',
@@ -16,7 +18,7 @@ const AVAILABLE_FONTS = [
   'Josefin Sans', 'Signika', 'Prompt', 'Sarabun', 'Mulish', 'Cairo',
   'Rajdhani', 'Chakra Petch', 'Kanit', 'Quantico', 'Play', 'Geo',
   'Iceland', 'Iceberg', 'Revalia', 'Odibee Sans', 'Big Shoulders Stencil',
-  'Agdasima', 'Anta', 'Michroma', 'Oxanium', 'Saira', 'Sarpanch',
+  'Agdasima', 'Anta', 'Oxanium', 'Saira', 'Sarpanch',
   'Share Tech', 'Share Tech Mono', 'Syncopate', 'Tomorrow', 'Turret Road',
   'PT Sans Narrow', 'Sofia Sans Extra Condensed', 'Yanone Kaffeesatz',
   'Bai Jamjuree', 'Smooch Sans', 'Tulpen One', 'Big Shoulders Display',
