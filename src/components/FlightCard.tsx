@@ -107,49 +107,6 @@ const subscribeToFlightNotifications = async (userId: string, flightId: string, 
   } catch (error) { console.error('Subscription error:', error); return { success: false, pushWorked }; }
 };
 
-// Get texture URL for card based on status and card style
-const getCardTexture = (status: string, cardStyle: string, glassOpacity: number): string | null => {
-  const statusUpper = status.toUpperCase();
-  const isGlass = CARD_STYLES[cardStyle]?.isGlass ?? false;
-  const isGradient = CARD_STYLES[cardStyle]?.isGradient ?? false;
-
-  // For very low opacity (opaque mode), use solid gradient textures
-  if (glassOpacity <= 0) {
-    if (isGradient || isGlass) {
-      const key = statusUpper === 'LANDED' ? 'landedGlassGradient' :
-                  statusUpper === 'DELAYED' ? 'delayedGlassGradient' :
-                  statusUpper === 'CANCELLED' ? 'cancelledGlassGradient' :
-                  'defaultGlassGradient';
-      return TEXTURE_URLS[key] || null;
-    }
-    const key = statusUpper === 'LANDED' ? 'landedGradient' :
-                statusUpper === 'DELAYED' ? 'delayedGradient' :
-                statusUpper === 'CANCELLED' ? 'cancelledGradient' :
-                null;
-    return key ? TEXTURE_URLS[key] : null;
-  }
-
-  // For semi-opacity, use glass parallax textures
-  if (glassOpacity <= 0.25) {
-    if (isGlass) {
-      const key = statusUpper === 'LANDED' ? 'landedGlassParallax' :
-                  statusUpper === 'DELAYED' ? 'delayedGlassParallax' :
-                  statusUpper === 'CANCELLED' ? 'cancelledGlassParallax' :
-                  'defaultGlassParallax';
-      return TEXTURE_URLS[key] || null;
-    }
-    if (isGradient) {
-      const key = statusUpper === 'LANDED' ? 'landedGlassGradientParallax' :
-                  statusUpper === 'DELAYED' ? 'delayedGlassGradientParallax' :
-                  statusUpper === 'CANCELLED' ? 'cancelledGlassGradientParallax' :
-                  'defaultGlassGradientParallax';
-      return TEXTURE_URLS[key] || null;
-    }
-  }
-
-  return null;
-};
-
 // Opaque background hex colors per status
 const getOpaqueBackground = (status: string): string => {
   switch (status.toUpperCase()) {
