@@ -1,19 +1,28 @@
 {
-  "name": "Arriva.mv",
-  "short_name": "Arriva.mv",
-  "description": "Maldives Flight Arrival Tracker",
+  "id": "/",
+  "name": "ARRIVA.MV — Maldives Flight Arrivals",
+  "short_name": "ARRIVA.MV",
+  "description": "Live flight arrival tracker for the Maldives",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#151015",
   "theme_color": "#151015",
   "orientation": "portrait",
   "categories": ["travel", "utilities"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
