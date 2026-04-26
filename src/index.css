@@ -777,12 +777,6 @@
   .glass-polarized-shift {
     animation: glass-polarized-shift 5s ease-in-out infinite;
   }
-    animation: glass-retro-pixel 2s step-end infinite;
-    background-image: 
-      linear-gradient(0deg, transparent 0%, transparent 49%, rgba(0,255,0,0.02) 50%, transparent 51%, transparent 100%),
-      linear-gradient(90deg, transparent 0%, transparent 49%, rgba(0,255,0,0.02) 50%, transparent 51%, transparent 100%);
-    background-size: 4px 4px;
-  }
 
   /* ======= GRADIENT LIVE BLUR ======= */
   .glass-gradient-blur {
