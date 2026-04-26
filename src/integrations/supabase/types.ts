@@ -149,6 +149,54 @@ export type Database = {
         }
         Relationships: []
       }
+      flight_routes: {
+        Row: {
+          arrive_at: string | null
+          arrive_local: string | null
+          arrive_tz: string | null
+          codeshare: boolean
+          depart_at: string | null
+          depart_local: string | null
+          depart_tz: string | null
+          duration_minutes: number | null
+          fetched_at: string
+          flight_date: string
+          flight_iata: string
+          origin_iata: string | null
+          origin_name: string | null
+        }
+        Insert: {
+          arrive_at?: string | null
+          arrive_local?: string | null
+          arrive_tz?: string | null
+          codeshare?: boolean
+          depart_at?: string | null
+          depart_local?: string | null
+          depart_tz?: string | null
+          duration_minutes?: number | null
+          fetched_at?: string
+          flight_date: string
+          flight_iata: string
+          origin_iata?: string | null
+          origin_name?: string | null
+        }
+        Update: {
+          arrive_at?: string | null
+          arrive_local?: string | null
+          arrive_tz?: string | null
+          codeshare?: boolean
+          depart_at?: string | null
+          depart_local?: string | null
+          depart_tz?: string | null
+          duration_minutes?: number | null
+          fetched_at?: string
+          flight_date?: string
+          flight_iata?: string
+          origin_iata?: string | null
+          origin_name?: string | null
+        }
+        Relationships: []
+      }
       flights: {
         Row: {
           actual_time: string | null
@@ -272,6 +320,7 @@ export type Database = {
           fcm_token: string | null
           id: string
           notification_email: string | null
+          notification_prefs: Json
           onesignal_player_id: string | null
           phone: string | null
           push_subscription: Json | null
@@ -284,6 +333,7 @@ export type Database = {
           fcm_token?: string | null
           id?: string
           notification_email?: string | null
+          notification_prefs?: Json
           onesignal_player_id?: string | null
           phone?: string | null
           push_subscription?: Json | null
@@ -296,6 +346,7 @@ export type Database = {
           fcm_token?: string | null
           id?: string
           notification_email?: string | null
+          notification_prefs?: Json
           onesignal_player_id?: string | null
           phone?: string | null
           push_subscription?: Json | null
