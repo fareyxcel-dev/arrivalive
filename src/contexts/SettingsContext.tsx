@@ -92,6 +92,11 @@ interface SettingsState {
   cardStyle: string;
   hideCancelled: boolean;
   hideLanded: boolean;
+  // SolidX
+  cardStyleFamily: 'glass' | 'solidx';
+  solidxPreset: string;
+  styleVariant: 'dark' | 'light' | 'adaptive';
+  solidxOpacity: number;
   // Card visual adjustments
   cardLogoBrightness: number;
   cardLogoContrast: number;
@@ -113,6 +118,7 @@ interface SettingsState {
     sms: boolean;
     email: boolean;
     push: boolean;
+    telegram: boolean;
     repeat: boolean;
   };
 }
