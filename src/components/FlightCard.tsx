@@ -236,6 +236,26 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
 
   // Build card background style
   const getCardBgStyle = (): React.CSSProperties => {
+    // SolidX family — solid by default, can become semi-transparent via solidxOpacity
+    if (settings.cardStyleFamily === 'solidx') {
+      const scheme = resolveSolidXScheme(settings.solidxPreset, settings.styleVariant, 0.4);
+      const statusTint = getStatusTint(flight.status);
+      const tintAlpha = hasStatus ? (scheme.textTone === 'light' ? 0.18 : 0.12) : 0;
+      // Effective opacity (SolidX defaults opaque). When dual-glass mixing with a glass,
+      // the plan calls for SolidX to become more transparent — handled via solidxOpacity slider.
+      const op = Math.max(0, Math.min(1, settings.solidxOpacity));
+      const overlay = tintAlpha > 0
+        ? `linear-gradient(180deg, ${mixStatusIntoRgba(statusTint, tintAlpha)} 0%, ${mixStatusIntoRgba(statusTint, tintAlpha * 0.5)} 100%), `
+        : '';
+      return {
+        background: `${overlay}${scheme.background}`,
+        opacity: op === 1 ? undefined : op,
+        // less-visible borders on flight cards (SolidX)
+        border: `1px solid ${scheme.border}`,
+        boxShadow: `${scheme.dropShadow}, inset 0 1px 0 ${scheme.topHighlight}, inset 0 -1px 0 ${scheme.bottomShadow}`,
+      };
+    }
+
     if (isOpaqueMode) {
       return {
         background: getOpaqueBackground(flight.status),
