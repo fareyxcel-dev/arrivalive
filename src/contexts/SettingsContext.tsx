@@ -145,6 +145,10 @@ interface SettingsContextType {
   setCardStyle: (style: string) => void;
   setHideCancelled: (hide: boolean) => void;
   setHideLanded: (hide: boolean) => void;
+  setCardStyleFamily: (family: 'glass' | 'solidx') => void;
+  setSolidxPreset: (preset: string) => void;
+  setStyleVariant: (variant: 'dark' | 'light' | 'adaptive') => void;
+  setSolidxOpacity: (v: number) => void;
   setCardLogoBrightness: (v: number) => void;
   setCardLogoContrast: (v: number) => void;
   setCardLogoSaturation: (v: number) => void;
