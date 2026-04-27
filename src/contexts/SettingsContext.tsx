@@ -92,6 +92,11 @@ interface SettingsState {
   cardStyle: string;
   hideCancelled: boolean;
   hideLanded: boolean;
+  // SolidX
+  cardStyleFamily: 'glass' | 'solidx';
+  solidxPreset: string;
+  styleVariant: 'dark' | 'light' | 'adaptive';
+  solidxOpacity: number;
   // Card visual adjustments
   cardLogoBrightness: number;
   cardLogoContrast: number;
@@ -113,6 +118,7 @@ interface SettingsState {
     sms: boolean;
     email: boolean;
     push: boolean;
+    telegram: boolean;
     repeat: boolean;
   };
 }
@@ -139,6 +145,10 @@ interface SettingsContextType {
   setCardStyle: (style: string) => void;
   setHideCancelled: (hide: boolean) => void;
   setHideLanded: (hide: boolean) => void;
+  setCardStyleFamily: (family: 'glass' | 'solidx') => void;
+  setSolidxPreset: (preset: string) => void;
+  setStyleVariant: (variant: 'dark' | 'light' | 'adaptive') => void;
+  setSolidxOpacity: (v: number) => void;
   setCardLogoBrightness: (v: number) => void;
   setCardLogoContrast: (v: number) => void;
   setCardLogoSaturation: (v: number) => void;
@@ -185,6 +195,10 @@ const defaultSettings: SettingsState = {
   cardStyle: 'plain-main',
   hideCancelled: false,
   hideLanded: false,
+  cardStyleFamily: 'glass',
+  solidxPreset: 'lunax',
+  styleVariant: 'adaptive',
+  solidxOpacity: 1.0,
   cardLogoBrightness: 100,
   cardLogoContrast: 100,
   cardLogoSaturation: 100,
@@ -204,6 +218,7 @@ const defaultSettings: SettingsState = {
     sms: false,
     email: false,
     push: true,
+    telegram: false,
     repeat: false,
   },
 };
@@ -419,6 +434,10 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const setCardStyle = (style: string) => setSettings(prev => ({ ...prev, cardStyle: style }));
   const setHideCancelled = (hide: boolean) => setSettings(prev => ({ ...prev, hideCancelled: hide }));
   const setHideLanded = (hide: boolean) => setSettings(prev => ({ ...prev, hideLanded: hide }));
+  const setCardStyleFamily = (family: 'glass' | 'solidx') => setSettings(prev => ({ ...prev, cardStyleFamily: family }));
+  const setSolidxPreset = (preset: string) => setSettings(prev => ({ ...prev, solidxPreset: preset }));
+  const setStyleVariant = (variant: 'dark' | 'light' | 'adaptive') => setSettings(prev => ({ ...prev, styleVariant: variant }));
+  const setSolidxOpacity = (v: number) => setSettings(prev => ({ ...prev, solidxOpacity: v }));
   const setCardLogoBrightness = (v: number) => setSettings(prev => ({ ...prev, cardLogoBrightness: v }));
   const setCardLogoContrast = (v: number) => setSettings(prev => ({ ...prev, cardLogoContrast: v }));
   const setCardLogoSaturation = (v: number) => setSettings(prev => ({ ...prev, cardLogoSaturation: v }));
@@ -453,7 +472,62 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const toggleTemperatureUnit = () => setSettings(prev => ({ ...prev, temperatureUnit: prev.temperatureUnit === 'C' ? 'F' : 'C' }));
   const setNotification = (key: keyof SettingsState['notifications'], value: boolean) => {
     setSettings(prev => ({ ...prev, notifications: { ...prev.notifications, [key]: value } }));
+    // Persist channel toggles to profiles.notification_prefs (cross-device)
+    if (key === 'sms' || key === 'email' || key === 'push' || key === 'telegram') {
+      (async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('notification_prefs')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          const current = (profile?.notification_prefs as any) || { push: false, telegram: false, email: false, sms: false };
+          const next = { ...current, [key]: value };
+          await supabase.from('profiles').upsert(
+            { user_id: user.id, notification_prefs: next, updated_at: new Date().toISOString() },
+            { onConflict: 'user_id' }
+          );
+        } catch (e) {
+          console.warn('Failed to sync notification_prefs:', e);
+        }
+      })();
+    }
   };
+
+  // Hydrate notification prefs from server on auth
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('notification_prefs')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        const prefs = (profile?.notification_prefs as any) || null;
+        if (!prefs || !mounted) return;
+        setSettings(prev => ({
+          ...prev,
+          notifications: {
+            ...prev.notifications,
+            sms: !!prefs.sms,
+            email: !!prefs.email,
+            push: !!prefs.push,
+            telegram: !!prefs.telegram,
+          },
+        }));
+      } catch (e) {
+        // silent
+      }
+    };
+    load();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => load());
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
+  }, []);
 
   const resetSetting = (key: string) => {
     setSettings(prev => ({ ...prev, [key]: (defaultSettings as any)[key] }));
@@ -490,6 +564,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         setGlassPreset, setBoldText,
         setDualGlass, setDualGlassStyle1, setDualGlassStyle2,
         setCardStyle, setHideCancelled, setHideLanded,
+        setCardStyleFamily, setSolidxPreset, setStyleVariant, setSolidxOpacity,
         setCardLogoBrightness, setCardLogoContrast, setCardLogoSaturation, setCardLogoHueShift,
         setCardTextBrightness, setCardTextSaturation, setCardUnifiedAdjust,
         setTextBrightness, setTextContrast, setTextSaturation, setTextHueShift,

@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
+  flightId?: string;
   scheduledTime: string;
   estimatedTime: string;
   flightDate: string;
@@ -68,6 +70,7 @@ function hexToRgb(hex: string): string {
 }
 
 const FlightProgressBar = ({
+  flightId,
   scheduledTime,
   estimatedTime,
   flightDate,
@@ -89,6 +92,27 @@ const FlightProgressBar = ({
   const [fadeProgress, setFadeProgress] = useState(1);
   const [iconScale, setIconScale] = useState(1);
   const [countdownText, setCountdownText] = useState('');
+  const [route, setRoute] = useState<{ depart_at: string | null; arrive_at: string | null } | null>(null);
+
+  // Fetch flight route from flight_routes (FlightStats scraper data)
+  useEffect(() => {
+    if (!flightId || !flightDate) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('flight_routes')
+          .select('depart_at, arrive_at')
+          .eq('flight_iata', flightId.replace(/\s+/g, ''))
+          .eq('flight_date', flightDate)
+          .maybeSingle();
+        if (!cancelled && data) setRoute(data as any);
+      } catch {
+        // silent — fallback to scheduled-time heuristic
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [flightId, flightDate]);
 
   const isLanded = status.toUpperCase() === 'LANDED';
   const isCancelled = status.toUpperCase() === 'CANCELLED';
@@ -135,9 +159,28 @@ const FlightProgressBar = ({
   useEffect(() => {
     if (!isVisible || isLanded) return;
     const updateProgress = () => {
-      const { progress: newProgress, minutesRemaining: newMinutes } = calculateProgress(
-        scheduledTime, estimatedTime, flightDate, trackingProgress
-      );
+      let newProgress: number;
+      let newMinutes: number;
+      // Prefer flight_routes depart_at/arrive_at when available (FlightStats data)
+      if (route?.depart_at && route?.arrive_at) {
+        const dep = new Date(route.depart_at).getTime();
+        const arr = new Date(route.arrive_at).getTime();
+        const now = Date.now();
+        const total = arr - dep;
+        if (total > 0) {
+          const elapsed = now - dep;
+          newProgress = Math.max(0, Math.min(100, (elapsed / total) * 100));
+          newMinutes = Math.max(0, (arr - now) / (1000 * 60));
+        } else {
+          ({ progress: newProgress, minutesRemaining: newMinutes } = calculateProgress(
+            scheduledTime, estimatedTime, flightDate, trackingProgress
+          ));
+        }
+      } else {
+        ({ progress: newProgress, minutesRemaining: newMinutes } = calculateProgress(
+          scheduledTime, estimatedTime, flightDate, trackingProgress
+        ));
+      }
       setProgress(newProgress);
       setMinutesRemaining(newMinutes);
       const cd = formatCountdown(newMinutes);
@@ -150,7 +193,7 @@ const FlightProgressBar = ({
     updateProgress();
     const interval = setInterval(updateProgress, 30000);
     return () => clearInterval(interval);
-  }, [isVisible, isLanded, scheduledTime, estimatedTime, flightDate, trackingProgress, onCountdownChange]);
+  }, [isVisible, isLanded, scheduledTime, estimatedTime, flightDate, trackingProgress, onCountdownChange, route]);
 
   useEffect(() => {
     if (!isVisible) onCountdownChange?.('');

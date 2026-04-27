@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Bug, Lightbulb, Check, Clock, Loader2, Shield, Settings, FileText, Users } from 'lucide-react';
+import { X, Bug, Lightbulb, Check, Clock, Loader2, Shield, Settings, FileText, Users, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -33,6 +33,7 @@ const AdminDashboard = ({ isOpen, onClose }: Props) => {
   const [reportTitle, setReportTitle] = useState('');
   const [reportDescription, setReportDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSendingTest, setIsSendingTest] = useState(false);
   const [reports, setReports] = useState<Report[]>([]);
   const [pendingFonts, setPendingFonts] = useState<PendingFont[]>([]);
   const [stats, setStats] = useState({
@@ -207,6 +208,31 @@ const AdminDashboard = ({ isOpen, onClose }: Props) => {
                   <p className="text-xs text-muted-foreground">Pending Fonts</p>
                 </div>
               </div>
+
+              {/* Test notification — fires sample LANDED to admin's own subscriptions */}
+              <button
+                onClick={async () => {
+                  if (isSendingTest) return;
+                  setIsSendingTest(true);
+                  try {
+                    const { data, error } = await supabase.functions.invoke('send-test-notification', {
+                      body: { status_change: 'LANDED' },
+                    });
+                    if (error) throw error;
+                    toast.success('Test landed notification sent to your subscriptions');
+                  } catch (e: any) {
+                    console.error('Test notification error:', e);
+                    toast.error(e?.message || 'Failed to send test notification');
+                  } finally {
+                    setIsSendingTest(false);
+                  }
+                }}
+                disabled={isSendingTest}
+                className="w-full py-2 rounded-lg glass-interactive flex items-center justify-center gap-2 text-sm"
+              >
+                {isSendingTest ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                Send Test "Landed" Notification
+              </button>
 
               {/* Submit Report Form */}
               <div className="glass rounded-lg p-4 space-y-3">
