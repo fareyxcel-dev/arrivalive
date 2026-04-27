@@ -70,6 +70,7 @@ function hexToRgb(hex: string): string {
 }
 
 const FlightProgressBar = ({
+  flightId,
   scheduledTime,
   estimatedTime,
   flightDate,
@@ -91,6 +92,27 @@ const FlightProgressBar = ({
   const [fadeProgress, setFadeProgress] = useState(1);
   const [iconScale, setIconScale] = useState(1);
   const [countdownText, setCountdownText] = useState('');
+  const [route, setRoute] = useState<{ depart_at: string | null; arrive_at: string | null } | null>(null);
+
+  // Fetch flight route from flight_routes (FlightStats scraper data)
+  useEffect(() => {
+    if (!flightId || !flightDate) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('flight_routes')
+          .select('depart_at, arrive_at')
+          .eq('flight_iata', flightId.replace(/\s+/g, ''))
+          .eq('flight_date', flightDate)
+          .maybeSingle();
+        if (!cancelled && data) setRoute(data as any);
+      } catch {
+        // silent — fallback to scheduled-time heuristic
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [flightId, flightDate]);
 
   const isLanded = status.toUpperCase() === 'LANDED';
   const isCancelled = status.toUpperCase() === 'CANCELLED';
