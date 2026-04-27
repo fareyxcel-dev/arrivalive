@@ -292,6 +292,19 @@ const NewHeader = ({
   // ~36px per icon (24px icon + 12px padding), plus container padding
   const expandedMenuWidth = menuIconCount * 36 + 16;
 
+  // Close on outside click
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [isMenuOpen]);
+
   return (
     <header className={cn(
       "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
