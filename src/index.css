@@ -993,3 +993,16 @@
     background: linear-gradient(135deg, #1A1A1E 0%, #222228 50%, #1A1A1E 100%) !important;
   }
 }
+
+@layer utilities {
+  /* Menu icon glow used by header morph */
+  .menu-icon-glow {
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.55), 0 0 28px rgba(255, 255, 255, 0.25);
+    animation: menu-icon-glow-pulse 1.6s ease-in-out infinite;
+    background: rgba(255, 255, 255, 0.08);
+  }
+  @keyframes menu-icon-glow-pulse {
+    0%, 100% { box-shadow: 0 0 14px rgba(255,255,255,0.45), 0 0 22px rgba(255,255,255,0.18); }
+    50%      { box-shadow: 0 0 22px rgba(255,255,255,0.7),  0 0 34px rgba(255,255,255,0.35); }
+  }
+}
