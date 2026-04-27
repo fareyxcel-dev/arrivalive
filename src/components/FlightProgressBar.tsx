@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
+  flightId?: string;
   scheduledTime: string;
   estimatedTime: string;
   flightDate: string;
