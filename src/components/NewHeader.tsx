@@ -257,7 +257,7 @@ const NewHeader = ({
       return;
     }
     setShowSunCountdown(true);
-    const timeout = setTimeout(() => setShowSunCountdown(false), 30000);
+    const timeout = setTimeout(() => setShowSunCountdown(false), 5000);
     setSunCountdownTimeout(timeout);
   };
 
@@ -268,7 +268,7 @@ const NewHeader = ({
       return;
     }
     setShowForecast(true);
-    const timeout = setTimeout(() => setShowForecast(false), 30000);
+    const timeout = setTimeout(() => setShowForecast(false), 5000);
     setForecastTimeout(timeout);
   };
 
@@ -322,7 +322,7 @@ const NewHeader = ({
         }}
       />
 
-      <div className="relative px-4 pl-12">
+      <div className="relative px-4 pr-12">
         {/* Main header row - logo on left of center, two centered dual-text rows on right */}
         <div className="grid grid-cols-[auto_1fr] items-center gap-3">
           {/* Logo */}
@@ -346,83 +346,69 @@ const NewHeader = ({
             isScrolled ? "scale-[0.9]" : ""
           )}>
             {/* Row 1: Time + Day/Date */}
-            <div className="flex items-center justify-center gap-2 min-w-0">
+            <div className="flex items-center justify-center gap-1.5 min-w-0 leading-none">
               <button
                 onClick={toggleTimeFormat}
                 className="hover:bg-white/5 rounded px-1 transition-colors"
               >
                 <p className={cn(
-                  "font-bold text-white whitespace-nowrap adaptive-shadow",
-                  isScrolled ? "text-sm" : "text-base"
+                  "font-bold text-white whitespace-nowrap adaptive-shadow leading-none",
+                  isScrolled ? "text-[11px]" : "text-[13px]"
                 )}>
                   {formatTime(currentTime)}
                 </p>
               </button>
-              <span className="text-white/40 text-xs">|</span>
+              <span className="text-white/40 text-[9px] leading-none">|</span>
               <button
                 onClick={handleDayDateClick}
-                className="hover:bg-white/5 rounded px-1 transition-colors text-left"
+                className="hover:bg-white/5 rounded px-1 transition-colors text-center"
               >
                 <p className={cn(
-                  "font-bold text-white whitespace-nowrap adaptive-shadow leading-tight",
-                  isScrolled ? "text-[10px]" : "text-[11px]"
+                  "font-bold text-white whitespace-nowrap adaptive-shadow leading-none",
+                  isScrolled ? "text-[9px]" : "text-[10px]"
                 )}>
                   {showSunCountdown
-                    ? `${sunData.label} in ${sunData.countdown}`
+                    ? `${sunData.label} in ${sunData.countdown} at ${sunData.time}`
                     : `${formatDay(currentTime)} · ${formatDate(currentTime)}`}
                 </p>
-                {showSunCountdown && (
-                  <p className={cn(
-                    "font-medium text-white/70 whitespace-nowrap adaptive-shadow leading-tight",
-                    isScrolled ? "text-[9px]" : "text-[10px]"
-                  )}>
-                    at {sunData.time}
-                  </p>
-                )}
               </button>
             </div>
 
             {/* Row 2: Temp + Current/Next Weather */}
             {weather && (
-              <div className="flex items-center justify-center gap-2 min-w-0 mt-0.5">
+              <div className="flex items-center justify-center gap-1.5 min-w-0 mt-1 leading-none">
                 <button
                   onClick={toggleTemperatureUnit}
                   className="hover:bg-white/5 rounded px-1 transition-colors"
                 >
                   <p className={cn(
-                    "font-bold text-white whitespace-nowrap adaptive-shadow",
-                    isScrolled ? "text-sm" : "text-base"
+                    "font-bold text-white whitespace-nowrap adaptive-shadow leading-none",
+                    isScrolled ? "text-[11px]" : "text-[13px]"
                   )}>
                     {convertTemperature(weather.temp, settings.temperatureUnit)}°{settings.temperatureUnit}
                   </p>
                 </button>
-                <span className="text-white/40 text-xs">|</span>
+                <span className="text-white/40 text-[9px] leading-none">|</span>
                 <button
                   onClick={handleWeatherClick}
-                  className="hover:bg-white/5 rounded px-1 transition-colors text-left"
+                  className="hover:bg-white/5 rounded px-1 transition-colors text-center"
                 >
                   <p className={cn(
-                    "font-bold text-white capitalize whitespace-nowrap truncate adaptive-shadow leading-tight",
-                    isScrolled ? "text-[10px]" : "text-[11px]"
+                    "font-bold text-white capitalize whitespace-nowrap truncate adaptive-shadow leading-none max-w-[180px]",
+                    isScrolled ? "text-[9px]" : "text-[10px]"
                   )}>
-                    {showForecast ? upcomingRow1 : `${weatherDurationRow1} · ${weatherDurationRow2}`}
+                    {showForecast
+                      ? `${upcomingRow1}${upcomingRow2 ? ` ${upcomingRow2}` : ''}`
+                      : `${weatherDurationRow1} · ${weatherDurationRow2}`}
                   </p>
-                  {showForecast && upcomingRow2 && (
-                    <p className={cn(
-                      "font-medium text-white/70 whitespace-nowrap truncate adaptive-shadow leading-tight",
-                      isScrolled ? "text-[9px]" : "text-[10px]"
-                    )}>
-                      {upcomingRow2}
-                    </p>
-                  )}
                 </button>
               </div>
             )}
           </div>
         </div>
 
-        {/* Corner Menu icon (LEFT) — morphs into dropdown panel */}
-        <div ref={dropdownRef} className="absolute top-2 left-3 z-50">
+        {/* Corner Menu icon (RIGHT) — morphs into dropdown panel */}
+        <div ref={dropdownRef} className="absolute top-2 right-3 z-50">
           <button
             onClick={() => setIsMenuOpen((v) => !v)}
             className={cn(
@@ -456,7 +442,7 @@ const NewHeader = ({
 
           <div
             className={cn(
-              "absolute left-0 mt-2 origin-top-left transition-all duration-300 ease-out overflow-hidden",
+              "absolute right-0 mt-2 origin-top-right transition-all duration-300 ease-out overflow-hidden",
               isMenuOpen
                 ? "opacity-100 scale-100 pointer-events-auto"
                 : "opacity-0 scale-90 pointer-events-none"
