@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Bug, Lightbulb, Check, Clock, Loader2, Shield, Settings, FileText, Users } from 'lucide-react';
+import { X, Bug, Lightbulb, Check, Clock, Loader2, Shield, Settings, FileText, Users, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useSettings } from '@/contexts/SettingsContext';
