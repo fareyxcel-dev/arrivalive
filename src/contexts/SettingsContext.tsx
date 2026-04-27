@@ -509,6 +509,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         setGlassPreset, setBoldText,
         setDualGlass, setDualGlassStyle1, setDualGlassStyle2,
         setCardStyle, setHideCancelled, setHideLanded,
+        setCardStyleFamily, setSolidxPreset, setStyleVariant, setSolidxOpacity,
         setCardLogoBrightness, setCardLogoContrast, setCardLogoSaturation, setCardLogoHueShift,
         setCardTextBrightness, setCardTextSaturation, setCardUnifiedAdjust,
         setTextBrightness, setTextContrast, setTextSaturation, setTextHueShift,
