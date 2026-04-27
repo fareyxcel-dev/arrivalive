@@ -434,6 +434,10 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const setCardStyle = (style: string) => setSettings(prev => ({ ...prev, cardStyle: style }));
   const setHideCancelled = (hide: boolean) => setSettings(prev => ({ ...prev, hideCancelled: hide }));
   const setHideLanded = (hide: boolean) => setSettings(prev => ({ ...prev, hideLanded: hide }));
+  const setCardStyleFamily = (family: 'glass' | 'solidx') => setSettings(prev => ({ ...prev, cardStyleFamily: family }));
+  const setSolidxPreset = (preset: string) => setSettings(prev => ({ ...prev, solidxPreset: preset }));
+  const setStyleVariant = (variant: 'dark' | 'light' | 'adaptive') => setSettings(prev => ({ ...prev, styleVariant: variant }));
+  const setSolidxOpacity = (v: number) => setSettings(prev => ({ ...prev, solidxOpacity: v }));
   const setCardLogoBrightness = (v: number) => setSettings(prev => ({ ...prev, cardLogoBrightness: v }));
   const setCardLogoContrast = (v: number) => setSettings(prev => ({ ...prev, cardLogoContrast: v }));
   const setCardLogoSaturation = (v: number) => setSettings(prev => ({ ...prev, cardLogoSaturation: v }));
