@@ -257,7 +257,7 @@ const NewHeader = ({
       return;
     }
     setShowSunCountdown(true);
-    const timeout = setTimeout(() => setShowSunCountdown(false), 30000);
+    const timeout = setTimeout(() => setShowSunCountdown(false), 5000);
     setSunCountdownTimeout(timeout);
   };
 
@@ -268,7 +268,7 @@ const NewHeader = ({
       return;
     }
     setShowForecast(true);
-    const timeout = setTimeout(() => setShowForecast(false), 30000);
+    const timeout = setTimeout(() => setShowForecast(false), 5000);
     setForecastTimeout(timeout);
   };
 
