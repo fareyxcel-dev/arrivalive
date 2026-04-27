@@ -33,6 +33,7 @@ const AdminDashboard = ({ isOpen, onClose }: Props) => {
   const [reportTitle, setReportTitle] = useState('');
   const [reportDescription, setReportDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSendingTest, setIsSendingTest] = useState(false);
   const [reports, setReports] = useState<Report[]>([]);
   const [pendingFonts, setPendingFonts] = useState<PendingFont[]>([]);
   const [stats, setStats] = useState({
