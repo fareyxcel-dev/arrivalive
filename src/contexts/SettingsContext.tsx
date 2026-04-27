@@ -191,6 +191,10 @@ const defaultSettings: SettingsState = {
   cardStyle: 'plain-main',
   hideCancelled: false,
   hideLanded: false,
+  cardStyleFamily: 'glass',
+  solidxPreset: 'lunax',
+  styleVariant: 'adaptive',
+  solidxOpacity: 1.0,
   cardLogoBrightness: 100,
   cardLogoContrast: 100,
   cardLogoSaturation: 100,
@@ -210,6 +214,7 @@ const defaultSettings: SettingsState = {
     sms: false,
     email: false,
     push: true,
+    telegram: false,
     repeat: false,
   },
 };
