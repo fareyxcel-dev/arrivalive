@@ -456,7 +456,7 @@ const NewHeader = ({
 
           <div
             className={cn(
-              "absolute right-0 mt-2 origin-top-right transition-all duration-300 ease-out overflow-hidden",
+              "absolute left-0 mt-2 origin-top-left transition-all duration-300 ease-out overflow-hidden",
               isMenuOpen
                 ? "opacity-100 scale-100 pointer-events-auto"
                 : "opacity-0 scale-90 pointer-events-none"
