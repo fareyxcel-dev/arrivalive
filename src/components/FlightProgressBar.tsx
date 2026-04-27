@@ -159,9 +159,28 @@ const FlightProgressBar = ({
   useEffect(() => {
     if (!isVisible || isLanded) return;
     const updateProgress = () => {
-      const { progress: newProgress, minutesRemaining: newMinutes } = calculateProgress(
-        scheduledTime, estimatedTime, flightDate, trackingProgress
-      );
+      let newProgress: number;
+      let newMinutes: number;
+      // Prefer flight_routes depart_at/arrive_at when available (FlightStats data)
+      if (route?.depart_at && route?.arrive_at) {
+        const dep = new Date(route.depart_at).getTime();
+        const arr = new Date(route.arrive_at).getTime();
+        const now = Date.now();
+        const total = arr - dep;
+        if (total > 0) {
+          const elapsed = now - dep;
+          newProgress = Math.max(0, Math.min(100, (elapsed / total) * 100));
+          newMinutes = Math.max(0, (arr - now) / (1000 * 60));
+        } else {
+          ({ progress: newProgress, minutesRemaining: newMinutes } = calculateProgress(
+            scheduledTime, estimatedTime, flightDate, trackingProgress
+          ));
+        }
+      } else {
+        ({ progress: newProgress, minutesRemaining: newMinutes } = calculateProgress(
+          scheduledTime, estimatedTime, flightDate, trackingProgress
+        ));
+      }
       setProgress(newProgress);
       setMinutesRemaining(newMinutes);
       const cd = formatCountdown(newMinutes);
@@ -174,7 +193,7 @@ const FlightProgressBar = ({
     updateProgress();
     const interval = setInterval(updateProgress, 30000);
     return () => clearInterval(interval);
-  }, [isVisible, isLanded, scheduledTime, estimatedTime, flightDate, trackingProgress, onCountdownChange]);
+  }, [isVisible, isLanded, scheduledTime, estimatedTime, flightDate, trackingProgress, onCountdownChange, route]);
 
   useEffect(() => {
     if (!isVisible) onCountdownChange?.('');
