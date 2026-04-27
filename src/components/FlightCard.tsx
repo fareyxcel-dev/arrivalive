@@ -420,6 +420,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
 
           <div className="flex-1 relative">
             <FlightProgressBar
+              flightId={flight.flightId}
               scheduledTime={flight.scheduledTime}
               estimatedTime={flight.estimatedTime}
               flightDate={flight.date}
