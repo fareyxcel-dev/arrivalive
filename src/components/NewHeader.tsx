@@ -361,90 +361,19 @@ const NewHeader = ({
             </button>
           </div>
 
-          {/* Center: Logo - stays fixed in center */}
+          {/* Center: Logo - stays fixed in center, no longer toggles menu */}
           <div className={cn(
             "flex flex-col items-center transition-all duration-300",
             isScrolled ? "scale-[0.7] -my-2" : ""
           )}>
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="transition-transform hover:scale-105 active:scale-95"
-            >
-              <img 
-                src={headerLogo} 
-                alt="ARRIVA.MV" 
-                className={cn(
-                  "w-auto transition-all duration-300",
-                  isScrolled ? "h-10" : "h-12"
-                )} 
-              />
-            </button>
-            
-            {/* Menu pill under logo - 90% height reduction when collapsed */}
-            <div className="relative mt-1">
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className={cn(
-                  "flex items-center justify-center transition-all duration-300 rounded-full",
-                  "glass border border-white/15"
-                )}
-                style={{
-                  width: isMenuOpen ? `${expandedMenuWidth}px` : '28px',
-                  height: isMenuOpen ? '32px' : '4px',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  backdropFilter: 'blur(12px)',
-                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                }}
-                aria-label={isMenuOpen ? "Close menu" : "Open menu"}
-              >
-                {isMenuOpen && (
-                  <div className="flex items-center gap-0.5">
-                    {menuItems.map((item) => (
-                      <button
-                        key={item.label}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          item.action?.();
-                          setIsMenuOpen(false);
-                        }}
-                        className="p-1.5 rounded-full hover:bg-white/15 transition-colors"
-                        title={item.label}
-                      >
-                        <item.icon className="w-4 h-4 text-white/80" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </button>
-              
-              {/* Notification badge */}
-              {notificationCount > 0 && !isMenuOpen && (
-                <div 
-                  className="absolute -top-1 -right-0 min-w-[14px] h-[14px] flex items-center justify-center rounded-full text-[8px] font-bold animate-pulse"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.25)',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(255, 255, 255, 0.3)',
-                    color: 'white',
-                    textShadow: '0 1px 2px rgba(0,0,0,0.3)',
-                  }}
-                >
-                  {notificationCount > 99 ? '99+' : notificationCount}
-                </div>
+            <img
+              src={headerLogo}
+              alt="ARRIVA.MV"
+              className={cn(
+                "w-auto transition-all duration-300",
+                isScrolled ? "h-10" : "h-12"
               )}
-            </div>
-
-            {/* Menu icon button (right side alternative trigger) */}
-            {!isMenuOpen && (
-              <button
-                onClick={() => setIsMenuOpen(true)}
-                className="mt-1 p-1 rounded-full hover:bg-white/10 transition-colors"
-                title="Open menu"
-              >
-                <img src={UI_ICONS.menu} alt="Menu" className="w-4 h-4 opacity-70" />
-              </button>
-            )}
+            />
           </div>
 
           {/* Right: Weather - constrained to not invade center */}
