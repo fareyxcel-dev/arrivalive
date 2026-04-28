@@ -13,6 +13,7 @@ import { Flight } from '@/components/FlightCard';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 const POLLING_INTERVAL = 30000;
 
@@ -342,6 +343,13 @@ const Index = () => {
   const handleForceRefresh = () => {
     fetchFlights(true);
   };
+
+  // Global keyboard shortcuts: ⌘R / ⌘E / ⌘,
+  useKeyboardShortcuts({
+    onForceRefresh: handleForceRefresh,
+    onExport: () => setIsExportOpen(true),
+    onOpenSettings: () => setIsSettingsOpen(true),
+  });
 
   // handleToggleNotification now only updates local state; FlightCard handles DB
   const handleToggleNotification = (flightId: string) => {
