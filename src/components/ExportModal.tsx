@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, Download, FileSpreadsheet } from 'lucide-react';
+import { X, Download, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -28,6 +29,7 @@ const ExportModal = ({ isOpen, onClose }: Props) => {
   const [historyFlights, setHistoryFlights] = useState<FlightRecord[]>([]);
   const [dates, setDates] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -83,52 +85,61 @@ const ExportModal = ({ isOpen, onClose }: Props) => {
     return `${day} ${month} - ${weekday}`;
   };
 
-  const handleExport = () => {
-    let filteredFlights = historyFlights;
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      let filteredFlights = historyFlights;
 
-    if (selectedDate) {
-      filteredFlights = filteredFlights.filter(f => f.flight_date === selectedDate);
+      if (selectedDate) {
+        filteredFlights = filteredFlights.filter(f => f.flight_date === selectedDate);
+      }
+
+      if (selectedTerminal !== 'all') {
+        filteredFlights = filteredFlights.filter(f => f.terminal === selectedTerminal);
+      }
+
+      filteredFlights.sort((a, b) => {
+        const timeA = a.scheduled_time.replace(':', '');
+        const timeB = b.scheduled_time.replace(':', '');
+        return parseInt(timeA) - parseInt(timeB);
+      });
+
+      // Yield so the spinner paints before the (synchronous) CSV build.
+      await new Promise(r => setTimeout(r, 60));
+
+      const headers = ['Flight ID', 'Origin', 'Scheduled Time', 'Estimated Time', 'Terminal', 'Status'];
+      const rows = filteredFlights.map(f => [
+        f.flight_id,
+        `"${f.origin}"`,
+        f.scheduled_time,
+        f.estimated_time || f.scheduled_time,
+        f.terminal,
+        f.status,
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(',')),
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `arriva-schedule-${selectedDate || 'all'}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success('Schedule exported');
+      onClose();
+    } catch (err) {
+      console.error('Export error:', err);
+      toast.error('Export failed');
+    } finally {
+      setIsExporting(false);
     }
-
-    if (selectedTerminal !== 'all') {
-      filteredFlights = filteredFlights.filter(f => f.terminal === selectedTerminal);
-    }
-
-    // Sort flights for export (by scheduled time by default)
-    filteredFlights.sort((a, b) => {
-      const timeA = a.scheduled_time.replace(':', '');
-      const timeB = b.scheduled_time.replace(':', '');
-      return parseInt(timeA) - parseInt(timeB);
-    });
-
-    // Create CSV content WITHOUT date column, sortable columns
-    const headers = ['Flight ID', 'Origin', 'Scheduled Time', 'Estimated Time', 'Terminal', 'Status'];
-    const rows = filteredFlights.map(f => [
-      f.flight_id,
-      `"${f.origin}"`, // Quote origin in case of commas
-      f.scheduled_time,
-      f.estimated_time || f.scheduled_time,
-      f.terminal,
-      f.status,
-    ]);
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(',')),
-    ].join('\n');
-
-    // Download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `arriva-schedule-${selectedDate || 'all'}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    onClose();
   };
 
   return (
