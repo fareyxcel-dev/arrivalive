@@ -314,6 +314,18 @@ Deno.serve(async (req) => {
       });
     }
     if (subscription.notify_push) {
+      // One log row per push channel attempted
+      for (const [channel, info] of Object.entries(pushChannels)) {
+        if (info.sent || info.error) {
+          logsToInsert.push({
+            subscription_id: subscription.id,
+            notification_type: `push:${channel}`,
+            status_change: `${oldStatus} → ${newStatus}`,
+            success: info.sent,
+            error_message: info.error,
+          });
+        }
+      }
       logsToInsert.push({
         subscription_id: subscription.id,
         notification_type: "push",
