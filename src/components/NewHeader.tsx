@@ -330,13 +330,22 @@ const NewHeader = ({
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [isMenuOpen]);
 
+  const headerScale = isScrolled ? 0.85 : 1;
+  const fontVar: React.CSSProperties = {
+    fontFamily: 'var(--font-body)',
+    fontVariantNumeric: 'tabular-nums',
+  };
+
   return (
-    <header className={cn(
-      "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-      isScrolled ? "py-1" : "py-3"
-    )}>
+    <header
+      className={cn(
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
+        isScrolled ? "py-1" : "py-3"
+      )}
+      style={{ ['--header-scale' as any]: headerScale }}
+    >
       {/* Gradient blur fade background */}
-      <div 
+      <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background: 'linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.2) 50%, transparent 100%)',
@@ -347,16 +356,11 @@ const NewHeader = ({
         }}
       />
 
-      <div className="relative pl-3 pr-10">
-        {/* Unison scaling wrapper: logo | center text | (menu icon area reserved) */}
-        <div
-          className={cn(
-            "grid grid-cols-[auto_1fr] items-center gap-4 transition-transform duration-300 origin-top",
-            isScrolled ? "scale-[0.85]" : "scale-100"
-          )}
-        >
+      <div className="relative pl-3 pr-12">
+        {/* Logo + center text grid (logo & center independently spring-scaled but in unison via shared --header-scale var) */}
+        <div className="grid grid-cols-[auto_1fr] items-center gap-3">
           {/* Logo */}
-          <div className="flex items-center pr-1">
+          <div className="header-spring header-spring-left flex items-center pr-1">
             <img
               src={headerLogo}
               alt="ARRIVA.MV"
@@ -364,48 +368,60 @@ const NewHeader = ({
             />
           </div>
 
-          {/* Centered stacked rows: Row 1 = Time | Date, Row 2 = Temp | Weather */}
-          <div className="flex flex-col items-center justify-center text-center min-w-0 pr-6">
-            {/* Row 1: Time + Day/Date */}
-            <div className="flex items-center justify-center gap-1.5 min-w-0 leading-none">
+          {/* Centered stacked rows */}
+          <div className="header-spring flex flex-col items-center justify-center text-center min-w-0 overflow-hidden pr-2">
+            {/* Row 1: Time | Day/Date */}
+            <div className="flex items-center justify-center gap-1.5 min-w-0 leading-none whitespace-nowrap overflow-hidden max-w-full">
               <button
                 onClick={toggleTimeFormat}
-                className="hover:bg-white/5 rounded px-1 transition-colors"
+                className="hover:bg-white/5 rounded px-1 transition-colors flex-shrink-0"
               >
-                <p className="font-bold text-white whitespace-nowrap adaptive-shadow leading-none text-[11px]">
+                <p
+                  className={cn("font-bold text-white whitespace-nowrap adaptive-shadow leading-none", primaryTextClass)}
+                  style={fontVar}
+                >
                   {formatTime(currentTime)}
                 </p>
               </button>
-              <span className="text-white/40 text-[8px] leading-none">|</span>
+              <span className="text-white/40 text-[8px] leading-none flex-shrink-0">|</span>
               <button
                 onClick={handleDayDateClick}
-                className="hover:bg-white/5 rounded px-1 transition-colors text-center"
+                className="hover:bg-white/5 rounded px-1 transition-colors text-center min-w-0"
               >
-                <p className="font-bold text-white whitespace-nowrap adaptive-shadow leading-none text-[9px]">
+                <p
+                  className={cn("font-bold text-white whitespace-nowrap truncate adaptive-shadow leading-none", secondaryTextClass, secondaryMaxW)}
+                  style={fontVar}
+                >
                   {showSunCountdown
                     ? `${sunData.label} in ${sunData.countdown} at ${sunData.time}`
-                    : `${formatDay(currentTime)} · ${formatDate(currentTime)}`}
+                    : `${formatDay(currentTime)}${dateSep}${formatDate(currentTime)}`}
                 </p>
               </button>
             </div>
 
-            {/* Row 2: Temp + Current/Next Weather */}
+            {/* Row 2: Temp | Weather */}
             {weather && (
-              <div className="flex items-center justify-center gap-1.5 min-w-0 mt-1 leading-none">
+              <div className="flex items-center justify-center gap-1.5 min-w-0 mt-1 leading-none whitespace-nowrap overflow-hidden max-w-full">
                 <button
                   onClick={toggleTemperatureUnit}
-                  className="hover:bg-white/5 rounded px-1 transition-colors"
+                  className="hover:bg-white/5 rounded px-1 transition-colors flex-shrink-0"
                 >
-                  <p className="font-bold text-white whitespace-nowrap adaptive-shadow leading-none text-[11px]">
+                  <p
+                    className={cn("font-bold text-white whitespace-nowrap adaptive-shadow leading-none", primaryTextClass)}
+                    style={fontVar}
+                  >
                     {convertTemperature(weather.temp, settings.temperatureUnit)}°{settings.temperatureUnit}
                   </p>
                 </button>
-                <span className="text-white/40 text-[8px] leading-none">|</span>
+                <span className="text-white/40 text-[8px] leading-none flex-shrink-0">|</span>
                 <button
                   onClick={handleWeatherClick}
-                  className="hover:bg-white/5 rounded px-1 transition-colors text-center"
+                  className="hover:bg-white/5 rounded px-1 transition-colors text-center min-w-0"
                 >
-                  <p className="font-bold text-white capitalize whitespace-nowrap truncate adaptive-shadow leading-none text-[9px] max-w-[160px]">
+                  <p
+                    className={cn("font-bold text-white capitalize whitespace-nowrap truncate adaptive-shadow leading-none", secondaryTextClass, secondaryMaxW)}
+                    style={fontVar}
+                  >
                     {showForecast
                       ? `${upcomingRow1}${upcomingRow2 ? ` ${upcomingRow2}` : ''}`
                       : `${weatherDurationRow1} · ${weatherDurationRow2}`}
@@ -416,13 +432,10 @@ const NewHeader = ({
           </div>
         </div>
 
-        {/* Corner Menu icon (RIGHT) — morphs into dropdown panel */}
+        {/* Corner Menu icon (RIGHT) — uses same --header-scale for unison spring */}
         <div
           ref={dropdownRef}
-          className={cn(
-            "absolute top-2 right-2 z-50 transition-transform duration-300 origin-top-right",
-            isScrolled ? "scale-[0.85]" : "scale-100"
-          )}
+          className="header-spring header-spring-right absolute top-2 right-2 z-50"
         >
           <button
             onClick={() => setIsMenuOpen((v) => !v)}
@@ -463,7 +476,7 @@ const NewHeader = ({
                 : "opacity-0 scale-90 pointer-events-none"
             )}
             style={{
-              minWidth: '180px',
+              minWidth: '200px',
               background: 'rgba(20, 20, 28, 0.55)',
               backdropFilter: 'blur(20px) saturate(1.4)',
               WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
@@ -482,8 +495,13 @@ const NewHeader = ({
                   }}
                   className="w-full flex items-center gap-3 px-3.5 py-2 text-left text-white/90 hover:bg-white/10 transition-colors"
                 >
-                  <item.icon className="w-4 h-4 opacity-85" />
-                  <span className="text-sm">{item.label}</span>
+                  <item.icon className="w-4 h-4 opacity-85 flex-shrink-0" />
+                  <span className="text-sm flex-1">{item.label}</span>
+                  {item.shortcut && (
+                    <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 border border-white/15 text-white/70">
+                      {item.shortcut}
+                    </kbd>
+                  )}
                 </button>
               ))}
             </div>
