@@ -113,10 +113,33 @@ const NewHeader = ({
   }, [isLoggedIn]);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 50);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    let raf = 0;
+    const handleScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => setIsScrolled(window.scrollY > 50));
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      cancelAnimationFrame(raf);
+    };
   }, []);
+
+  // Responsive viewport size buckets — keeps both dual-text rows on a single
+  // line down to 320px without wrapping or colliding with logo/menu.
+  const [vw, setVw] = useState<number>(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 420
+  );
+  useEffect(() => {
+    const onResize = () => setVw(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const sizeMode: 'xs' | 'sm' | 'md' = vw < 360 ? 'xs' : vw < 420 ? 'sm' : 'md';
+  const primaryTextClass = sizeMode === 'xs' ? 'text-[10px]' : sizeMode === 'sm' ? 'text-[11px]' : 'text-[13px]';
+  const secondaryTextClass = sizeMode === 'xs' ? 'text-[8px]' : sizeMode === 'sm' ? 'text-[9px]' : 'text-[10px]';
+  const secondaryMaxW = sizeMode === 'xs' ? 'max-w-[120px]' : sizeMode === 'sm' ? 'max-w-[160px]' : 'max-w-[220px]';
+  const dateSep = sizeMode === 'xs' ? ' ' : ' · ';
 
   // Auto-close menu after 4 seconds of no interaction
   useEffect(() => {
