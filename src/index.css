@@ -128,6 +128,8 @@
 }
 .header-spring-left  { transform-origin: top left; }
 .header-spring-right { transform-origin: top right; }
+
+@layer components {
   /* ======= NEUMORPHIC GLASS CLASSES ======= */
   
   /* Base neumorphic glass with inset shadows and outer glow */
