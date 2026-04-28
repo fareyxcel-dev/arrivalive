@@ -313,9 +313,6 @@ const NewHeader = ({
     { icon: isLoggedIn ? LogOut : LogIn, label: isLoggedIn ? 'Logout' : 'Login', action: onAuthAction },
   ];
 
-  const menuIconCount = menuItems.length;
-  // ~36px per icon (24px icon + 12px padding), plus container padding
-  const expandedMenuWidth = menuIconCount * 36 + 16;
 
   // Close on outside click
   const dropdownRef = useRef<HTMLDivElement | null>(null);
