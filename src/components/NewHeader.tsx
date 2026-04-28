@@ -322,51 +322,41 @@ const NewHeader = ({
         }}
       />
 
-      <div className="relative px-4 pr-12">
-        {/* Main header row - logo on left of center, two centered dual-text rows on right */}
-        <div className="grid grid-cols-[auto_1fr] items-center gap-3">
+      <div className="relative pl-3 pr-10">
+        {/* Unison scaling wrapper: logo | center text | (menu icon area reserved) */}
+        <div
+          className={cn(
+            "grid grid-cols-[auto_1fr] items-center gap-4 transition-transform duration-300 origin-top",
+            isScrolled ? "scale-[0.85]" : "scale-100"
+          )}
+        >
           {/* Logo */}
-          <div className={cn(
-            "flex items-center transition-all duration-300",
-            isScrolled ? "scale-[0.75]" : ""
-          )}>
+          <div className="flex items-center pr-1">
             <img
               src={headerLogo}
               alt="ARRIVA.MV"
-              className={cn(
-                "w-auto transition-all duration-300",
-                isScrolled ? "h-9" : "h-11"
-              )}
+              className="w-auto h-8"
             />
           </div>
 
           {/* Centered stacked rows: Row 1 = Time | Date, Row 2 = Temp | Weather */}
-          <div className={cn(
-            "flex flex-col items-center justify-center text-center transition-all duration-300 min-w-0",
-            isScrolled ? "scale-[0.9]" : ""
-          )}>
+          <div className="flex flex-col items-center justify-center text-center min-w-0 pr-6">
             {/* Row 1: Time + Day/Date */}
             <div className="flex items-center justify-center gap-1.5 min-w-0 leading-none">
               <button
                 onClick={toggleTimeFormat}
                 className="hover:bg-white/5 rounded px-1 transition-colors"
               >
-                <p className={cn(
-                  "font-bold text-white whitespace-nowrap adaptive-shadow leading-none",
-                  isScrolled ? "text-[11px]" : "text-[13px]"
-                )}>
+                <p className="font-bold text-white whitespace-nowrap adaptive-shadow leading-none text-[11px]">
                   {formatTime(currentTime)}
                 </p>
               </button>
-              <span className="text-white/40 text-[9px] leading-none">|</span>
+              <span className="text-white/40 text-[8px] leading-none">|</span>
               <button
                 onClick={handleDayDateClick}
                 className="hover:bg-white/5 rounded px-1 transition-colors text-center"
               >
-                <p className={cn(
-                  "font-bold text-white whitespace-nowrap adaptive-shadow leading-none",
-                  isScrolled ? "text-[9px]" : "text-[10px]"
-                )}>
+                <p className="font-bold text-white whitespace-nowrap adaptive-shadow leading-none text-[9px]">
                   {showSunCountdown
                     ? `${sunData.label} in ${sunData.countdown} at ${sunData.time}`
                     : `${formatDay(currentTime)} · ${formatDate(currentTime)}`}
@@ -381,22 +371,16 @@ const NewHeader = ({
                   onClick={toggleTemperatureUnit}
                   className="hover:bg-white/5 rounded px-1 transition-colors"
                 >
-                  <p className={cn(
-                    "font-bold text-white whitespace-nowrap adaptive-shadow leading-none",
-                    isScrolled ? "text-[11px]" : "text-[13px]"
-                  )}>
+                  <p className="font-bold text-white whitespace-nowrap adaptive-shadow leading-none text-[11px]">
                     {convertTemperature(weather.temp, settings.temperatureUnit)}°{settings.temperatureUnit}
                   </p>
                 </button>
-                <span className="text-white/40 text-[9px] leading-none">|</span>
+                <span className="text-white/40 text-[8px] leading-none">|</span>
                 <button
                   onClick={handleWeatherClick}
                   className="hover:bg-white/5 rounded px-1 transition-colors text-center"
                 >
-                  <p className={cn(
-                    "font-bold text-white capitalize whitespace-nowrap truncate adaptive-shadow leading-none max-w-[180px]",
-                    isScrolled ? "text-[9px]" : "text-[10px]"
-                  )}>
+                  <p className="font-bold text-white capitalize whitespace-nowrap truncate adaptive-shadow leading-none text-[9px] max-w-[160px]">
                     {showForecast
                       ? `${upcomingRow1}${upcomingRow2 ? ` ${upcomingRow2}` : ''}`
                       : `${weatherDurationRow1} · ${weatherDurationRow2}`}
