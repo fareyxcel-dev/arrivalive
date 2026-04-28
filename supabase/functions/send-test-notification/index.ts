@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     const { data: profile } = await admin
       .from("profiles")
       .select(
-        "user_id, notification_email, phone, onesignal_player_id, notification_prefs",
+        "user_id, notification_email, phone, onesignal_player_id, fcm_token, push_subscription, notification_prefs",
       )
       .eq("user_id", userId)
       .maybeSingle();
@@ -72,83 +72,125 @@ Deno.serve(async (req) => {
     const body = "TEST EK 9999 from DXB has just LANDED at T1.";
 
     const results: Record<string, any> = {};
+    const tasks: Promise<void>[] = [];
 
-    // PUSH (PushAlert / OneSignal via existing send-notification function)
-    if (prefs.push && profile?.onesignal_player_id) {
-      try {
-        const r = await admin.functions.invoke("send-notification", {
-          body: {
-            user_ids: [userId],
-            title,
-            message: body,
-            url: "/",
-            test: true,
-          },
-        });
-        results.push = r.data ?? r.error?.message ?? "ok";
-      } catch (e) {
-        results.push = `error: ${String(e)}`;
+    // PUSH: fire PushAlert / OneSignal / FCM / WebPush in parallel
+    if (prefs.push) {
+      results.push = { pushalert: "skipped", onesignal: "skipped", fcm: "skipped", webpush: "skipped" };
+
+      if (profile?.onesignal_player_id) {
+        tasks.push((async () => {
+          try {
+            const r = await fetch("https://api.pushalert.co/rest/v1/send/id", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `api_key=0b59464902eedaad9877c595ad33f2fa` },
+              body: JSON.stringify({ title, message: body, url: "/", subscriber: profile.onesignal_player_id }),
+            });
+            results.push.pushalert = r.ok ? "sent" : `status ${r.status}`;
+          } catch (e) { results.push.pushalert = `error: ${String(e)}`; }
+        })());
+
+        const appId = Deno.env.get("ONESIGNAL_APP_ID");
+        const restKey = Deno.env.get("ONESIGNAL_REST_API_KEY");
+        if (appId && restKey) {
+          tasks.push((async () => {
+            try {
+              const r = await fetch("https://onesignal.com/api/v1/notifications", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Basic ${restKey}` },
+                body: JSON.stringify({
+                  app_id: appId,
+                  include_player_ids: [profile.onesignal_player_id],
+                  headings: { en: title },
+                  contents: { en: body },
+                }),
+              });
+              results.push.onesignal = r.ok ? "sent" : `status ${r.status}`;
+            } catch (e) { results.push.onesignal = `error: ${String(e)}`; }
+          })());
+        }
+      }
+
+      if (profile?.fcm_token) {
+        const fcmKey = Deno.env.get("FIREBASE_API_KEY");
+        if (fcmKey) {
+          tasks.push((async () => {
+            try {
+              const r = await fetch("https://fcm.googleapis.com/fcm/send", {
+                method: "POST",
+                headers: { Authorization: `key=${fcmKey}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ to: profile.fcm_token, notification: { title, body } }),
+              });
+              results.push.fcm = r.ok ? "sent" : `status ${r.status}`;
+            } catch (e) { results.push.fcm = `error: ${String(e)}`; }
+          })());
+        }
+      }
+
+      if ((profile as any)?.push_subscription) {
+        tasks.push((async () => {
+          try {
+            const { error } = await admin.functions.invoke("send-web-push", {
+              body: { subscription: (profile as any).push_subscription, title, body },
+            });
+            results.push.webpush = error ? `error: ${error.message || error}` : "sent";
+          } catch (e) { results.push.webpush = `error: ${String(e)}`; }
+        })());
       }
     } else {
       results.push = "skipped";
     }
 
-    // EMAIL via Resend
+    // EMAIL via Resend (in parallel)
     if (prefs.email && profile?.notification_email) {
       const resendKey = Deno.env.get("RESEND_API_KEY");
       if (resendKey) {
-        try {
-          const r = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${resendKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: "ARRIVA.MV <onboarding@resend.dev>",
-              to: [profile.notification_email],
-              subject: title,
-              text: body,
-            }),
-          });
-          results.email = r.ok ? "sent" : `status ${r.status}`;
-        } catch (e) {
-          results.email = `error: ${String(e)}`;
-        }
+        tasks.push((async () => {
+          try {
+            const r = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                from: "ARRIVA.MV <onboarding@resend.dev>",
+                to: [profile.notification_email],
+                subject: title,
+                text: body,
+              }),
+            });
+            results.email = r.ok ? "sent" : `status ${r.status}`;
+          } catch (e) { results.email = `error: ${String(e)}`; }
+        })());
       } else results.email = "RESEND_API_KEY not set";
     } else results.email = "skipped";
 
-    // SMS via Twilio
+    // SMS via Twilio (in parallel)
     if (prefs.sms && profile?.phone) {
       const sid = Deno.env.get("TWILIO_ACCOUNT_SID");
       const tok = Deno.env.get("TWILIO_AUTH_TOKEN");
       const from = Deno.env.get("TWILIO_PHONE_NUMBER");
       if (sid && tok && from) {
-        try {
-          const r = await fetch(
-            `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Basic ${btoa(`${sid}:${tok}`)}`,
-                "Content-Type": "application/x-www-form-urlencoded",
+        tasks.push((async () => {
+          try {
+            const r = await fetch(
+              `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Basic ${btoa(`${sid}:${tok}`)}`,
+                  "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: new URLSearchParams({ From: from, To: profile.phone, Body: body }),
               },
-              body: new URLSearchParams({
-                From: from,
-                To: profile.phone,
-                Body: body,
-              }),
-            },
-          );
-          results.sms = r.ok ? "sent" : `status ${r.status}`;
-        } catch (e) {
-          results.sms = `error: ${String(e)}`;
-        }
+            );
+            results.sms = r.ok ? "sent" : `status ${r.status}`;
+          } catch (e) { results.sms = `error: ${String(e)}`; }
+        })());
       } else results.sms = "Twilio secrets missing";
     } else results.sms = "skipped";
 
-    // Telegram (placeholder - no chat_id wiring yet)
     results.telegram = prefs.telegram ? "not configured" : "skipped";
+
+    await Promise.allSettled(tasks);
 
     return new Response(
       JSON.stringify({ ok: true, results }),
