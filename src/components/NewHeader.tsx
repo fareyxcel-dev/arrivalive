@@ -392,7 +392,13 @@ const NewHeader = ({
         </div>
 
         {/* Corner Menu icon (RIGHT) — morphs into dropdown panel */}
-        <div ref={dropdownRef} className="absolute top-2 right-3 z-50">
+        <div
+          ref={dropdownRef}
+          className={cn(
+            "absolute top-2 right-2 z-50 transition-transform duration-300 origin-top-right",
+            isScrolled ? "scale-[0.85]" : "scale-100"
+          )}
+        >
           <button
             onClick={() => setIsMenuOpen((v) => !v)}
             className={cn(
