@@ -114,6 +114,21 @@
   }
 }
 
+/* Spring-eased header scaling — single source of truth so logo,
+   center text and menu icon shrink/grow in perfect unison. */
+:root {
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --header-scale-duration: 420ms;
+  --header-scale: 1;
+}
+.header-spring {
+  transform: scale(var(--header-scale));
+  transform-origin: top center;
+  transition: transform var(--header-scale-duration) var(--ease-spring);
+}
+.header-spring-left  { transform-origin: top left; }
+.header-spring-right { transform-origin: top right; }
+
 @layer components {
   /* ======= NEUMORPHIC GLASS CLASSES ======= */
   

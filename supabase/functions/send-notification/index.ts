@@ -143,102 +143,91 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Send Push Notification - Try PushAlert first, then OneSignal, then Firebase
+    // Send Push Notification — fire ALL configured channels in parallel
+    const pushChannels: Record<string, { sent: boolean; error: string | null }> = {
+      pushalert: { sent: false, error: null },
+      onesignal: { sent: false, error: null },
+      fcm: { sent: false, error: null },
+      webpush: { sent: false, error: null },
+    };
+
     if (subscription.notify_push) {
-      // Try PushAlert first
+      const tasks: Promise<void>[] = [];
+
+      // PushAlert
       if (subscription.profiles?.onesignal_player_id) {
-        try {
-          // PushAlert API key (website integration key)
-          const pushAlertApiKey = "0b59464902eedaad9877c595ad33f2fa";
-          
-          const pushAlertPayload = {
-            title: `Flight ${flight.flight_id} Update`,
-            message: message,
-            url: "/",
-            subscriber: subscription.profiles.onesignal_player_id,
-          };
-
-          console.log(`Sending PushAlert push to subscriber: ${subscription.profiles.onesignal_player_id}`);
-
-          const pushResponse = await fetch("https://api.pushalert.co/rest/v1/send/id", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `api_key=${pushAlertApiKey}`,
-            },
-            body: JSON.stringify(pushAlertPayload),
-          });
-
-          if (pushResponse.ok) {
-            results.push.sent = true;
-            console.log("PushAlert push sent successfully");
-          } else {
-            const pushResult = await pushResponse.text();
-            console.error("PushAlert push failed:", pushResult);
-            // Fall through to OneSignal
-          }
-        } catch (error: unknown) {
-          console.error("PushAlert push error:", error);
-          // Fall through to OneSignal
-        }
-      }
-
-      // Fallback to OneSignal if PushAlert didn't work
-      if (!results.push.sent && subscription.profiles?.onesignal_player_id) {
-        try {
-          const oneSignalAppId = Deno.env.get("ONESIGNAL_APP_ID");
-          const oneSignalRestApiKey = Deno.env.get("ONESIGNAL_REST_API_KEY");
-
-          if (oneSignalAppId && oneSignalRestApiKey) {
-            const notificationPayload = {
-              app_id: oneSignalAppId,
-              include_player_ids: [subscription.profiles.onesignal_player_id],
-              headings: { en: `Flight ${flight.flight_id} Update` },
-              contents: { en: message },
-              data: {
-                flightId: flight.flight_id,
-                flightDate: flight.flight_date,
-                status: newStatus,
-                url: "/",
-              },
-              priority: 10,
-              ttl: 86400,
-            };
-
-            const pushResponse = await fetch("https://onesignal.com/api/v1/notifications", {
+        tasks.push((async () => {
+          try {
+            const pushAlertApiKey = "0b59464902eedaad9877c595ad33f2fa";
+            const r = await fetch("https://api.pushalert.co/rest/v1/send/id", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Basic ${oneSignalRestApiKey}`,
+                "Authorization": `api_key=${pushAlertApiKey}`,
               },
-              body: JSON.stringify(notificationPayload),
+              body: JSON.stringify({
+                title: `Flight ${flight.flight_id} Update`,
+                message,
+                url: "/",
+                subscriber: subscription.profiles.onesignal_player_id,
+              }),
             });
-
-            const pushResult = await pushResponse.json();
-
-            if (pushResponse.ok) {
-              results.push.sent = true;
-              console.log("OneSignal push sent successfully:", pushResult.id);
+            if (r.ok) {
+              pushChannels.pushalert.sent = true;
+              console.log("PushAlert sent");
             } else {
-              console.error("OneSignal push failed:", pushResult);
-              results.push.error = JSON.stringify(pushResult);
+              pushChannels.pushalert.error = await r.text();
             }
+          } catch (e) {
+            pushChannels.pushalert.error = e instanceof Error ? e.message : String(e);
           }
-        } catch (error: unknown) {
-          results.push.error = error instanceof Error ? error.message : String(error);
-          console.error("OneSignal push error:", error);
+        })());
+      }
+
+      // OneSignal
+      if (subscription.profiles?.onesignal_player_id) {
+        const oneSignalAppId = Deno.env.get("ONESIGNAL_APP_ID");
+        const oneSignalRestApiKey = Deno.env.get("ONESIGNAL_REST_API_KEY");
+        if (oneSignalAppId && oneSignalRestApiKey) {
+          tasks.push((async () => {
+            try {
+              const r = await fetch("https://onesignal.com/api/v1/notifications", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Basic ${oneSignalRestApiKey}`,
+                },
+                body: JSON.stringify({
+                  app_id: oneSignalAppId,
+                  include_player_ids: [subscription.profiles.onesignal_player_id],
+                  headings: { en: `Flight ${flight.flight_id} Update` },
+                  contents: { en: message },
+                  data: { flightId: flight.flight_id, flightDate: flight.flight_date, status: newStatus, url: "/" },
+                  priority: 10,
+                  ttl: 86400,
+                }),
+              });
+              const result = await r.json();
+              if (r.ok) {
+                pushChannels.onesignal.sent = true;
+                console.log("OneSignal sent:", result.id);
+              } else {
+                pushChannels.onesignal.error = JSON.stringify(result);
+              }
+            } catch (e) {
+              pushChannels.onesignal.error = e instanceof Error ? e.message : String(e);
+            }
+          })());
         }
       }
-      
-      // Fallback to Firebase if OneSignal didn't work and FCM token exists
-      if (!results.push.sent && subscription.profiles?.fcm_token) {
-        try {
-          const firebaseApiKey = Deno.env.get("FIREBASE_API_KEY");
 
-          if (firebaseApiKey) {
-            const response = await fetch(
-              "https://fcm.googleapis.com/fcm/send",
-              {
+      // FCM
+      if (subscription.profiles?.fcm_token) {
+        const firebaseApiKey = Deno.env.get("FIREBASE_API_KEY");
+        if (firebaseApiKey) {
+          tasks.push((async () => {
+            try {
+              const r = await fetch("https://fcm.googleapis.com/fcm/send", {
                 method: "POST",
                 headers: {
                   Authorization: `key=${firebaseApiKey}`,
@@ -251,29 +240,56 @@ Deno.serve(async (req) => {
                     body: message,
                     icon: "/icon-512.png",
                   },
-                  data: {
-                    flight_id: flight.flight_id,
-                    status: newStatus,
-                  },
+                  data: { flight_id: flight.flight_id, status: newStatus },
                 }),
+              });
+              if (r.ok) {
+                pushChannels.fcm.sent = true;
+                console.log("FCM sent");
+              } else {
+                pushChannels.fcm.error = await r.text();
               }
-            );
-
-            if (response.ok) {
-              results.push.sent = true;
-              console.log("FCM push notification sent successfully");
-            } else {
-              const error = await response.text();
-              results.push.error = error;
-              console.error("FCM error:", error);
+            } catch (e) {
+              pushChannels.fcm.error = e instanceof Error ? e.message : String(e);
             }
-          } else {
-            results.push.error = "Firebase credentials not configured";
-          }
-        } catch (error: unknown) {
-          results.push.error = error instanceof Error ? error.message : String(error);
-          console.error("FCM push error:", error);
+          })());
         }
+      }
+
+      // Web Push (VAPID) via existing send-web-push function
+      if ((subscription.profiles as any)?.push_subscription) {
+        tasks.push((async () => {
+          try {
+            const { data, error } = await supabase.functions.invoke("send-web-push", {
+              body: {
+                subscription: (subscription.profiles as any).push_subscription,
+                title: `Flight ${flight.flight_id} Update`,
+                body: message,
+                data: { flightId: flight.flight_id, status: newStatus, url: "/" },
+              },
+            });
+            if (!error) {
+              pushChannels.webpush.sent = true;
+              console.log("WebPush sent");
+            } else {
+              pushChannels.webpush.error = error.message || JSON.stringify(error);
+            }
+          } catch (e) {
+            pushChannels.webpush.error = e instanceof Error ? e.message : String(e);
+          }
+        })());
+      }
+
+      await Promise.allSettled(tasks);
+
+      const anySent = Object.values(pushChannels).some(c => c.sent);
+      results.push.sent = anySent;
+      if (!anySent) {
+        const errs = Object.entries(pushChannels)
+          .filter(([, v]) => v.error)
+          .map(([k, v]) => `${k}:${v.error}`)
+          .join(" | ");
+        results.push.error = errs || "no channels available";
       }
     }
 
@@ -298,6 +314,18 @@ Deno.serve(async (req) => {
       });
     }
     if (subscription.notify_push) {
+      // One log row per push channel attempted
+      for (const [channel, info] of Object.entries(pushChannels)) {
+        if (info.sent || info.error) {
+          logsToInsert.push({
+            subscription_id: subscription.id,
+            notification_type: `push:${channel}`,
+            status_change: `${oldStatus} → ${newStatus}`,
+            success: info.sent,
+            error_message: info.error,
+          });
+        }
+      }
       logsToInsert.push({
         subscription_id: subscription.id,
         notification_type: "push",

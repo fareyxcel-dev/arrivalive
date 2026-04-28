@@ -291,6 +291,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     document.documentElement.style.setProperty('--font-display', fontFamily);
     document.documentElement.style.fontFamily = fontFamily;
     document.body.style.fontFamily = fontFamily;
+    // Force WebKit/Safari to re-flow header text immediately on font swap.
+    document.documentElement.setAttribute('data-font-rev', String(Date.now()));
     
     let textTransform: string;
     switch (settings.textCase) {
