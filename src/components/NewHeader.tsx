@@ -301,13 +301,15 @@ const NewHeader = ({
   const upcomingRow1 = getUpcomingRow1();
   const upcomingRow2 = getUpcomingRow2();
 
-  // Menu items: 5 standard, 6 for admin
-  const menuItems = [
-    { icon: RefreshCw, label: 'Refresh', action: onForceRefresh },
-    { icon: Download, label: 'Export', action: onExportSchedule },
+  // Menu items: 5 standard, 6 for admin (with optional ⌘ shortcut hints)
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+  const mod = isMac ? '⌘' : 'Ctrl';
+  const menuItems: Array<{ icon: any; label: string; action?: () => void; shortcut?: string }> = [
+    { icon: RefreshCw, label: 'Refresh', action: onForceRefresh, shortcut: `${mod}R` },
+    { icon: Download, label: 'Export', action: onExportSchedule, shortcut: `${mod}E` },
     { icon: Bell, label: 'Notifications', action: onOpenNotifications },
     ...(isAdmin && onOpenAdmin ? [{ icon: Shield, label: 'Admin', action: onOpenAdmin }] : []),
-    { icon: Settings, label: 'Settings', action: onOpenSettings },
+    { icon: Settings, label: 'Settings', action: onOpenSettings, shortcut: `${mod},` },
     { icon: isLoggedIn ? LogOut : LogIn, label: isLoggedIn ? 'Logout' : 'Login', action: onAuthAction },
   ];
 
