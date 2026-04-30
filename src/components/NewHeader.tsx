@@ -304,8 +304,11 @@ const NewHeader = ({
   // Menu items: 5 standard, 6 for admin (with optional ⌘ shortcut hints)
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   const mod = isMac ? '⌘' : 'Ctrl';
+  // Safari can't reliably override Cmd/Ctrl+R, so don't advertise the hint there.
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  const isSafari = /Safari/.test(ua) && !/Chrome|Chromium|Android|CriOS|FxiOS|EdgiOS|OPR\//.test(ua);
   const menuItems: Array<{ icon: any; label: string; action?: () => void; shortcut?: string }> = [
-    { icon: RefreshCw, label: 'Refresh', action: onForceRefresh, shortcut: `${mod}R` },
+    { icon: RefreshCw, label: 'Refresh', action: onForceRefresh, ...(isSafari ? {} : { shortcut: `${mod}R` }) },
     { icon: Download, label: 'Export', action: onExportSchedule, shortcut: `${mod}E` },
     { icon: Bell, label: 'Notifications', action: onOpenNotifications },
     ...(isAdmin && onOpenAdmin ? [{ icon: Shield, label: 'Admin', action: onOpenAdmin }] : []),
@@ -353,42 +356,32 @@ const NewHeader = ({
         }}
       />
 
-      <div className="relative pl-3 pr-12">
-        {/* Logo + center text grid (logo & center independently spring-scaled but in unison via shared --header-scale var) */}
-        <div className="grid grid-cols-[auto_1fr] items-center gap-3">
-          {/* Logo */}
-          <div className="header-spring header-spring-left flex items-center pr-1">
-            <img
-              src={headerLogo}
-              alt="ARRIVA.MV"
-              className="w-auto h-8"
-            />
+      <div className="relative pl-3 pr-3">
+        {/* Logo + center text + menu — locked to a shared 32px row height so they read as one row with even padding */}
+        <div
+          className="grid items-center gap-3"
+          style={{ gridTemplateColumns: 'auto 1fr auto', minHeight: '32px' }}
+        >
+          {/* Logo (LEFT) */}
+          <div className="header-spring header-spring-left flex items-center justify-center" style={{ height: 32 }}>
+            <img src={headerLogo} alt="ARRIVA.MV" className="w-auto" style={{ height: 32 }} />
           </div>
 
-          {/* Centered stacked rows */}
-          <div className="header-spring flex flex-col items-center justify-center text-center min-w-0 overflow-hidden pr-2">
+          {/* Centered stacked rows — total height capped to 32px */}
+          <div
+            className="header-spring flex flex-col items-center justify-center text-center min-w-0 overflow-hidden px-2"
+            style={{ height: 32 }}
+          >
             {/* Row 1: Time | Day/Date */}
             <div className="flex items-center justify-center gap-1.5 min-w-0 leading-none whitespace-nowrap overflow-hidden max-w-full">
-              <button
-                onClick={toggleTimeFormat}
-                className="hover:bg-white/5 rounded px-1 transition-colors flex-shrink-0"
-              >
-                <p
-                  className={cn("font-bold text-white whitespace-nowrap adaptive-shadow leading-none", primaryTextClass)}
-                  style={fontVar}
-                >
+              <button onClick={toggleTimeFormat} className="hover:bg-white/5 rounded px-1 transition-colors flex-shrink-0">
+                <p className={cn("font-bold text-white whitespace-nowrap adaptive-shadow leading-none", primaryTextClass)} style={fontVar}>
                   {formatTime(currentTime)}
                 </p>
               </button>
               <span className="text-white/40 text-[8px] leading-none flex-shrink-0">|</span>
-              <button
-                onClick={handleDayDateClick}
-                className="hover:bg-white/5 rounded px-1 transition-colors text-center min-w-0"
-              >
-                <p
-                  className={cn("font-bold text-white whitespace-nowrap truncate adaptive-shadow leading-none", secondaryTextClass, secondaryMaxW)}
-                  style={fontVar}
-                >
+              <button onClick={handleDayDateClick} className="hover:bg-white/5 rounded px-1 transition-colors text-center min-w-0">
+                <p className={cn("font-bold text-white whitespace-nowrap truncate adaptive-shadow leading-none", secondaryTextClass, secondaryMaxW)} style={fontVar}>
                   {showSunCountdown
                     ? `${sunData.label} in ${sunData.countdown} at ${sunData.time}`
                     : `${formatDay(currentTime)}${dateSep}${formatDate(currentTime)}`}
@@ -398,27 +391,15 @@ const NewHeader = ({
 
             {/* Row 2: Temp | Weather */}
             {weather && (
-              <div className="flex items-center justify-center gap-1.5 min-w-0 mt-1 leading-none whitespace-nowrap overflow-hidden max-w-full">
-                <button
-                  onClick={toggleTemperatureUnit}
-                  className="hover:bg-white/5 rounded px-1 transition-colors flex-shrink-0"
-                >
-                  <p
-                    className={cn("font-bold text-white whitespace-nowrap adaptive-shadow leading-none", primaryTextClass)}
-                    style={fontVar}
-                  >
+              <div className="flex items-center justify-center gap-1.5 min-w-0 mt-0.5 leading-none whitespace-nowrap overflow-hidden max-w-full">
+                <button onClick={toggleTemperatureUnit} className="hover:bg-white/5 rounded px-1 transition-colors flex-shrink-0">
+                  <p className={cn("font-bold text-white whitespace-nowrap adaptive-shadow leading-none", primaryTextClass)} style={fontVar}>
                     {convertTemperature(weather.temp, settings.temperatureUnit)}°{settings.temperatureUnit}
                   </p>
                 </button>
                 <span className="text-white/40 text-[8px] leading-none flex-shrink-0">|</span>
-                <button
-                  onClick={handleWeatherClick}
-                  className="hover:bg-white/5 rounded px-1 transition-colors text-center min-w-0"
-                >
-                  <p
-                    className={cn("font-bold text-white capitalize whitespace-nowrap truncate adaptive-shadow leading-none", secondaryTextClass, secondaryMaxW)}
-                    style={fontVar}
-                  >
+                <button onClick={handleWeatherClick} className="hover:bg-white/5 rounded px-1 transition-colors text-center min-w-0">
+                  <p className={cn("font-bold text-white capitalize whitespace-nowrap truncate adaptive-shadow leading-none", secondaryTextClass, secondaryMaxW)} style={fontVar}>
                     {showForecast
                       ? `${upcomingRow1}${upcomingRow2 ? ` ${upcomingRow2}` : ''}`
                       : `${weatherDurationRow1} · ${weatherDurationRow2}`}
@@ -427,80 +408,73 @@ const NewHeader = ({
               </div>
             )}
           </div>
-        </div>
 
-        {/* Corner Menu icon (RIGHT) — uses same --header-scale for unison spring */}
-        <div
-          ref={dropdownRef}
-          className="header-spring header-spring-right absolute top-2 right-2 z-50"
-        >
-          <button
-            onClick={() => setIsMenuOpen((v) => !v)}
-            className={cn(
-              "relative p-1.5 rounded-full transition-all duration-300",
-              isMenuOpen ? "menu-icon-glow scale-110" : "hover:bg-white/10"
-            )}
-            aria-label={isMenuOpen ? "Close menu" : "Open menu"}
-            title="Menu"
-          >
-            <img
-              src={UI_ICONS.menu}
-              alt="Menu"
-              className={cn("w-5 h-5 transition-all duration-300", isMenuOpen ? "opacity-100" : "opacity-80")}
-              style={isMenuOpen ? { filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.7))' } : {}}
-            />
-            {notificationCount > 0 && !isMenuOpen && (
-              <span
-                className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] flex items-center justify-center rounded-full text-[8px] font-bold animate-pulse"
-                style={{
-                  background: 'rgba(255,255,255,0.25)',
-                  backdropFilter: 'blur(8px)',
-                  border: '1px solid rgba(255,255,255,0.3)',
-                  color: 'white',
-                  padding: '0 3px',
-                }}
-              >
-                {notificationCount > 99 ? '99+' : notificationCount}
-              </span>
-            )}
-          </button>
-
-          <div
-            className={cn(
-              "absolute right-0 mt-2 origin-top-right transition-all duration-300 ease-out overflow-hidden",
-              isMenuOpen
-                ? "opacity-100 scale-100 pointer-events-auto"
-                : "opacity-0 scale-90 pointer-events-none"
-            )}
-            style={{
-              minWidth: '200px',
-              background: 'rgba(20, 20, 28, 0.55)',
-              backdropFilter: 'blur(20px) saturate(1.4)',
-              WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: '14px',
-              boxShadow: '0 12px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)',
-            }}
-          >
-            <div className="py-1.5">
-              {menuItems.map((item) => (
-                <button
-                  key={item.label}
-                  onClick={() => {
-                    item.action?.();
-                    setIsMenuOpen(false);
+          {/* Menu icon (RIGHT) — fixed 32px square button matches logo height */}
+          <div ref={dropdownRef} className="header-spring header-spring-right relative" style={{ height: 32 }}>
+            <button
+              onClick={() => setIsMenuOpen((v) => !v)}
+              className={cn(
+                "relative rounded-full transition-all duration-300 flex items-center justify-center",
+                isMenuOpen ? "menu-icon-glow scale-110" : "hover:bg-white/10"
+              )}
+              style={{ width: 32, height: 32 }}
+              aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+              title="Menu"
+            >
+              <img
+                src={UI_ICONS.menu}
+                alt="Menu"
+                className={cn("w-5 h-5 transition-all duration-300", isMenuOpen ? "opacity-100" : "opacity-80")}
+                style={isMenuOpen ? { filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.7))' } : {}}
+              />
+              {notificationCount > 0 && !isMenuOpen && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] flex items-center justify-center rounded-full text-[8px] font-bold animate-pulse"
+                  style={{
+                    background: 'rgba(255,255,255,0.25)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(255,255,255,0.3)',
+                    color: 'white',
+                    padding: '0 3px',
                   }}
-                  className="w-full flex items-center gap-3 px-3.5 py-2 text-left text-white/90 hover:bg-white/10 transition-colors"
                 >
-                  <item.icon className="w-4 h-4 opacity-85 flex-shrink-0" />
-                  <span className="text-sm flex-1">{item.label}</span>
-                  {item.shortcut && (
-                    <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 border border-white/15 text-white/70">
-                      {item.shortcut}
-                    </kbd>
-                  )}
-                </button>
-              ))}
+                  {notificationCount > 99 ? '99+' : notificationCount}
+                </span>
+              )}
+            </button>
+
+            <div
+              className={cn(
+                "absolute right-0 mt-2 origin-top-right transition-all duration-300 ease-out overflow-hidden",
+                isMenuOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-90 pointer-events-none"
+              )}
+              style={{
+                minWidth: '200px',
+                background: 'rgba(20, 20, 28, 0.55)',
+                backdropFilter: 'blur(20px) saturate(1.4)',
+                WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: '14px',
+                boxShadow: '0 12px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)',
+              }}
+            >
+              <div className="py-1.5">
+                {menuItems.map((item) => (
+                  <button
+                    key={item.label}
+                    onClick={() => { item.action?.(); setIsMenuOpen(false); }}
+                    className="w-full flex items-center gap-3 px-3.5 py-2 text-left text-white/90 hover:bg-white/10 transition-colors"
+                  >
+                    <item.icon className="w-4 h-4 opacity-85 flex-shrink-0" />
+                    <span className="text-sm flex-1">{item.label}</span>
+                    {item.shortcut && (
+                      <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 border border-white/15 text-white/70">
+                        {item.shortcut}
+                      </kbd>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

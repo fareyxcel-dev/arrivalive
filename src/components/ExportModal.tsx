@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { X, Download, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { X, Download, FileSpreadsheet, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -22,10 +23,15 @@ interface FlightRecord {
   airline_code: string;
 }
 
+const STATUS_OPTIONS = ['all', 'scheduled', 'estimated', 'delayed', 'landed', 'cancelled'] as const;
+type StatusFilter = typeof STATUS_OPTIONS[number];
+
 const ExportModal = ({ isOpen, onClose }: Props) => {
   const { settings } = useSettings();
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTerminal, setSelectedTerminal] = useState<'all' | 'T1' | 'T2' | 'DOM'>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [originSearch, setOriginSearch] = useState('');
   const [historyFlights, setHistoryFlights] = useState<FlightRecord[]>([]);
   const [dates, setDates] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,16 +39,12 @@ const ExportModal = ({ isOpen, onClose }: Props) => {
 
   useEffect(() => {
     if (!isOpen) return;
-
     const fetchHistoryFlights = async () => {
       setIsLoading(true);
       try {
         const today = new Date();
-        const sevenDaysAgo = new Date(today);
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const weekAhead = new Date(today);
-        weekAhead.setDate(weekAhead.getDate() + 7);
-
+        const sevenDaysAgo = new Date(today); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const weekAhead = new Date(today); weekAhead.setDate(weekAhead.getDate() + 7);
         const { data, error } = await supabase
           .from('flights')
           .select('*')
@@ -50,19 +52,12 @@ const ExportModal = ({ isOpen, onClose }: Props) => {
           .lte('flight_date', weekAhead.toISOString().split('T')[0])
           .order('flight_date', { ascending: false })
           .order('scheduled_time', { ascending: true });
-
-        if (error) {
-          console.error('Error fetching history:', error);
-          return;
-        }
-
+        if (error) { console.error('Error fetching history:', error); return; }
         if (data) {
           setHistoryFlights(data);
           const uniqueDates = [...new Set(data.map(f => f.flight_date))].sort().reverse();
           setDates(uniqueDates);
-          if (uniqueDates.length > 0 && !selectedDate) {
-            setSelectedDate(uniqueDates[0]);
-          }
+          if (uniqueDates.length > 0 && !selectedDate) setSelectedDate(uniqueDates[0]);
         }
       } catch (error) {
         console.error('Error:', error);
@@ -70,13 +65,9 @@ const ExportModal = ({ isOpen, onClose }: Props) => {
         setIsLoading(false);
       }
     };
-
     fetchHistoryFlights();
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
-  // Format date as "18 Dec - Wednesday"
   const formatDateLabel = (dateStr: string) => {
     const date = new Date(dateStr + 'T00:00:00+05:00');
     const day = date.getDate();
@@ -85,54 +76,83 @@ const ExportModal = ({ isOpen, onClose }: Props) => {
     return `${day} ${month} - ${weekday}`;
   };
 
+  // Live filtered preview (also used for export)
+  const filtered = useMemo(() => {
+    let out = historyFlights;
+    if (selectedDate) out = out.filter(f => f.flight_date === selectedDate);
+    if (selectedTerminal !== 'all') out = out.filter(f => f.terminal === selectedTerminal);
+    if (statusFilter !== 'all') {
+      out = out.filter(f => (f.status || '').toLowerCase().includes(statusFilter));
+    }
+    const q = originSearch.trim().toLowerCase();
+    if (q) {
+      out = out.filter(f =>
+        (f.origin || '').toLowerCase().includes(q) ||
+        (f.flight_id || '').toLowerCase().includes(q) ||
+        (f.airline_code || '').toLowerCase().includes(q)
+      );
+    }
+    return [...out].sort((a, b) =>
+      parseInt(a.scheduled_time.replace(':', '')) - parseInt(b.scheduled_time.replace(':', ''))
+    );
+  }, [historyFlights, selectedDate, selectedTerminal, statusFilter, originSearch]);
+
+  if (!isOpen) return null;
+
   const handleExport = async () => {
+    if (filtered.length === 0) {
+      toast.error('No flights match your filters');
+      return;
+    }
     setIsExporting(true);
     try {
-      let filteredFlights = historyFlights;
-
-      if (selectedDate) {
-        filteredFlights = filteredFlights.filter(f => f.flight_date === selectedDate);
-      }
-
-      if (selectedTerminal !== 'all') {
-        filteredFlights = filteredFlights.filter(f => f.terminal === selectedTerminal);
-      }
-
-      filteredFlights.sort((a, b) => {
-        const timeA = a.scheduled_time.replace(':', '');
-        const timeB = b.scheduled_time.replace(':', '');
-        return parseInt(timeA) - parseInt(timeB);
-      });
-
-      // Yield so the spinner paints before the (synchronous) CSV build.
+      // Yield so spinner paints before synchronous work
       await new Promise(r => setTimeout(r, 60));
 
-      const headers = ['Flight ID', 'Origin', 'Scheduled Time', 'Estimated Time', 'Terminal', 'Status'];
-      const rows = filteredFlights.map(f => [
-        f.flight_id,
-        `"${f.origin}"`,
-        f.scheduled_time,
-        f.estimated_time || f.scheduled_time,
-        f.terminal,
-        f.status,
-      ]);
+      // Build typed rows for the XLSX sheet.
+      // - flight_date as a real Date
+      // - times as text "HH:mm"
+      const rows = filtered.map(f => ({
+        'Flight ID': f.flight_id,
+        'Airline': f.airline_code || '',
+        'Origin': f.origin,
+        'Date': new Date(f.flight_date + 'T00:00:00'),
+        'Scheduled Time': f.scheduled_time,
+        'Estimated Time': f.estimated_time || f.scheduled_time,
+        'Terminal': f.terminal,
+        'Status': f.status,
+      }));
 
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.join(',')),
-      ].join('\n');
+      const ws = XLSX.utils.json_to_sheet(rows, {
+        header: ['Flight ID', 'Airline', 'Origin', 'Date', 'Scheduled Time', 'Estimated Time', 'Terminal', 'Status'],
+        cellDates: true,
+      });
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `arriva-schedule-${selectedDate || 'all'}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      // Column widths
+      (ws as any)['!cols'] = [
+        { wch: 12 }, { wch: 10 }, { wch: 22 }, { wch: 12 },
+        { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 14 },
+      ];
 
-      toast.success('Schedule exported');
+      // Apply date format on column D (Date)
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      for (let r = 1; r <= range.e.r; r++) {
+        const cell = ws[XLSX.utils.encode_cell({ c: 3, r })];
+        if (cell) { cell.t = 'd'; cell.z = 'yyyy-mm-dd'; }
+      }
+
+      const wb = XLSX.utils.book_new();
+      const sheetName = `Arrivals ${selectedTerminal}`.slice(0, 31);
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+      // Filename includes date + terminal + optional status/search
+      const parts = ['arriva-schedule', selectedDate || 'all', selectedTerminal];
+      if (statusFilter !== 'all') parts.push(statusFilter);
+      if (originSearch.trim()) parts.push(originSearch.trim().replace(/[^a-z0-9]+/gi, '-').slice(0, 20));
+      const filename = parts.filter(Boolean).join('_') + '.xlsx';
+
+      XLSX.writeFile(wb, filename, { bookType: 'xlsx', compression: true });
+      toast.success(`Exported ${filtered.length} flight${filtered.length === 1 ? '' : 's'}`);
       onClose();
     } catch (err) {
       console.error('Export error:', err);
@@ -157,10 +177,7 @@ const ExportModal = ({ isOpen, onClose }: Props) => {
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <div className="flex items-center gap-3">
             <FileSpreadsheet className="w-5 h-5 text-foreground/70" />
-            <h2
-              className="text-lg font-bold text-foreground"
-              style={{ fontFamily: settings.fontFamily }}
-            >
+            <h2 className="text-lg font-bold text-foreground" style={{ fontFamily: settings.fontFamily }}>
               Export Schedule
             </h2>
           </div>
@@ -175,7 +192,7 @@ const ExportModal = ({ isOpen, onClose }: Props) => {
         </div>
 
         {/* Content */}
-        <div className={cn("p-4 space-y-4", isExporting && "pointer-events-none opacity-60")}>
+        <div className={cn("p-4 space-y-3", isExporting && "pointer-events-none opacity-60")}>
           {isLoading ? (
             <div className="text-center text-muted-foreground py-4">Loading history...</div>
           ) : (
@@ -216,9 +233,44 @@ const ExportModal = ({ isOpen, onClose }: Props) => {
                 </div>
               </div>
 
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide">Status</label>
+                <select
+                  value={statusFilter}
+                  onChange={e => setStatusFilter(e.target.value as StatusFilter)}
+                  disabled={isExporting}
+                  className="w-full mt-1 px-4 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-foreground/50 outline-none capitalize disabled:opacity-60"
+                  style={{ fontFamily: settings.fontFamily }}
+                >
+                  {STATUS_OPTIONS.map(s => (
+                    <option key={s} value={s} className="bg-popover capitalize">{s === 'all' ? 'All statuses' : s}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide">Search origin / flight</label>
+                <div className="relative mt-1">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="text"
+                    value={originSearch}
+                    onChange={e => setOriginSearch(e.target.value.slice(0, 60))}
+                    disabled={isExporting}
+                    placeholder="e.g. Dubai, EK, EK650"
+                    className="w-full pl-9 pr-3 py-2 rounded-lg glass bg-transparent border-0 focus:ring-1 focus:ring-foreground/50 outline-none disabled:opacity-60 text-sm"
+                    style={{ fontFamily: settings.fontFamily }}
+                  />
+                </div>
+              </div>
+
+              <div className="text-xs text-muted-foreground text-center pt-1">
+                {filtered.length} flight{filtered.length === 1 ? '' : 's'} match current filters
+              </div>
+
               <button
                 onClick={handleExport}
-                disabled={dates.length === 0 || isExporting}
+                disabled={dates.length === 0 || isExporting || filtered.length === 0}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-lg glass-interactive text-foreground font-medium transition-all hover:bg-white/30 active:scale-[0.98] disabled:opacity-50"
               >
                 {isExporting ? (
@@ -229,7 +281,7 @@ const ExportModal = ({ isOpen, onClose }: Props) => {
                 ) : (
                   <>
                     <Download className="w-4 h-4" />
-                    Download CSV
+                    Download Excel (.xlsx)
                   </>
                 )}
               </button>
