@@ -147,10 +147,10 @@ export const CARD_STYLES: Record<string, CardStyle> = {
     description: 'Glass + gradient logos',
     textColors: { default: '#B5B5B5', delayed: '#9B330F', cancelled: '#690C36', landed: '#0C4521' },
     gradientColors: {
-      default: ['#FFFFFF', '#B5B5B5', '#787878'],
-      delayed: ['#F38B62', '#9B330F', '#5C1B05'],
-      cancelled: ['#B82E65', '#690C36', '#3B041C'],
-      landed: ['#2EAB56', '#0C4521', '#04210E'],
+      default: ['#787878', '#B5B5B5', '#FFFFFF'],
+      delayed: ['#5C1B05', '#9B330F', '#F38B62'],
+      cancelled: ['#3B041C', '#690C36', '#B82E65'],
+      landed: ['#04210E', '#0C4521', '#2EAB56'],
     },
     logoPaths: {
       default: `${IMAGEKIT_BASE}Gradient%20Glass%20Variants/Default/`,
