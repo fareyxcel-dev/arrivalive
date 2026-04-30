@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Extended fonts list
 const AVAILABLE_FONTS = [
+  'Modulus Pro', 'Modulus Pro Condensed', 'Modulus Pro Extra Condensed',
   'Modulus Pro SemiBold', 'Visby Round CF', 'Arkitype Modulus Pro',
   'Exo', 'Michroma', 'Aldrich', 'Khand', 'Saira Stencil One', 'Bruno Ace SC',
   'Poppins', 'Teko', 'Sulphur Point', 'Stick No Bills', 'Space Mono', 'Notable',
