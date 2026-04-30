@@ -161,9 +161,9 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   // Pick gradient or plain based on card style
   const textStyle = theme.gradientColors ? gradientTextStyle : plainTextStyle;
 
-  // Status badge glow
+  // Status text inset glow (no outer glow pulse)
   const statusGlow = hasStatus ? {
-    textShadow: `0 0 8px ${theme.textColor}, 0 0 16px ${theme.textColor}40`,
+    textShadow: `0 1px 1px rgba(0,0,0,0.6), 0 -1px 0 rgba(0,0,0,0.35)`,
   } : {};
 
   // Auto-collapse after 5 seconds or on scroll
@@ -345,25 +345,25 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           </span>
         </div>
 
-        {/* RIGHT: Multi-layered pill container - vibrant animated */}
+        {/* RIGHT: Multi-layered pill container - 3D glass */}
         <div
           className={cn(
-            "flex items-center gap-0 flex-shrink-0 rounded-full overflow-hidden transition-all duration-500 ease-out",
-            hasStatus && "pill-vibrant-glow"
+            "flex items-center gap-0 flex-shrink-0 rounded-full overflow-hidden transition-all duration-500 ease-out pill-glass-3d",
+            hasStatus && "pill-glass-3d-active"
           )}
           style={{
-            background: `rgba(${hexToRgb(theme.cardTint)}, ${hasStatus ? 0.18 : 0.08})`,
-            border: `1px solid rgba(${hexToRgb(theme.cardTint)}, ${hasStatus ? 0.35 : 0.12})`,
+            background: `linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(${hexToRgb(theme.cardTint)}, ${hasStatus ? 0.22 : 0.10}) 45%, rgba(0,0,0,0.28) 100%)`,
+            border: `1px solid rgba(255,255,255,0.22)`,
             boxShadow: hasStatus
-              ? `0 0 16px rgba(${hexToRgb(theme.cardTint)}, 0.35), 0 0 4px rgba(${hexToRgb(theme.cardTint)}, 0.2), inset 0 1px 2px rgba(255,255,255,0.12), inset 0 -1px 3px rgba(0,0,0,0.2)`
-              : `inset 0 1px 2px rgba(255,255,255,0.06), inset 0 -1px 3px rgba(0,0,0,0.15)`,
-            backdropFilter: 'blur(12px) saturate(1.4)',
-            WebkitBackdropFilter: 'blur(12px) saturate(1.4)',
+              ? `0 2px 6px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.08), inset 0 1px 1px rgba(255,255,255,0.45), inset 0 -1px 2px rgba(0,0,0,0.45), inset 0 0 10px rgba(${hexToRgb(theme.cardTint)}, 0.25)`
+              : `0 2px 5px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.35), inset 0 -1px 2px rgba(0,0,0,0.4)`,
+            backdropFilter: 'blur(14px) saturate(1.5)',
+            WebkitBackdropFilter: 'blur(14px) saturate(1.5)',
           }}
         >
           {hasStatus && (
             <span
-              className="text-[8px] font-semibold uppercase tracking-wide px-2 py-1.5 whitespace-nowrap status-badge-enter adaptive-shadow animate-pulse-soft"
+              className="text-[8px] font-semibold uppercase tracking-wide px-2 py-1.5 whitespace-nowrap status-badge-enter adaptive-shadow inset-glow-pulse"
               style={{ ...textStyle, ...statusGlow }}
             >
               {getStatusText()}
@@ -383,7 +383,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             }}
           >
             <span
-              className="text-[10px] font-medium px-2 py-1.5 whitespace-nowrap block adaptive-shadow"
+              className={cn("text-[10px] font-medium px-2 py-1.5 whitespace-nowrap block adaptive-shadow", hasStatus && "inset-glow-pulse")}
               style={textStyle}
             >
               {estimatedTimeFormatted}
@@ -395,7 +395,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           )}
 
           {showBell && (
-            <div className="px-1.5 py-1 flex-shrink-0">
+            <div className={cn("px-1.5 py-1 flex-shrink-0", hasStatus && "inset-glow-pulse")}>
               <BellButton
                 isActive={isNotificationEnabled}
                 isSubscribing={isSubscribing}

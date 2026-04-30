@@ -127,10 +127,10 @@ export const CARD_STYLES: Record<string, CardStyle> = {
     description: 'Gradient colored logos',
     textColors: { default: '#E0E0E0', delayed: '#BA4716', cancelled: '#7C1235', landed: '#175E2A' },
     gradientColors: {
-      default: ['#F5F5F5', '#E0E0E0', '#BDBDBD'],
-      delayed: ['#E26A32', '#BA4716', '#8A310C'],
-      cancelled: ['#A8224F', '#7C1235', '#4A071D'],
-      landed: ['#2B9145', '#175E2A', '#0A3615'],
+      default: ['#BDBDBD', '#E0E0E0', '#F5F5F5'],
+      delayed: ['#8A310C', '#BA4716', '#E26A32'],
+      cancelled: ['#4A071D', '#7C1235', '#A8224F'],
+      landed: ['#0A3615', '#175E2A', '#2B9145'],
     },
     logoPaths: {
       default: `${IMAGEKIT_BASE}Gradient%20Variants/Default/`,
@@ -147,10 +147,10 @@ export const CARD_STYLES: Record<string, CardStyle> = {
     description: 'Glass + gradient logos',
     textColors: { default: '#B5B5B5', delayed: '#9B330F', cancelled: '#690C36', landed: '#0C4521' },
     gradientColors: {
-      default: ['#FFFFFF', '#B5B5B5', '#787878'],
-      delayed: ['#F38B62', '#9B330F', '#5C1B05'],
-      cancelled: ['#B82E65', '#690C36', '#3B041C'],
-      landed: ['#2EAB56', '#0C4521', '#04210E'],
+      default: ['#787878', '#B5B5B5', '#FFFFFF'],
+      delayed: ['#5C1B05', '#9B330F', '#F38B62'],
+      cancelled: ['#3B041C', '#690C36', '#B82E65'],
+      landed: ['#04210E', '#0C4521', '#2EAB56'],
     },
     logoPaths: {
       default: `${IMAGEKIT_BASE}Gradient%20Glass%20Variants/Default/`,
@@ -167,10 +167,10 @@ export const CARD_STYLES: Record<string, CardStyle> = {
     description: 'Faceted gemstone cards',
     textColors: { default: '#E8E8F0', delayed: '#FF8C42', cancelled: '#FF3366', landed: '#33FF88' },
     gradientColors: {
-      default: ['#F0F0FF', '#E8E8F0', '#C0C0D0'],
-      delayed: ['#FFB88C', '#FF8C42', '#CC6B2E'],
-      cancelled: ['#FF6699', '#FF3366', '#CC1A44'],
-      landed: ['#66FFAA', '#33FF88', '#1ACC66'],
+      default: ['#C0C0D0', '#E8E8F0', '#F0F0FF'],
+      delayed: ['#CC6B2E', '#FF8C42', '#FFB88C'],
+      cancelled: ['#CC1A44', '#FF3366', '#FF6699'],
+      landed: ['#1ACC66', '#33FF88', '#66FFAA'],
     },
     logoPaths: {
       default: `${IMAGEKIT_BASE}Glass%20Variants/Main/`,
