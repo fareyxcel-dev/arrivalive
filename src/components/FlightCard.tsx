@@ -161,9 +161,9 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
   // Pick gradient or plain based on card style
   const textStyle = theme.gradientColors ? gradientTextStyle : plainTextStyle;
 
-  // Status badge glow
+  // Status text inset glow (no outer glow pulse)
   const statusGlow = hasStatus ? {
-    textShadow: `0 0 8px ${theme.textColor}, 0 0 16px ${theme.textColor}40`,
+    textShadow: `0 1px 1px rgba(0,0,0,0.6), 0 -1px 0 rgba(0,0,0,0.35)`,
   } : {};
 
   // Auto-collapse after 5 seconds or on scroll
