@@ -127,10 +127,10 @@ export const CARD_STYLES: Record<string, CardStyle> = {
     description: 'Gradient colored logos',
     textColors: { default: '#E0E0E0', delayed: '#BA4716', cancelled: '#7C1235', landed: '#175E2A' },
     gradientColors: {
-      default: ['#F5F5F5', '#E0E0E0', '#BDBDBD'],
-      delayed: ['#E26A32', '#BA4716', '#8A310C'],
-      cancelled: ['#A8224F', '#7C1235', '#4A071D'],
-      landed: ['#2B9145', '#175E2A', '#0A3615'],
+      default: ['#BDBDBD', '#E0E0E0', '#F5F5F5'],
+      delayed: ['#8A310C', '#BA4716', '#E26A32'],
+      cancelled: ['#4A071D', '#7C1235', '#A8224F'],
+      landed: ['#0A3615', '#175E2A', '#2B9145'],
     },
     logoPaths: {
       default: `${IMAGEKIT_BASE}Gradient%20Variants/Default/`,
