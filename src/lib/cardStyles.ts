@@ -167,10 +167,10 @@ export const CARD_STYLES: Record<string, CardStyle> = {
     description: 'Faceted gemstone cards',
     textColors: { default: '#E8E8F0', delayed: '#FF8C42', cancelled: '#FF3366', landed: '#33FF88' },
     gradientColors: {
-      default: ['#F0F0FF', '#E8E8F0', '#C0C0D0'],
-      delayed: ['#FFB88C', '#FF8C42', '#CC6B2E'],
-      cancelled: ['#FF6699', '#FF3366', '#CC1A44'],
-      landed: ['#66FFAA', '#33FF88', '#1ACC66'],
+      default: ['#C0C0D0', '#E8E8F0', '#F0F0FF'],
+      delayed: ['#CC6B2E', '#FF8C42', '#FFB88C'],
+      cancelled: ['#CC1A44', '#FF3366', '#FF6699'],
+      landed: ['#1ACC66', '#33FF88', '#66FFAA'],
     },
     logoPaths: {
       default: `${IMAGEKIT_BASE}Glass%20Variants/Main/`,
