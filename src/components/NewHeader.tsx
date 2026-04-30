@@ -304,8 +304,11 @@ const NewHeader = ({
   // Menu items: 5 standard, 6 for admin (with optional ⌘ shortcut hints)
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   const mod = isMac ? '⌘' : 'Ctrl';
+  // Safari can't reliably override Cmd/Ctrl+R, so don't advertise the hint there.
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  const isSafari = /Safari/.test(ua) && !/Chrome|Chromium|Android|CriOS|FxiOS|EdgiOS|OPR\//.test(ua);
   const menuItems: Array<{ icon: any; label: string; action?: () => void; shortcut?: string }> = [
-    { icon: RefreshCw, label: 'Refresh', action: onForceRefresh, shortcut: `${mod}R` },
+    { icon: RefreshCw, label: 'Refresh', action: onForceRefresh, ...(isSafari ? {} : { shortcut: `${mod}R` }) },
     { icon: Download, label: 'Export', action: onExportSchedule, shortcut: `${mod}E` },
     { icon: Bell, label: 'Notifications', action: onOpenNotifications },
     ...(isAdmin && onOpenAdmin ? [{ icon: Shield, label: 'Admin', action: onOpenAdmin }] : []),
