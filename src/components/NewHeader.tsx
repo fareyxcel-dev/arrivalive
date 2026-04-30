@@ -475,5 +475,9 @@ const NewHeader = ({
             </div>
           </div>
         </div>
+      </div>
+    </header>
+  );
+};
 
 export default NewHeader;
