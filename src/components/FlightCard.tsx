@@ -363,8 +363,8 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
         >
           {hasStatus && (
             <span
-              className="text-[8px] font-semibold uppercase tracking-wide px-2 py-1.5 whitespace-nowrap status-badge-enter adaptive-shadow inset-glow-pulse"
-              style={{ ...textStyle, ...statusGlow }}
+              className="text-[8px] font-semibold uppercase tracking-wide px-2 py-1.5 whitespace-nowrap status-badge-enter adaptive-shadow"
+              style={textStyle}
             >
               {getStatusText()}
             </span>
