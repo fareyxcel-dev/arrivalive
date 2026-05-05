@@ -383,7 +383,7 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
             }}
           >
             <span
-              className={cn("text-[10px] font-medium px-2 py-1.5 whitespace-nowrap block adaptive-shadow", hasStatus && "inset-glow-pulse")}
+              className="text-[10px] font-medium px-2 py-1.5 whitespace-nowrap block adaptive-shadow"
               style={textStyle}
             >
               {estimatedTimeFormatted}
@@ -395,11 +395,11 @@ const FlightCard = ({ flight, isNotificationEnabled, onToggleNotification }: Pro
           )}
 
           {showBell && (
-            <div className={cn("px-1.5 py-1 flex-shrink-0", hasStatus && "inset-glow-pulse")}>
+            <div className="px-1.5 py-1 flex-shrink-0">
               <BellButton
                 isActive={isNotificationEnabled}
                 isSubscribing={isSubscribing}
-                bellColor={theme.bellColor}
+                bellColor={theme.gradientColors ? theme.gradientColors[1] : theme.textColor}
                 bellGlow={theme.bellGlow}
                 onClick={handleBellClick}
               />
