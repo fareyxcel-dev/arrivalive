@@ -1,46 +1,62 @@
-# New fis.com.mv Scraper + Dark/Grey/Light Glass Tones with Tint-Strength Sliders
+# New fis.com.mv Scraper (with backups) + Dark/Light/Auto Glass Tones + Tint Sliders
 
 ## Part 1 — Scraper for the redesigned fis.com.mv
 
-The new fis.com.mv is a Next.js app. The "Compact list", "Arrivals + Int'l" and "Arrivals + Domestic" views in the side panel are just client-side filters over one dataset — the full flight list for today and tomorrow is already embedded as JSON in the page HTML on first load (176 records at the time of inspection: arrivals and departures, T1 international and T2 domestic, with fields `flightNumber`, `airline`, `airlineCode`, `origin`, `originCode`, `scheduledTime`, `estimatedTime`, `terminal`, `status`, `type`, `category`, `date`, `delayMinutes`). No panel interaction or headless browser is needed.
+The old HTML-table scraper gets nothing now because the site is a new Next.js app. Live inspection shows the data is available in cleaner forms than the old table. The "Compact list", "Int'l" and "Domestic" buttons in the screenshots are client-side filters over one dataset, so no panel interaction is needed.
 
-What the updated `scrape-flights` function will do:
-- Fetch `https://fis.com.mv/` with a browser User-Agent.
-- Extract every embedded `{"id":"arrival-…"}` record from the Next.js payload (regex + JSON parse), ignoring `departure-*` records.
-- Keep only `type === 'arrival'`, and split by category exactly as requested: `international` -> **T1**, `domestic` -> **T2** (terminal set from the category, not trusted from the record, so the grouping stays stable).
-- Skip codeshares: any record whose `primaryFlight` is set (currently none appear, but the guard stays).
-- Map fields to the existing `flights` table columns: `flight_id` = "SQ 432", `airline_code`, `origin`, `scheduled_time`, `estimated_time`, `flight_date`, `terminal`.
-- Map statuses to the values the app already understands: `landed` -> `LANDED`, `delayed` -> `DELAYED`, `cancelled` -> `CANCELLED`, `on-time`/anything else -> `-`. `delayMinutes` is appended as extra context on delayed flights (e.g. estimated time already reflects it; nothing else in the UI changes).
-- If the payload yields zero arrivals, fall back to the old HTML-table parser (kept as a secondary path) before returning mock data, so a temporary layout change never blanks the app.
-- Status-change detection, upsert, notifications and `flight_alerts` logic stay unchanged.
+Confirmed live sources (checked today):
+1. `https://fis.com.mv/api/flights` — clean JSON: `{ flights: [...], lastUpdated }`, 175 records covering today + tomorrow, arrivals + departures, T1 international + T2 domestic. Fields: `flightNumber` ("SQ 432"), `airline`, `airlineCode`, `origin`, `originCode`, `scheduledTime`, `estimatedTime`, `terminal`, `status` (`on-time | landed | delayed | cancelled`), `type`, `category`, `date`, `delayMinutes`.
+2. `https://fis.com.mv/` — same records embedded in the page's Next.js payload (regex + JSON parse).
+3. `https://fis.com.mv/tv` — the FIDS TV view, also server-rendered with the same records.
 
-## Part 2 — Dark / Grey / Light glass tones for the whole UI
+Scraper chain in `scrape-flights` (each step only runs if the previous produced zero arrivals):
+1. JSON API (`/api/flights`).
+2. Embedded payload from `/`.
+3. Embedded payload from `/tv`.
+4. Legacy HTML-table parser (kept for safety).
+5. Last-known good data already in the `flights` table for today/tomorrow (served with `source: "cache"` so the app never goes blank); mock data only if the table is empty too.
 
-Add a **Glass Tone** selector (Dark, Grey, Light) in Settings -> Style that applies to every glass surface: header, menu dropdown, terminal groups, flight cards, pills, modals, sliders/toggles, toasts.
+Normalisation (identical for sources 1–3):
+- Keep `type === "arrival"` only; drop departures.
+- Terminal from category exactly as requested: `international` -> **T1**, `domestic` -> **T2**.
+- Skip codeshares (`primaryFlight` set).
+- Status mapping to what the app already uses: `landed` -> `LANDED`, `delayed` -> `DELAYED`, `cancelled` -> `CANCELLED`, `on-time` and unknown -> `-`.
+- `flight_id` keeps the "SQ 432" spacing (matches existing subscriptions/notifications), plus `airline_code`, `origin`, `scheduled_time`, `estimated_time`, `flight_date`.
+- Sanity guard: a result is accepted only if it contains both T1 and T2 arrivals for today and at least 20 rows; otherwise fall through to the next source and log why. Row counts per terminal/date/status are logged on every run so a silent drop is visible in function logs.
+- Status-change detection, upsert (`flight_id,flight_date`), notifications and `flight_alerts` stay unchanged.
+- Add a `flightstats` cross-check log line (no data override) so any disagreement is visible during the switch.
 
-- Each tone defines a single base colour via CSS variables: Dark = near-black, Grey = neutral mid-grey, Light = near-white. No preset or gradient may introduce its own grey shade any more.
-- All glass gradients become **opacity-based**: every gradient stop uses the same tone colour and only its alpha changes (e.g. `hsl(var(--glass-tone) / calc(var(--glass-tint) * 1.0))` -> `… * 0.6`). This removes the muddy grey bands that appeared in light/dark styles.
-- Existing 15 glass presets keep their blur, animation and character, but their `tint` colours are replaced by tone-driven values (a preset can still add a subtle hue accent like Aero's blue, applied as a low-alpha overlay on top of the tone, never a grey shade).
-- Text colours auto-flip for readability: Light tone uses dark text (`--foreground` dark, 80% variant), Dark/Grey keep white / white-80%. Flight card text colours (per card style) are unaffected.
-- SolidX styles follow the tone too, since they share the same variables.
-- Status-tinted opaque card backgrounds (landed/delayed/cancelled at 0% opacity) stay colour-based by design, but their gradient stops become alpha variations of one status colour rather than three different shades.
+## Part 2 — Glass tones for the whole UI: Dark, Light, Auto, Auto Reverse
+
+A **Glass Tone** control in Settings -> Style with three buttons: **Dark**, **Light**, **Auto**. Tapping Auto while it is already selected flips it to **Auto Reverse** (button label/icon changes so the state is obvious).
+
+- Dark = near-black tone, Light = near-white tone. Grey is removed as a standalone option and no preset may add its own grey shade.
+- **Auto**: smoothly fades Light -> Dark from day to night, and Dark -> Light from night to day.
+- **Auto Reverse**: the opposite — Dark by day, Light by night.
+- The fade is a continuous 0–1 "daylight" value, not a hard switch. It comes from:
+  - Real sunrise/sunset times for Male (already fetched by `get-weather-astronomy`) — civil twilight gives ~40-minute ramps around sunrise and sunset.
+  - Live weather: overcast/rain/thunderstorm pull the daylight value down (e.g. heavy rain at noon reads as ~0.55, not 1.0), clear sky leaves it as-is.
+  - Live background luminance sampled from the skyview iframe (`src/lib/luminance.ts`) blended in as a final correction so the glass always tracks what the sky actually looks like.
+  - Updated every 30 s and eased with a 2 s CSS transition on the tone variables so changes are never abrupt.
+- Text colour follows the tone continuously (white on dark, near-black on light, interpolated in between). Flight-card text palettes from card styles are untouched.
+- All glass gradients become **opacity-based**: every gradient stop uses the same tone colour with only alpha changing, which removes muddy grey bands. Presets keep blur/animation/character; hue accents (Aero blue, Vista warm) become low-alpha overlays on top of the tone.
+- SolidX styles and status-tinted opaque card backgrounds follow the same rule (single colour, alpha variations).
 
 ## Part 3 — Tint-strength sliders
 
-In Settings -> Style, under the tone selector:
-- **Glass Tint** slider (0–100): drives `--glass-tint`. At 100 the glass is fully opaque in the chosen tone (background completely hidden). At 0 the glass is almost invisible (~2% alpha, border only) so the sky background shows through nearly untouched.
-- **Border Strength** slider (0–100): same idea for glass borders/highlights so they can also fade out or become crisp.
-- Both are live (CSS variables set from `SettingsContext`), persisted in settings, and included in the existing settings migration with sensible defaults (Tint 35, Border 40). The existing Glass Opacity slider is folded into Glass Tint to avoid two overlapping controls; old saved values migrate automatically.
-- Blur stays a separate slider as today.
+Under the tone control:
+- **Glass Tint** (0–100): 0 = nearly invisible (~2% alpha, border only, sky fully visible), 100 = fully opaque in the current tone.
+- **Border Strength** (0–100): same range for borders/highlights.
+- Live via CSS variables, persisted, migrated from the old Glass Opacity value (which is removed to avoid duplicate controls). Defaults: Tint 35, Border 40. Blur stays its own slider.
 
 ## Technical details
 
-Files:
-- `supabase/functions/scrape-flights/index.ts` — new payload parser, category->terminal mapping, status mapping, legacy parser fallback; redeploy.
-- `src/index.css` — introduce `--glass-tone`, `--glass-tint`, `--glass-border-strength`, `--glass-text`, `--glass-text-muted`; rewrite `.glass`, `.glass-strong`, `.glass-blur-strong`, `.glass-pill`, `.glass-orb`, `.glass-neumorphic`, toggle/slider styles, toast styles and all preset overlays to opacity-only gradients using these variables; add `[data-glass-tone="dark|grey|light"]` blocks.
-- `src/contexts/SettingsContext.tsx` — add `glassTone`, `glassTint`, `glassBorderStrength`; set `data-glass-tone` on `<html>` and the CSS variables; migrate `glassOpacity` -> `glassTint`; strip grey `tint` values from `GLASS_PRESETS` in favour of tone + optional hue accent.
-- `src/components/SettingsModal.tsx` — tone segmented control (Dark/Grey/Light) and the two sliders in the Style tab; remove the standalone glass opacity slider.
-- `src/components/FlightCard.tsx`, `TerminalGroup.tsx`, `NewHeader.tsx`, `NotificationsModal.tsx`, `ExportModal.tsx` — replace any remaining hardcoded `rgba(255,255,255,…)` / `rgba(0,0,0,…)` / hex grey surface values with the tone variables so the tone switch is complete.
-- `src/lib/cardStyles.ts` — no change to logo/text palettes.
+- `supabase/functions/scrape-flights/index.ts` — source chain, normaliser, sanity guard, cache fallback, per-run count logging; redeploy and verify T1/T2 counts against the live site for both dates.
+- `src/lib/daylight.ts` (new) — computes the 0–1 daylight value from astronomy times, weather condition and iframe luminance; exposes a subscription hook.
+- `src/contexts/SettingsContext.tsx` — `glassTone: 'dark' | 'light' | 'auto' | 'auto-reverse'`, `glassTint`, `glassBorderStrength`; writes `--glass-tone-l` (lightness), `--glass-text-l`, `--glass-tint`, `--glass-border-strength`; migration from `glassOpacity`; preset `tint` values replaced by tone + optional hue accent.
+- `src/index.css` — rewrite `.glass*`, pills, orbs, neumorphic, toggle/slider, toast and preset overlays to `hsl(0 0% var(--glass-tone-l) / calc(var(--glass-tint) * k))`; 2 s transition on tone variables.
+- `src/components/SettingsModal.tsx` — tone control with Auto/Auto Reverse toggle behaviour and the two sliders.
+- `FlightCard.tsx`, `TerminalGroup.tsx`, `NewHeader.tsx`, `NotificationsModal.tsx`, `ExportModal.tsx` — replace remaining hardcoded white/black/grey surface values with tone variables.
+- `public/live-skyview.html` — reply to the existing `sample-luminance` message if not already wired, so Auto has a real background reading.
 
-Verification: run the updated scraper against the live site and confirm T1 = international arrivals, T2 = domestic arrivals for both dates; check preview at each tone with tint at 0 and 100 across header, cards, pills and modals.
+Verification: run the scraper via the function endpoint and compare counts with the screenshots' pattern (T1 international, T2 domestic, both dates); simulate Auto at sunrise/noon/sunset/midnight and with rain/clear conditions; check tint 0 and 100 in each tone across header, cards, pills and modals.
