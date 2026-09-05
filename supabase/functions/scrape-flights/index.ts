@@ -245,11 +245,19 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ flights, source: "live", statusChanges: statusChanges.length }),
+      JSON.stringify({ flights: Array.from(uniqueFlights.values()), source, statusChanges: statusChanges.length }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
     console.error("Error:", error);
+    try {
+      const { data: cached } = await supabase.from("flights").select("*").gte("flight_date", maldivesToday());
+      if (cached && cached.length > 0) {
+        return new Response(JSON.stringify({ flights: cached, source: "cache", error: String(error) }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } catch { /* fall through to mock */ }
     return new Response(
       JSON.stringify({ flights: getMockFlights(), source: "mock", error: String(error) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
