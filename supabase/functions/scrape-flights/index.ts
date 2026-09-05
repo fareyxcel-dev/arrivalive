@@ -17,39 +17,179 @@ interface FlightData {
   flight_date: string;
 }
 
+const FETCH_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+  "Accept": "text/html,application/json,application/xhtml+xml,*/*;q=0.8",
+  "Cache-Control": "no-cache",
+};
+
+interface FisRecord {
+  id?: string;
+  flightNumber?: string;
+  airline?: string;
+  airlineCode?: string;
+  origin?: string;
+  originCode?: string;
+  scheduledTime?: string;
+  estimatedTime?: string;
+  terminal?: string;
+  status?: string;
+  type?: string;
+  category?: string;
+  date?: string;
+  delayMinutes?: string | number;
+  primaryFlight?: string;
+}
+
+const maldivesToday = (): string => {
+  const now = new Date(Date.now() + 5 * 60 * 60 * 1000);
+  return now.toISOString().split("T")[0];
+};
+
+// Map fis.com.mv status strings to the values the app expects
+function mapStatus(raw: string | undefined): string {
+  const s = (raw || "").toLowerCase().trim();
+  if (s.includes("land")) return "LANDED";
+  if (s.includes("cancel")) return "CANCELLED";
+  if (s.includes("delay")) return "DELAYED";
+  return "-";
+}
+
+// Normalise fis.com.mv JSON records (same shape from /api/flights, / and /tv)
+function normaliseRecords(records: FisRecord[]): FlightData[] {
+  const out: FlightData[] = [];
+  for (const r of records) {
+    if (!r || r.type !== "arrival") continue;
+    if (r.primaryFlight && r.primaryFlight !== "$undefined") continue; // codeshare
+    const flightId = (r.flightNumber || "").replace(/\s+/g, " ").trim().toUpperCase();
+    if (!/^[A-Z0-9]{2}\s?\d+/.test(flightId)) continue;
+    const date = r.date && /^\d{4}-\d{2}-\d{2}$/.test(r.date) ? r.date : null;
+    if (!date || !r.scheduledTime) continue;
+    const category = (r.category || "").toLowerCase();
+    const terminal = category === "domestic" ? "T2" : category === "international" ? "T1" : (r.terminal || "T1");
+    out.push({
+      flight_id: flightId,
+      airline_code: (r.airlineCode || flightId.substring(0, 2)).toUpperCase(),
+      origin: r.origin || r.originCode || "Unknown",
+      scheduled_time: r.scheduledTime,
+      estimated_time: r.estimatedTime || null,
+      actual_time: null,
+      terminal,
+      status: mapStatus(r.status),
+      flight_date: date,
+    });
+  }
+  return out;
+}
+
+// Extract embedded records from a Next.js server-rendered page (/ or /tv)
+function extractEmbeddedRecords(html: string): FisRecord[] {
+  const unescaped = html.replace(/\\"/g, '"');
+  const matches = unescaped.match(/\{"id":"(?:arrival|departure)-[^{}]*\}/g) || [];
+  const recs: FisRecord[] = [];
+  for (const m of matches) {
+    try {
+      recs.push(JSON.parse(m.replace(/"\$undefined"/g, "null")));
+    } catch { /* skip malformed */ }
+  }
+  return recs;
+}
+
+function summarise(flights: FlightData[]): string {
+  const counts: Record<string, number> = {};
+  for (const f of flights) {
+    const k = `${f.flight_date} ${f.terminal} ${f.status}`;
+    counts[k] = (counts[k] || 0) + 1;
+  }
+  return Object.entries(counts).sort().map(([k, v]) => `${k}=${v}`).join(", ");
+}
+
+// A result is only accepted if it looks complete for today
+function isSane(flights: FlightData[], label: string): boolean {
+  const today = maldivesToday();
+  const todays = flights.filter((f) => f.flight_date === today);
+  const hasT1 = todays.some((f) => f.terminal === "T1");
+  const hasT2 = todays.some((f) => f.terminal === "T2");
+  const ok = flights.length >= 20 && hasT1 && hasT2;
+  console.log(`[${label}] ${flights.length} arrivals (today T1:${hasT1} T2:${hasT2}) -> ${ok ? "OK" : "REJECTED"} | ${summarise(flights)}`);
+  return ok;
+}
+
+async function fetchText(url: string): Promise<string> {
+  const res = await fetch(url, { headers: FETCH_HEADERS });
+  if (!res.ok) throw new Error(`${url} -> ${res.status}`);
+  return await res.text();
+}
+
+// Source 1: JSON API
+async function fromApi(): Promise<FlightData[]> {
+  const text = await fetchText("https://fis.com.mv/api/flights");
+  const json = JSON.parse(text);
+  const list: FisRecord[] = Array.isArray(json) ? json : json?.flights || json?.data || [];
+  return normaliseRecords(list);
+}
+
+// Sources 2 & 3: embedded payload in server-rendered pages
+async function fromPage(url: string): Promise<FlightData[]> {
+  const html = await fetchText(url);
+  return normaliseRecords(extractEmbeddedRecords(html));
+}
+
+// Source 4: legacy HTML table
+async function fromLegacyTable(): Promise<FlightData[]> {
+  const html = await fetchText(
+    "https://fis.com.mv/index.php?webfids_type=arrivals&webfids_lang=1&webfids_domesticinternational=both&webfids_passengercargo=passenger&webfids_airline=ALL&webfids_waypoint=ALL&Submit=+UPDATE+",
+  );
+  return parseFlightData(html);
+}
+
+async function collectFlights(): Promise<{ flights: FlightData[]; source: string }> {
+  const sources: Array<[string, () => Promise<FlightData[]>]> = [
+    ["api", fromApi],
+    ["home-payload", () => fromPage("https://fis.com.mv/")],
+    ["tv-payload", () => fromPage("https://fis.com.mv/tv")],
+    ["legacy-table", fromLegacyTable],
+  ];
+  for (const [label, fn] of sources) {
+    try {
+      const flights = await fn();
+      if (isSane(flights, label)) return { flights, source: label };
+    } catch (err) {
+      console.error(`[${label}] failed:`, err);
+    }
+  }
+  return { flights: [], source: "none" };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
     console.log("Fetching flight data from fis.com.mv...");
-
-    const response = await fetch(
-      "https://fis.com.mv/index.php?webfids_type=arrivals&webfids_lang=1&webfids_domesticinternational=both&webfids_passengercargo=passenger&webfids_airline=ALL&webfids_waypoint=ALL&Submit=+UPDATE+",
-      {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        },
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Fetch failed: ${response.status}`);
-    }
-
-    const html = await response.text();
-    console.log(`HTML fetched, length: ${html.length} chars`);
-
-    const flights = parseFlightData(html);
-    console.log(`Parsed ${flights.length} flights`);
+    const { flights, source } = await collectFlights();
+    console.log(`Source used: ${source}, ${flights.length} arrivals`);
 
     if (flights.length === 0) {
+      // Source 5: last known good data from the database
+      const today = maldivesToday();
+      const { data: cached } = await supabase
+        .from("flights")
+        .select("*")
+        .gte("flight_date", today)
+        .order("flight_date")
+        .order("scheduled_time");
+      if (cached && cached.length > 0) {
+        console.log(`Serving ${cached.length} cached flights from database`);
+        return new Response(JSON.stringify({ flights: cached, source: "cache" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       return new Response(JSON.stringify({ flights: getMockFlights(), source: "mock" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -105,11 +245,19 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ flights, source: "live", statusChanges: statusChanges.length }),
+      JSON.stringify({ flights: Array.from(uniqueFlights.values()), source, statusChanges: statusChanges.length }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
     console.error("Error:", error);
+    try {
+      const { data: cached } = await supabase.from("flights").select("*").gte("flight_date", maldivesToday());
+      if (cached && cached.length > 0) {
+        return new Response(JSON.stringify({ flights: cached, source: "cache", error: String(error) }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } catch { /* fall through to mock */ }
     return new Response(
       JSON.stringify({ flights: getMockFlights(), source: "mock", error: String(error) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
