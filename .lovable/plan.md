@@ -1,124 +1,46 @@
-## Goals
+# New fis.com.mv Scraper + Dark/Grey/Light Glass Tones with Tint-Strength Sliders
 
-1. Send notifications through every available push/web channel **in parallel**, not as a fallback chain.
-2. Add **global keyboard shortcuts** for Force Refresh, Export Schedule, and open Settings.
-3. Make the header **responsive** — text rows never wrap or overlap on small screens.
-4. Smooth the scroll-shrink with **spring-like easing** so logo / center text / menu icon morph in unison.
-5. Show an **export-in-progress spinner** in `ExportModal` and disable controls while generating.
-6. Make header font/appearance updates apply **instantly** (no refresh).
+## Part 1 — Scraper for the redesigned fis.com.mv
 
----
+The new fis.com.mv is a Next.js app. The "Compact list", "Arrivals + Int'l" and "Arrivals + Domestic" views in the side panel are just client-side filters over one dataset — the full flight list for today and tomorrow is already embedded as JSON in the page HTML on first load (176 records at the time of inspection: arrivals and departures, T1 international and T2 domestic, with fields `flightNumber`, `airline`, `airlineCode`, `origin`, `originCode`, `scheduledTime`, `estimatedTime`, `terminal`, `status`, `type`, `category`, `date`, `delayMinutes`). No panel interaction or headless browser is needed.
 
-## 1. Parallel multi-channel push (`supabase/functions/send-notification/index.ts`)
+What the updated `scrape-flights` function will do:
+- Fetch `https://fis.com.mv/` with a browser User-Agent.
+- Extract every embedded `{"id":"arrival-…"}` record from the Next.js payload (regex + JSON parse), ignoring `departure-*` records.
+- Keep only `type === 'arrival'`, and split by category exactly as requested: `international` -> **T1**, `domestic` -> **T2** (terminal set from the category, not trusted from the record, so the grouping stays stable).
+- Skip codeshares: any record whose `primaryFlight` is set (currently none appear, but the guard stays).
+- Map fields to the existing `flights` table columns: `flight_id` = "SQ 432", `airline_code`, `origin`, `scheduled_time`, `estimated_time`, `flight_date`, `terminal`.
+- Map statuses to the values the app already understands: `landed` -> `LANDED`, `delayed` -> `DELAYED`, `cancelled` -> `CANCELLED`, `on-time`/anything else -> `-`. `delayMinutes` is appended as extra context on delayed flights (e.g. estimated time already reflects it; nothing else in the UI changes).
+- If the payload yields zero arrivals, fall back to the old HTML-table parser (kept as a secondary path) before returning mock data, so a temporary layout change never blanks the app.
+- Status-change detection, upsert, notifications and `flight_alerts` logic stay unchanged.
 
-Currently push uses a fallback chain (PushAlert → OneSignal → FCM, stops at first success). Change to fire all three **simultaneously** with `Promise.allSettled`:
+## Part 2 — Dark / Grey / Light glass tones for the whole UI
 
-```text
-push.sent = ANY of (pushAlertOk, oneSignalOk, fcmOk, webPushOk)
-push.channels = { pushalert, onesignal, fcm, webpush }  // per-channel result
-```
+Add a **Glass Tone** selector (Dark, Grey, Light) in Settings -> Style that applies to every glass surface: header, menu dropdown, terminal groups, flight cards, pills, modals, sliders/toggles, toasts.
 
-- Always attempt PushAlert if `onesignal_player_id` exists.
-- Always attempt OneSignal if both creds + player id exist.
-- Always attempt FCM if `fcm_token` exists.
-- Also invoke `send-web-push` (VAPID) in parallel if `push_subscription` exists.
-- Log one row per channel attempted into `notification_log` (type: `push:pushalert`, `push:onesignal`, etc.) so users see each delivery path.
-- Apply same parallel pattern to `send-test-notification` for the admin "Send Test 'Landed'" button.
+- Each tone defines a single base colour via CSS variables: Dark = near-black, Grey = neutral mid-grey, Light = near-white. No preset or gradient may introduce its own grey shade any more.
+- All glass gradients become **opacity-based**: every gradient stop uses the same tone colour and only its alpha changes (e.g. `hsl(var(--glass-tone) / calc(var(--glass-tint) * 1.0))` -> `… * 0.6`). This removes the muddy grey bands that appeared in light/dark styles.
+- Existing 15 glass presets keep their blur, animation and character, but their `tint` colours are replaced by tone-driven values (a preset can still add a subtle hue accent like Aero's blue, applied as a low-alpha overlay on top of the tone, never a grey shade).
+- Text colours auto-flip for readability: Light tone uses dark text (`--foreground` dark, 80% variant), Dark/Grey keep white / white-80%. Flight card text colours (per card style) are unaffected.
+- SolidX styles follow the tone too, since they share the same variables.
+- Status-tinted opaque card backgrounds (landed/delayed/cancelled at 0% opacity) stay colour-based by design, but their gradient stops become alpha variations of one status colour rather than three different shades.
 
-This guarantees redundancy: every active subscriber gets the alert across every registered transport.
+## Part 3 — Tint-strength sliders
 
----
+In Settings -> Style, under the tone selector:
+- **Glass Tint** slider (0–100): drives `--glass-tint`. At 100 the glass is fully opaque in the chosen tone (background completely hidden). At 0 the glass is almost invisible (~2% alpha, border only) so the sky background shows through nearly untouched.
+- **Border Strength** slider (0–100): same idea for glass borders/highlights so they can also fade out or become crisp.
+- Both are live (CSS variables set from `SettingsContext`), persisted in settings, and included in the existing settings migration with sensible defaults (Tint 35, Border 40). The existing Glass Opacity slider is folded into Glass Tint to avoid two overlapping controls; old saved values migrate automatically.
+- Blur stays a separate slider as today.
 
-## 2. Keyboard shortcuts (new `src/hooks/useKeyboardShortcuts.ts`)
+## Technical details
 
-Add a hook used in `Index.tsx` that listens on `window`:
+Files:
+- `supabase/functions/scrape-flights/index.ts` — new payload parser, category->terminal mapping, status mapping, legacy parser fallback; redeploy.
+- `src/index.css` — introduce `--glass-tone`, `--glass-tint`, `--glass-border-strength`, `--glass-text`, `--glass-text-muted`; rewrite `.glass`, `.glass-strong`, `.glass-blur-strong`, `.glass-pill`, `.glass-orb`, `.glass-neumorphic`, toggle/slider styles, toast styles and all preset overlays to opacity-only gradients using these variables; add `[data-glass-tone="dark|grey|light"]` blocks.
+- `src/contexts/SettingsContext.tsx` — add `glassTone`, `glassTint`, `glassBorderStrength`; set `data-glass-tone` on `<html>` and the CSS variables; migrate `glassOpacity` -> `glassTint`; strip grey `tint` values from `GLASS_PRESETS` in favour of tone + optional hue accent.
+- `src/components/SettingsModal.tsx` — tone segmented control (Dark/Grey/Light) and the two sliders in the Style tab; remove the standalone glass opacity slider.
+- `src/components/FlightCard.tsx`, `TerminalGroup.tsx`, `NewHeader.tsx`, `NotificationsModal.tsx`, `ExportModal.tsx` — replace any remaining hardcoded `rgba(255,255,255,…)` / `rgba(0,0,0,…)` / hex grey surface values with the tone variables so the tone switch is complete.
+- `src/lib/cardStyles.ts` — no change to logo/text palettes.
 
-| Combo | Action |
-|---|---|
-| `Ctrl/Cmd + R` (override default) | Force Refresh flights |
-| `Ctrl/Cmd + E` | Open Export modal |
-| `Ctrl/Cmd + ,` | Open Settings modal |
-
-- Ignore when focus is inside `input`, `textarea`, `select`, or `[contenteditable]`.
-- `preventDefault()` only when the combo matches our list.
-- Show a tiny `toast.info('Shortcut: Refresh')` style hint on first trigger of each.
-- Update menu items in `NewHeader` to display the shortcut (e.g. `Refresh ⌘R`) using a right-aligned `<kbd>` chip.
-
----
-
-## 3. Responsive header rows (`src/components/NewHeader.tsx`)
-
-Use container-aware breakpoints so dual-text rows always fit on phones down to 320 px:
-
-- Wrap center block in a flex column with `min-w-0` and `truncate` already in place.
-- Add a viewport-based size scale via a `useResizeObserver` (or `window.innerWidth` listener) producing one of three modes: `xs` (<360), `sm` (360–420), `md` (>420).
-  - `xs`: time `10px` / secondary `8px`, gap `1px`, hide the "·" inside date row (use single space), shorten weather row to "Cloudy · 2h" form.
-  - `sm`: current scrolled sizes (time `11px` / sec `9px`).
-  - `md`: default sizes (time `13px` / sec `10px`).
-- Apply `max-w-[140px]` (xs) / `max-w-[180px]` (sm) / `max-w-[220px]` (md) to the secondary weather text with `truncate`.
-- Add `whitespace-nowrap` + `overflow-hidden` to both rows; pipe separators rendered as flex items so they collapse cleanly.
-
-Result: at 320 px both rows render on a single line each without wrap or collision with logo/menu.
-
----
-
-## 4. Spring-like unison scroll scaling (`NewHeader.tsx` + `index.css`)
-
-Replace the current `transition-all duration-300` (linear-ish) with a shared spring curve and a single source of truth:
-
-- Add CSS variable in `index.css`:
-  ```text
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --header-scale-duration: 420ms;
-  ```
-- Drive scaling via a single `--header-scale` CSS var on the `<header>` element (set to `1` or `0.85` based on `isScrolled`).
-- Logo, center wrapper, and menu wrapper all use `transform: scale(var(--header-scale))` with `transition: transform var(--header-scale-duration) var(--ease-spring)`.
-- Because all three children share the same var + transition, they shrink and grow back **in perfect sync** with a subtle overshoot bounce.
-- Throttle scroll listener with `requestAnimationFrame` to prevent jitter.
-
----
-
-## 5. ExportModal busy state (`src/components/ExportModal.tsx`)
-
-Add `isExporting` state. While true:
-
-- Disable the Date `<select>`, Terminal buttons, and close `X` (apply `disabled` + `pointer-events-none` + `opacity-60`).
-- Replace the Download button label with a spinning `<Loader2 className="animate-spin"/>` + "Generating…".
-- Click-outside to close becomes a no-op.
-
-`handleExport` becomes async:
-1. `setIsExporting(true)`
-2. Build CSV (and add a small `await new Promise(r => setTimeout(r, 50))` to let the spinner paint for the trivial case).
-3. Trigger download.
-4. `setIsExporting(false)` then `onClose()`.
-5. On error: `toast.error('Export failed')` and reset `isExporting`.
-
-(Existing CSV generation stays; no XLSX dependency added unless requested.)
-
----
-
-## 6. Instant header font/appearance preview
-
-Already mostly working (SettingsContext writes CSS vars + injects `<style id="global-font-style">` on every settings change). Two small fixes to guarantee the header reflects changes with no refresh:
-
-- In `NewHeader.tsx`, apply `style={{ fontFamily: 'var(--font-body)' }}` to the time/weather `<p>` elements (currently they inherit, but a couple of buttons may not pick up immediately on certain browsers — explicit var avoids stale cached fonts).
-- Add `font-variant-numeric: tabular-nums` so digits don't reflow as fonts change.
-- Ensure the injected `<style>` block in `SettingsContext` includes `header, header * { font-family: var(--font-body) !important; }` (already present) and is re-flushed by toggling a `data-font-rev` attribute on `<html>` so WebKit forces a repaint:
-  ```text
-  document.documentElement.setAttribute('data-font-rev', String(Date.now()));
-  ```
-
----
-
-## Files touched
-
-- `supabase/functions/send-notification/index.ts` — parallel channel dispatch + per-channel logs
-- `supabase/functions/send-test-notification/index.ts` — same parallel pattern
-- `src/hooks/useKeyboardShortcuts.ts` — **new** hook
-- `src/pages/Index.tsx` — wire shortcut hook
-- `src/components/NewHeader.tsx` — responsive sizing, spring scaling, shortcut hints in menu, instant font var
-- `src/components/ExportModal.tsx` — busy state + spinner + disabled controls
-- `src/contexts/SettingsContext.tsx` — `data-font-rev` repaint nudge
-- `src/index.css` — `--ease-spring`, `--header-scale-duration`, header transform rules
-
-No DB migrations, no new secrets, no new dependencies.
+Verification: run the updated scraper against the live site and confirm T1 = international arrivals, T2 = domestic arrivals for both dates; check preview at each tone with tint at 0 and 100 across header, cards, pills and modals.
